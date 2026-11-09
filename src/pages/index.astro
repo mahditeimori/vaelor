@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import aiState from '../data/ai-state.json';
 
 const departments = [
   { id: 'EXEC', name: 'Executive Management', desc: 'Sovereign administrative authority, system override, and final governance.', icon: 'M3 13.5h18M3 9h18M3 19h12' },
@@ -152,58 +151,85 @@ const controls = [
         <div class="kicker">AI Layer · MCP</div>
         <h2>Published analysis</h2>
       </div>
-      {aiState.generatedAt ? (
-        <div class="ai-live reveal">
-          <div class="ai-head">
-            <span class="badge ok">AI · Published</span>
-            <span class="mono">{aiState.generatedAt}</span>
-            <span class="mono">source: {aiState.source}</span>
-          </div>
-          <div class="grid grid-3">
-            <div class="card">
-              <div class="meta">REGIME CALL</div>
-              <h3>{aiState.regime ?? '—'}</h3>
-              <p>{aiState.summary}</p>
-            </div>
-            <div class="card">
-              <div class="meta">COMPOSITE FLAG</div>
-              <h3>{aiState.signals?.compositeFlag ?? '—'}</h3>
-              <p>COT z: {aiState.signals?.cotZ ?? '—'} · OI shock: {aiState.signals?.oiShock ?? '—'}</p>
-            </div>
-            <div class="card">
-              <div class="meta">CONFIDENCE</div>
-              <h3>{aiState.confidence != null ? `${Math.round(aiState.confidence * 100)}%` : '—'}</h3>
-              <p>Weighted multi-indicator convergence, published by the connected AI.</p>
-            </div>
-          </div>
-          {aiState.decisions?.length ? (
-            <ul class="mini-list" style="margin-top:18px">
-              {aiState.decisions.map((d: any) => (
-                <li>
-                  <span class="tag">{d.action}</span><b>{d.instrument}</b> {d.thesis}
-                  {d.invalidation ? <em>&nbsp;· Invalidation: {d.invalidation}</em> : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : (
-        <div class="card ai-pending reveal">
-          <h3>No analysis published yet</h3>
-          <p>
-            Connect this site to your AI over MCP and let it publish results with <code>publish_analysis</code>.
-            The AI reads the manual here, you train it, it analyzes — the site shows the results.
-          </p>
-          <pre>npm run mcp:http      # MCP server → http://127.0.0.1:8890/mcp
-# paste that URL into your AI's connector screen (see mcp/README.md)</pre>
-        </div>
-      )}
+      <!-- populated by client-side fetch to MCP worker API (see script below) -->
+      <div id="ai-analysis" class="ai-pending reveal">
+        <h3>No analysis published yet</h3>
+        <p>
+          Connect this site to your AI over MCP and let it publish results with <code>publish_analysis</code>.
+          The AI reads the manual here, you train it, it analyzes — the site shows the results.
+        </p>
+        <pre id="ai-setup">Loading MCP API URL…</pre>
+      </div>
     </section>
   </main>
 
   <script>
     import { initLanding } from '../scripts/landing.ts';
     initLanding();
+
+    /* -------- MCP Worker API --------
+       SET THIS to your deployed Worker URL, e.g.:
+         https://trading-llc-mcp.<your-subdomain>.workers.dev
+       Deploy with: npm run deploy:mcp  (after `wrangler kv:namespace create AI_STATE` + wrangler.toml kv id)
+    */
+    const MCP_API = "https://trading-llc-mcp.mahdi-t8256.workers.dev";
+
+    async function loadAnalysis() {
+      const box = document.getElementById('ai-analysis');
+      const setup = document.getElementById('ai-setup');
+      try {
+        const res = await fetch(`${MCP_API}/api/analysis`, { cache: 'no-store' });
+        const state = await res.json();
+        if (state && state.generatedAt) {
+          renderAnalysis(state);
+          return;
+        }
+      } catch (e) {
+        // fall through to pending state
+      }
+      setup.textContent = `MCP API not reachable at ${MCP_API} — deploy the Worker (npm run deploy:mcp) and paste its URL above.`;
+    }
+
+    function renderAnalysis(s) {
+      const box = document.getElementById('ai-analysis');
+      box.className = 'ai-live reveal';
+      box.innerHTML = `
+        <div class="ai-head">
+          <span class="badge ok">AI · Published</span>
+          <span class="mono">${new Date(s.generatedAt).toLocaleString()}</span>
+          <span class="mono">source: ${s.source ?? 'ai'}</span>
+        </div>
+        <div class="grid grid-3">
+          <div class="card">
+            <div class="meta">REGIME CALL</div>
+            <h3>${s.regime ?? '—'}</h3>
+            <p>${s.summary}</p>
+          </div>
+          <div class="card">
+            <div class="meta">COMPOSITE FLAG</div>
+            <h3>${s.signals?.compositeFlag ?? '—'}</h3>
+            <p>COT z: ${s.signals?.cotZ ?? '—'} · OI shock: ${s.signals?.oiShock ?? '—'}</p>
+          </div>
+          <div class="card">
+            <div class="meta">CONFIDENCE</div>
+            <h3>${s.confidence != null ? Math.round(s.confidence * 100) + '%' : '—'}</h3>
+            <p>Weighted multi-indicator convergence, published by the connected AI.</p>
+          </div>
+        </div>
+        ${(s.decisions ?? []).length ? `
+          <ul class="mini-list" style="margin-top:18px">
+            ${s.decisions.map(d => `
+              <li>
+                <span class="tag">${d.action}</span><b>${d.instrument}</b> ${d.thesis}
+                ${d.invalidation ? '<em> · Invalidation: ' + d.invalidation + '</em>' : ''}
+              </li>
+            `).join('')}
+          </ul>
+        ` : ''}
+      `;
+    }
+
+    loadAnalysis();
   </script>
 
   <style>

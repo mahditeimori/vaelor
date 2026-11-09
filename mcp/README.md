@@ -1,107 +1,122 @@
-# Trading LLC — MCP Server (v1.1.0)
+# Trading LLC — AI channel (Cloudflare Worker, v2.0.0)
 
-Gives your AI a **two-way channel** into this website, the "regular" way:
+A **public, no-config channel** any AI can connect to:
 
-> You teach the AI (the manual + company code live here) → the AI analyzes →
-> it publishes results → **the website just shows them.**
+> You teach the AI (manual + company code live on the site) → the AI analyzes →
+> it publishes to Cloudflare KV → **the live site renders the result immediately.**
 
-```
-        ┌──────────────┐   read_manual / search_manual
-  AI ←──│  MCP server   │   get_company_code
-        │ (mcp/server)  │
-        └───────┬───────┘
-                │ publish_analysis
-                ▼
-    src/data/ai-state.json  ──▶  landing page "Published analysis" section
-```
-
-## Two ways to connect — pick one, no config JSON editing required
-
-### ① HTTP mode (recommended — the "regular" way, works for many AIs)
-
-Run once (leave the window open, or install as a background task):
-
-```powershell
-cd E:\Opencode\tradingllc_site
-npm run mcp:http
-```
-
-The server now answers at a **plain URL**:
+No rebuild, no redeploy, no localhost, no JSON editing.
 
 ```
-http://127.0.0.1:8890/mcp
+                    read/search manual, company code
+      AI  ───────────────────────────────────────────────▶  Worker (Cloudflare edge)
+          ◀───────────────────────────────────────────────        │
+                    publish_analysis → KV "AI_STATE"             │
+                                                                 ▼
+                        https://vaelor.pages.dev  (fetches GET /api/analysis)
 ```
 
-Any AI product that can add an **MCP server / connector by URL** can now use it:
+## Public endpoints
 
-| AI | Where to add the URL |
-|----|----------------------|
-| **Claude Desktop (2026 Cowork build)** | Settings → **Connectors** → *Add custom connector* → paste `http://127.0.0.1:8890/mcp` → Add. **No JSON editing needed.** |
-| **Claude Desktop (older builds)** | Settings → Developer → *Add custom connector (URL)*, same URL. |
-| **Gemini** (desktop/CLI app builds that support MCP URLs) | Connector settings → add MCP server URL. |
-| **ChatGPT / Muse / others** | Anywhere they have an "Add MCP server by URL / Connectors" screen — paste the same URL. |
+Base URL: **https://trading-llc-mcp.mahdi-t8256.workers.dev**
 
-Order of use inside your AI:
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/mcp` | MCP over HTTP (JSON-RPC 2.0, stateless) |
+| `GET`  | `/api/analysis` | Latest published analysis (JSON) |
+| `POST` | `/api/analysis` | Publish analysis (same payload as the MCP tool) |
+| `GET`  | `/api/health` | `{"ok":true,"service":"trading-llc-mcp"}` |
 
-1. *"Read the Trading LLC manual and company code, then analyze the market."*
-   → the AI calls `get_manual_index` → `read_manual` → `get_company_code`
-2. Discuss / correct / train it however you want.
-3. Tell it to publish → it calls `publish_analysis` with its regime call,
-   signals, confidence and decisions.
-4. Open `http://127.0.0.1:3000` — the **Published analysis** section shows the
-   results. Nothing else to do.
+CORS is open (`*`), so browser apps and cloud AIs can call it directly.
 
-### ② stdio mode (for AIs configured by command, e.g. Gemini CLI, old-style JSON clients)
+## Connect an AI (paste one URL)
 
-```powershell
-npm run mcp
+Give the AI this MCP endpoint:
+
+```
+https://trading-llc-mcp.mahdi-t8256.workers.dev/mcp
 ```
 
-If (and only if) a client still wants a JSON entry, it is simply:
+| AI | Where |
+|----|-------|
+| Claude Desktop / claude.ai | Settings → **Connectors** → *Add custom connector* → paste URL |
+| ChatGPT (connectors / custom GPT actions) | Add MCP server or import the OpenAPI/REST endpoints |
+| Gemini (MCP-capable builds) | Connector settings → add MCP server URL |
+| Anything that can POST JSON | Call `POST /api/analysis` directly |
 
-```json
-{ "mcpServers": { "trading-llc-site": {
-    "command": "node",
-    "args": ["E:\\Opencode\\tradingllc_site\\mcp\\server.mjs"] } } }
-```
+### Suggested prompt
 
-Both transports expose the **same 6 tools**.
+> Read the Trading LLC manual and company code from the MCP server, then analyze
+> the market. When you're done, call `publish_analysis` with your regime call,
+> signals, confidence and decisions.
 
 ## Tools
 
 | Tool | Purpose |
 |------|---------|
 | `get_manual_index` | List every manual document |
-| `read_manual` | Read one document (the AI's textbook) |
-| `search_manual` | Full-text search across the manual |
+| `read_manual` | Read one document (`{"slug":"01-overview"}`) |
+| `search_manual` | Full-text search (`{"query":"circuit breaker"}`) |
 | `get_company_code` | Departments / roles / formulas / parameters JSON |
-| `publish_analysis` | Publish regime call, signals, confidence, decisions to the site |
+| `publish_analysis` | Publish regime call, signals, confidence, decisions |
 | `get_latest_analysis` | Read back the latest published analysis |
 
-## Publishing → what the site shows
+Manual documents are fetched live from `https://vaelor.pages.dev/docs/<slug>`
+and HTML-stripped inside the Worker, so the AI always reads the deployed version.
 
-`publish_analysis` writes **atomically** (tmp-file + rename) to
-`src/data/ai-state.json`, and the landing section renders:
+## Publishing payload
 
-- **REGIME CALL** card — regime + summary
-- **COMPOSITE FLAG** card — flag, COT z, OI shock
-- **CONFIDENCE** card — confidence %
-- decisions list — instrument / action / thesis / invalidation
+```json
+{
+  "regime": "reflation",
+  "summary": "Two or three sentences.",
+  "confidence": 0.62,
+  "signals": { "compositeFlag": "LONG", "cotZ": 1.4, "oiShock": "NONE" },
+  "decisions": [
+    {
+      "instrument": "ES",
+      "action": "LONG",
+      "thesis": "Why.",
+      "invalidation": "What kills it."
+    }
+  ],
+  "source": "claude"
+}
+```
 
-With `npm run dev` running the update appears on reload; for static hosting
-pass `rebuild: true` to `publish_analysis` (it runs `npm run build`).
+```powershell
+curl.exe -X POST "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/analysis" `
+  -H "content-type: application/json" --data-binary "@payload.json"
+```
 
-## Things to know
+The landing page polls `GET /api/analysis` on load and renders **REGIME CALL**,
+**COMPOSITE FLAG**, **CONFIDENCE** and the decisions list.
 
-- **Port:** default 8890 → change with `node mcp/server.mjs --http --port 9000`.
-- **Cloud AIs can't reach `127.0.0.1`.** ChatGPT web, Gemini web, and claude.ai
-  run in the cloud; they can't connect to your local machine. Desktop/CLI apps
-  on *this PC* (Claude Desktop, Gemini CLI, Muse desktop) **can**. To expose the
-  URL from the cloud you'd need a public tunnel (e.g. a reverse proxy) — only do
-  that with authentication, since these tools can edit files.
-- **Raw `curl` tests** must send the headers the MCP transport expects:
-  `Content-Type: application/json` and
-  `Accept: application/json, text/event-stream`.
-- Writes go through one shared contract file (`src/data/ai-state.json`);
-  human-readable and version-controlled — the never-fades source of truth for
-  the AI ↔ site handshake.
+## Deploy / update
+
+```powershell
+# wrangler must be authenticated (wrangler login)
+wrangler deploy
+```
+
+- Config: `wrangler.toml` (worker name, KV binding `AI_STATE`, `PAGES_ORIGIN`)
+- Code: `mcp/worker.js`
+- KV key: `ai-state` in namespace `a1776533b5cb4299accd800aac8d2256`
+- Clear published state: `wrangler kv key delete --namespace-id=a1776533b5cb4299accd800aac8d2256 ai-state --remote`
+
+## Local-only mode (legacy, optional)
+
+`mcp/server.mjs` still runs the original dual transport (stdio / local HTTP on
+port 8890) and writes `src/data/ai-state.json`. It is **not** used by the live
+site anymore — the Worker + KV is the source of truth.
+
+```powershell
+npm run mcp:http   # http://127.0.0.1:8890/mcp (this PC only)
+npm run mcp        # stdio
+```
+
+## Notes
+
+- `POST /api/analysis` is intentionally open so any AI can publish. If you want
+  to lock it down later, add a shared secret check in `mcp/worker.js`.
+- Cloud AIs cannot reach `127.0.0.1`; use the public Worker URL above.

@@ -9,7 +9,12 @@
     "preview": "astro preview",
     "mcp": "node mcp/server.mjs",
     "mcp:http": "node mcp/server.mjs --http",
+    "deploy:mcp": "npx wrangler deploy",
+    "deploy:mcp:dry": "npx wrangler deploy --dry-run",
     "astro": "astro"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.2",
