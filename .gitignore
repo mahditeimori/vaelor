@@ -1,6 +1,47 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
 dist/
 .astro/
+build/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Runtime-generated AI state (the MCP server writes this at runtime)
+src/data/ai-state.json
+src/data/ai-state.json.tmp
+
+# Logs
 npm-debug.log*
-*.local
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor / OS
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw.*
 .DS_Store
+Thumbs.db
+
+# Temporary / verification scripts
+verify-mcp.mjs
+*.tmp
+
+# Package manager locks (optional — uncomment if you don't want to commit locks)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
