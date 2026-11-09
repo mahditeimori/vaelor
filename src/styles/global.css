@@ -96,13 +96,21 @@ hr {
 .brand-mark {
   width: 30px; height: 30px;
   display: grid; place-items: center;
-  background: linear-gradient(135deg, var(--cherry), var(--cherry-deep));
+  background: radial-gradient(circle at 40% 35%, rgba(46, 120, 70, 0.55), rgba(6, 28, 16, 0.95));
   color: var(--bone);
   border-radius: 8px;
   font-family: var(--mono);
   font-weight: 800;
   font-size: 14px;
-  box-shadow: 0 0 18px rgba(176, 23, 63, 0.4);
+  box-shadow: 0 0 18px rgba(34, 140, 80, 0.45);
+  overflow: hidden;
+  border: 1px solid rgba(80, 180, 110, 0.35);
+}
+.brand-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .brand .sub { font-size: 0.75rem; color: var(--text-faint); font-family: var(--mono); font-weight: 400; }

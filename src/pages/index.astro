@@ -23,14 +23,16 @@ const controls = [
 ];
 ---
 
-<BaseLayout title="Trading LLC — Operating Manual" variant="landing">
+<BaseLayout title="Vaelor Trading LLC — Operating Manual" variant="landing">
   <main class="land-wrap">
     <!-- ======= Top-left toolbar ======= -->
     <nav class="topbar" aria-label="Primary">
       <a href="/" class="brand" style="text-decoration:none">
-        <span class="brand-mark">T</span>
+        <span class="brand-mark" aria-hidden="true">
+          <img src="/vaelor-logo.png" alt="" width="30" height="30" />
+        </span>
         <span class="brand-id">
-          <span style="display:block">Trading LLC</span>
+          <span style="display:block">Vaelor Trading LLC</span>
           <span class="sub">OPS v2.0.1</span>
         </span>
       </a>
@@ -225,7 +227,7 @@ const controls = [
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
     }
     .brand-id { display: flex; flex-direction: column; line-height: 1.1; }
-    .brand-id { color: var(--bone); font-family: var(--serif); font-weight: 700; font-size: 0.95rem; }
+    .brand-id { color: var(--bone); font-family: var(--serif); font-weight: 700; font-size: 0.88rem; white-space: nowrap; }
     .brand-id .sub { font-family: var(--mono); font-size: 0.62rem; color: var(--text-faint); font-weight: 400; letter-spacing: 0.06em; }
     .tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
     .tb-link {

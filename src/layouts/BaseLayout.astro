@@ -4,8 +4,8 @@ interface Props {
   description?: string;
   variant?: 'default' | 'landing';
 }
-const { title, description = 'Trading LLC — Master Operational Manual & Autonomous Execution Specification', variant = 'default' } = Astro.props;
-const pageTitle = `${title} — Trading LLC`;
+const { title, description = 'Vaelor Trading LLC — Master Operational Manual & Autonomous Execution Specification', variant = 'default' } = Astro.props;
+const pageTitle = `${title} — Vaelor Trading LLC`;
 import '../styles/global.css';
 ---
 
@@ -19,16 +19,19 @@ import '../styles/global.css';
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b0173f'/%3E%3Cpath d='M10 9h12v3h-9v2.5h7v3h-7V20h9v3H10z' fill='%23f6efe0'/%3E%3C/svg%3E" />
+    <link rel="icon" type="image/png" href="/vaelor-mark.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{pageTitle}</title>
   </head>
   <body class={variant}>
     {variant !== 'landing' && (
       <header class="site-header">
-        <a href="/" class="brand" aria-label="Trading LLC home">
-          <span class="brand-mark">T</span>
+        <a href="/" class="brand" aria-label="Vaelor Trading LLC home">
+          <span class="brand-mark" aria-hidden="true">
+            <img src="/vaelor-logo.png" alt="" width="30" height="30" />
+          </span>
           <span>
-            <span style="display:block">Trading LLC</span>
+            <span style="display:block">Vaelor Trading LLC</span>
             <span class="sub">OPS v2.0.1 · TLLC-OPS-V2.0.1-FINAL</span>
           </span>
         </a>
@@ -42,7 +45,7 @@ import '../styles/global.css';
     <slot />
     <footer class="site-footer">
       <div class="shell">
-        <div class="mono">TRADING LLC · MASTER OPERATIONAL MANUAL &amp; AUTONOMOUS EXECUTION SPECIFICATION</div>
+        <div class="mono">VAELOR TRADING LLC · MASTER OPERATIONAL MANUAL &amp; AUTONOMOUS EXECUTION SPECIFICATION</div>
         <div class="mono" style="margin-top:6px">
           Version 2.0.1 · Standard Identifier <span style="color:var(--accent-warm)">TLLC-OPS-V2.0.1-FINAL</span> · Classification: Operational Protocol
         </div>
