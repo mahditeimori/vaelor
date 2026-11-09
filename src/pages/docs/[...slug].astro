@@ -1,0 +1,31 @@
+---
+import { getCollection, render } from 'astro:content';
+import DocsLayout from '../../layouts/DocsLayout.astro';
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs');
+  return docs.map((entry) => ({
+    params: { slug: entry.id },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+const all = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
+const idx = all.findIndex((d) => d.id === entry.id);
+const prev = idx > 0 ? all[idx - 1] : null;
+const next = idx < all.length - 1 ? all[idx + 1] : null;
+---
+
+<DocsLayout title={entry.data.title}>
+  <Content />
+  <nav class="doc-nav" aria-label="Document navigation">
+    {prev ? (
+      <a href={`/docs/${prev.id}`}>← {prev.data.title}</a>
+    ) : <span />}
+    {next ? (
+      <a href={`/docs/${next.id}`}>{next.data.title} →</a>
+    ) : <span />}
+  </nav>
+</DocsLayout>

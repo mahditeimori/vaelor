@@ -1,0 +1,262 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import data from '../../data/company_code.json';
+
+const meta = data.meta;
+const departments = data.departments;
+const roles = data.roles;
+const hierarchy = data.reporting_hierarchy;
+const channels = data.communication_channels;
+const formulas = data.formulas;
+const workflows = data.workflows;
+const params = data.operator_adjustable_parameters;
+const schema = data.execution_command_schema;
+const ui = data.ui_architecture;
+const modes = data.interaction_modes;
+
+const roleById = (id) => roles.find((r) => r.id === id);
+const deptById = (id) => departments.find((d) => d.id === id);
+---
+
+<DocsLayout title="Company Code">
+  <h1>Company Code</h1>
+  <p>
+    Machine-readable specification of the operating baseline, generated from
+    <code>trading_llc_company_code.json</code>.
+  </p>
+
+  <h2>Metadata</h2>
+  <table>
+    <thead><tr><th>Field</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Company</td><td>{meta.company_name}</td></tr>
+      <tr><td>Document Version</td><td>{meta.document_version}</td></tr>
+      <tr><td>Standard Identifier</td><td><code>{meta.standard_identifier}</code></td></tr>
+      <tr><td>Industry</td><td>{meta.industry}</td></tr>
+      <tr><td>Classification</td><td>{meta.classification}</td></tr>
+      <tr><td>Company Size</td><td>{meta.company_size}</td></tr>
+      <tr><td>Locations</td><td>{meta.locations}</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Departments</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Department</th><th>Purpose</th><th>Budget Authority</th></tr></thead>
+    <tbody>
+      {departments.map((d) => (
+        <tr>
+          <td><code>{d.id}</code></td>
+          <td>{d.name}</td>
+          <td>{d.purpose}</td>
+          <td>{d.budget_authority ? <span style="color:var(--positive)">Yes</span> : <span style="color:var(--text-faint)">No</span>}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2>Role Roster</h2>
+  {roles.map((r) => (
+    <div class="card" style="margin-bottom:18px">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; align-items:baseline">
+        <h3 style="margin:0"><code>{r.id}</code> — {r.title}</h3>
+        <span class="badge" style="color:var(--accent-warm)">{r.authority_level}</span>
+      </div>
+      <div class="meta" style="margin:6px 0 12px">
+        Department: <a href="#{r.department}">{deptById(r.department)?.name}</a> · Reports to: {r.reports_to ? <code>{roleById(r.reports_to)?.title}</code> : '—'} · {r.employment_type}
+      </div>
+      <div class="grid grid-2" style="margin-top:10px">
+        <div>
+          <strong style="font-size:0.85rem">Responsibilities</strong>
+          <ul class="mini-list">
+            {r.responsibilities.map((x) => <li>{x}</li>)}
+          </ul>
+        </div>
+        <div>
+          <strong style="font-size:0.85rem">Required Skills</strong>
+          <ul class="mini-list">
+            {r.required_skills.map((x) => <li>{x}</li>)}
+          </ul>
+          {r.signing_authority && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Signing Authority</strong>
+              <div style="margin-top:6px">{r.signing_authority.map((s) => <span class="badge">{s}</span>)}</div>
+            </>
+          )}
+          {r.execution_directives && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Execution Directives</strong>
+              <ul class="mini-list">
+                {Object.entries(r.execution_directives).map(([k, v]) => (
+                  <li><b style="font-family:var(--mono); color:var(--accent-warm)">{k}</b> · {v}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.data_sources && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Data Sources</strong>
+              <ul class="mini-list">
+                {r.data_sources.map((d) => (
+                  <li><b>{d.category}</b> — {d.feeds.join(', ')} <span class="meta">({d.frequency})</span></li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.input_feeds && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Input Feeds</strong>
+              <ul class="mini-list">
+                {r.input_feeds.map((d) => (
+                  <li><b>{d.stage}</b> — {d.source} · <i>{d.processing}</i></li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.regime_states && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Regime States</strong>
+              <div style="margin-top:6px">{r.regime_states.map((s) => <span class="badge warm">{s}</span>)}</div>
+            </>
+          )}
+          {r.four_state_engine && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Four-State Engine</strong>
+              <ul class="mini-list">
+                {Object.values(r.four_state_engine).map((s) => (
+                  <li><b style="color:var(--text)">{s.condition}</b> → {s.interpretation}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.formulas && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Formulas</strong>
+              <ul class="mini-list">
+                {Object.entries(r.formulas).map(([k, v]) => (
+                  <li><b style="color:var(--accent-warm)">{k}</b>: <code>{v}</code></li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.composite_flag_rules && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Composite Flag Rules</strong>
+              <ul class="mini-list">
+                {Object.entries(r.composite_flag_rules).map(([k, v]) => (
+                  <li><b style="color:var(--text)">{k}</b>: {v}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.alert_triggers && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Alert Triggers</strong>
+              <ul class="mini-list">
+                {r.alert_triggers.map((a) => (
+                  <li><b style="color:var(--watch)">{a.type}</b>: {a.threshold} · <i>{a.format}</i></li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.scoring_dimensions && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Scoring Dimensions</strong>
+              <ul class="mini-list">
+                {r.scoring_dimensions.map((d) => (
+                  <li><b>{d.dimension}</b>: {d.metrics.join(', ')}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.review_cadence && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Review Cadence</strong>
+              <ul class="mini-list">
+                {Object.entries(r.review_cadence).map(([k, v]) => (
+                  <li><b>{k}</b>: {v}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          {r.output_constraint && (
+            <p class="meta" style="margin-top:12px; color:var(--watch)">Constraint: {r.output_constraint}</p>
+          )}
+          {r.publication_constraint && (
+            <p class="meta" style="margin-top:12px; color:var(--watch)">Constraint: {r.publication_constraint}</p>
+          )}
+          {r.scorecard_fields && (
+            <>
+              <strong style="font-size:0.85rem; display:block; margin-top:12px">Scorecard Fields</strong>
+              <div style="margin-top:6px">{r.scorecard_fields.map((s) => <span class="badge">{s}</span>)}</div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  ))}
+
+  <h2>Reporting Hierarchy</h2>
+  <pre>{JSON.stringify(hierarchy, null, 2)}</pre>
+
+  <h2>Communication Channels</h2>
+  <table>
+    <thead><tr><th>From</th><th>To</th><th>Data</th><th>Trigger</th></tr></thead>
+    <tbody>
+      {channels.map((c) => (
+        <tr>
+          <td><code>{roleById(c.from)?.title ?? c.from}</code></td>
+          <td><code>{roleById(c.to)?.title ?? c.to}</code></td>
+          <td>{c.data}</td>
+          <td>{c.trigger}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2>Formulas</h2>
+  <table>
+    <thead><tr><th>Key</th><th>Specification</th></tr></thead>
+    <tbody>
+      {Object.entries(formulas).map(([k, f]) => (
+        <tr>
+          <td><code>{k}</code></td>
+          <td><pre style="margin:0">{JSON.stringify(f, null, 2)}</pre></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2>Workflows</h2>
+  <pre>{JSON.stringify(workflows, null, 2)}</pre>
+
+  <h2>Operator-Adjustable Parameters</h2>
+  <table>
+    <thead><tr><th>Hook</th><th>Default</th><th>Range</th><th>Purpose</th></tr></thead>
+    <tbody>
+      {Object.entries(params).map(([k, p]) => (
+        <tr>
+          <td><code>{k}</code></td>
+          <td>{p.default}</td>
+          <td>{p.range}</td>
+          <td>{p.purpose}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2>UI Architecture</h2>
+  <pre>{JSON.stringify(ui, null, 2)}</pre>
+
+  <h2>Interaction Modes</h2>
+  <table>
+    <thead><tr><th>Mode</th><th>Trigger</th><th>Delivery</th></tr></thead>
+    <tbody>
+      {modes.map((m) => (
+        <tr><td><b>{m.mode}</b></td><td>{m.trigger}</td><td>{m.delivery}</td></tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2>Execution Command Schema</h2>
+  <pre>{JSON.stringify(schema, null, 2)}</pre>
+</DocsLayout>

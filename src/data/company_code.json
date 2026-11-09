@@ -1,0 +1,724 @@
+{
+  "meta": {
+    "company_name": "Trading LLC",
+    "document_version": "2.0.1",
+    "standard_identifier": "TLLC-OPS-V2.0.1-FINAL",
+    "industry": "Algorithmic Futures Trading",
+    "company_size": "[FILL: company_size]",
+    "locations": "[FILL: locations]",
+    "classification": "Operational Protocol"
+  },
+  "departments": [
+    {
+      "id": "EXEC",
+      "name": "Executive Management",
+      "purpose": "Sovereign administrative authority, system override, and final governance",
+      "budget_authority": true
+    },
+    {
+      "id": "RISK",
+      "name": "Risk Management",
+      "purpose": "Parametric exposure enforcement, circuit-breaker triggers, anomaly monitoring",
+      "budget_authority": false
+    },
+    {
+      "id": "EXEC_AUTO",
+      "name": "Automated Execution",
+      "purpose": "High-frequency algorithmic order execution within bounded limits",
+      "budget_authority": false
+    },
+    {
+      "id": "MACRO",
+      "name": "Macro Analysis",
+      "purpose": "Multi-asset macroeconomic data ingestion, regime synthesis, and briefing generation",
+      "budget_authority": false
+    },
+    {
+      "id": "MKT_STRUCT",
+      "name": "Market Structure",
+      "purpose": "Futures OI tracking, COT pipeline, composite signal dashboards",
+      "budget_authority": false
+    },
+    {
+      "id": "PERF_AUDIT",
+      "name": "Performance & Audit",
+      "purpose": "Trade reconciliation, scorecards, behavioral pattern detection",
+      "budget_authority": false
+    }
+  ],
+  "roles": [
+    {
+      "id": "ROLE_PSO",
+      "title": "Primary Systems Operator",
+      "department": "EXEC",
+      "reports_to": null,
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Sovereign",
+      "responsibilities": [
+        "Hold sovereign administrative authority over all system operations",
+        "Execute unilateral kill-switch controls",
+        "Execute system pause capabilities",
+        "Execute manual trade override authority",
+        "Authorize capital scale modifications exceeding 15% delta",
+        "Provide dual cryptographic signature for system re-arming",
+        "Final approval on regime synthesis calls"
+      ],
+      "required_skills": [
+        "System architecture oversight",
+        "Cryptographic key management",
+        "Risk governance",
+        "Manual execution override"
+      ],
+      "signing_authority": ["re_arm", "capital_scale_change"]
+    },
+    {
+      "id": "ROLE_RC",
+      "title": "Risk Controller",
+      "department": "RISK",
+      "reports_to": "ROLE_PSO",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Enforcement",
+      "responsibilities": [
+        "Enforce parametric exposure boundaries",
+        "Execute circuit-breaker cutoffs",
+        "Monitor anomaly scores (S_anomaly in [0.0, 1.0])",
+        "Trigger execution freeze when S_anomaly > 0.85",
+        "Revoke API keys and session tokens on freeze",
+        "Quarantine execution kernels to offline state",
+        "Dispatch priority alerts to PSO",
+        "Provide dual cryptographic signature for system re-arming"
+      ],
+      "required_skills": [
+        "Quantitative anomaly detection",
+        "Circuit-breaker logic",
+        "Cryptographic signature validation",
+        "Fail-safe state management"
+      ],
+      "signing_authority": ["re_arm"]
+    },
+    {
+      "id": "ROLE_AEK",
+      "title": "Automated Execution Kernel",
+      "department": "EXEC_AUTO",
+      "reports_to": "ROLE_RC",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Bounded Execution",
+      "responsibilities": [
+        "Execute algorithmic orders within bounded risk limits",
+        "Process fills",
+        "Enforce automated trade logic",
+        "Route real-time order flow",
+        "Monitor sub-millisecond latency",
+        "Evaluate slippage against NBBO quotes",
+        "Transition to hedge protection on execution halt",
+        "Transition to fail-safe stop coverage on execution halt"
+      ],
+      "required_skills": [
+        "High-frequency order execution",
+        "Latency monitoring",
+        "NBBO quote evaluation",
+        "Order routing"
+      ],
+      "execution_directives": {
+        "directive_alpha": "Maintain absolute neutrality. No subjective emotional bias, directional wishful thinking, or unhedged narrative rationalizations.",
+        "directive_beta": "Enforce strict JSON output schemas for all execution commands. Non-conforming syntax rejected.",
+        "directive_gamma": "Deny execution on corrupted telemetry, checksum mismatches, stale timestamps (>120s), or unverified signatures."
+      }
+    },
+    {
+      "id": "ROLE_ME",
+      "title": "Macro Analysis Engine",
+      "department": "MACRO",
+      "reports_to": "ROLE_PSO",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Analytical",
+      "responsibilities": [
+        "Ingest multi-asset macroeconomic feeds",
+        "Classify releases across Direction, Surprise Magnitude, Market Reaction vectors",
+        "Output regime classification (reflation, disinflation, stagflation, goldilocks, risk-off)",
+        "Generate pre-session macro briefings",
+        "Serve regime call as mandatory input to Pre-Market Analyzer",
+        "Provide invalidation conditions for regime flips"
+      ],
+      "required_skills": [
+        "Macroeconomic data ingestion",
+        "Regime classification logic",
+        "Multi-indicator convergence analysis",
+        "Briefing generation"
+      ],
+      "data_sources": [
+        {
+          "category": "Inflation",
+          "feeds": ["CPI", "Core CPI", "PCE", "Core PCE"],
+          "frequency": "Monthly, release-day publication"
+        },
+        {
+          "category": "Central Bank",
+          "feeds": ["Fed statements", "ECB statements", "BOE statements", "BOJ statements", "Dot plot projections", "Official minutes"],
+          "frequency": "Per scheduled meeting plus intermeeting speeches"
+        },
+        {
+          "category": "Rates",
+          "feeds": ["2Y Treasury yield", "10Y Treasury yield", "30Y Treasury yield", "2s10s yield spread", "Real yields (TIPS)"],
+          "frequency": "Continuous intraday stream"
+        },
+        {
+          "category": "Currency",
+          "feeds": ["DXY (USD Index)", "Individual currency pair strength indexes"],
+          "frequency": "Continuous intraday stream"
+        },
+        {
+          "category": "Labor",
+          "feeds": ["Non-Farm Payrolls (NFP)", "Unemployment rate", "JOLTS", "Initial jobless claims"],
+          "frequency": "Weekly/monthly per economic calendar"
+        },
+        {
+          "category": "Growth",
+          "feeds": ["GDP (advance, preliminary, final)", "PMI (manufacturing and services)"],
+          "frequency": "Monthly/quarterly release"
+        },
+        {
+          "category": "Geopolitical",
+          "feeds": ["Elections", "Sovereign conflicts", "Economic sanctions", "OPEC quotas"],
+          "frequency": "Event-driven real-time capture"
+        }
+      ],
+      "regime_states": ["reflation", "disinflation", "stagflation", "goldilocks", "risk-off"]
+    },
+    {
+      "id": "ROLE_PMA",
+      "title": "Pre-Market Analyzer",
+      "department": "MACRO",
+      "reports_to": "ROLE_ME",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Analytical",
+      "responsibilities": [
+        "Generate ranked watchlist (max 10, range 3-25)",
+        "Calculate scenario probabilities (bull/bear/base)",
+        "Identify key levels (prior day H/L, overnight H/L, options levels)",
+        "Receive regime call from Macro Engine as weighting input",
+        "Receive unresolved divergences from Post-Market Analyzer",
+        "Receive behavioral variance flags from Performance Analyst",
+        "Attribute source regime call in morning briefing"
+      ],
+      "required_skills": [
+        "Scenario probability modeling",
+        "Watchlist ranking algorithms",
+        "Options-derived level calculation",
+        "Briefing generation"
+      ],
+      "input_feeds": [
+        {
+          "stage": "Overnight Review",
+          "source": "Asia and European session price action",
+          "processing": "Range calculation, directional bias, tests of critical levels"
+        },
+        {
+          "stage": "Futures / Pre-Market Tape",
+          "source": "ES, NQ, RTY, GC, DX order books and prints",
+          "processing": "Gap size calculation, statistical gap-fill probability grouping"
+        },
+        {
+          "stage": "Earnings Calendar",
+          "source": "Reporting corporate issuers (BMO & prior AMC)",
+          "processing": "Strictly filter to names relevant to active universe"
+        },
+        {
+          "stage": "Options Flow",
+          "source": "Unusual volume clusters, put/call skew shifts",
+          "processing": "Tag institutional sentiment per underlying instrument"
+        },
+        {
+          "stage": "Volatility Surface",
+          "source": "VIX/VX term structure, cross-asset volatility skew",
+          "processing": "Detect curve inversions or abnormal steepening"
+        }
+      ]
+    },
+    {
+      "id": "ROLE_PMA_POST",
+      "title": "Post-Market Analyzer",
+      "department": "MACRO",
+      "reports_to": "ROLE_ME",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Analytical",
+      "responsibilities": [
+        "Perform ledger anchoring with hash verification",
+        "Execute complete trade and state reconciliation",
+        "Analyze index vs. internals divergences",
+        "Perform sector rotation analysis",
+        "Generate volume profile structural identification",
+        "Review after-hours activity",
+        "Generate end-of-day scorecard",
+        "Feed unresolved divergences forward to Pre-Market Analyzer"
+      ],
+      "required_skills": [
+        "Trade reconciliation",
+        "Hash verification",
+        "Market internals analysis",
+        "Sector rotation tracking"
+      ],
+      "scorecard_fields": [
+        "pre_market_bias_called_vs_actual",
+        "watchlist_execution_triggers",
+        "logged_market_divergences"
+      ]
+    },
+    {
+      "id": "ROLE_PERF",
+      "title": "Performance Analyst",
+      "department": "PERF_AUDIT",
+      "reports_to": "ROLE_PSO",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Analytical (Informative Only)",
+      "responsibilities": [
+        "Parse broker execution statements (CSV or API)",
+        "Extract per-trade: instrument, direction, entry/exit timestamps, fill prices, size, commissions",
+        "Score execution quality (slippage, fill rate)",
+        "Score strategy adherence (tag match rate)",
+        "Analyze win/loss clustering (instrument, time-of-day, session window, setup tag)",
+        "Characterize drawdown (max, duration, recovery velocity, consecutive-loss clustering)",
+        "Detect behavioral patterns (revenge sizing, overconfidence sizing, hold-time variance)",
+        "Generate daily raw trade logs (data capture only)",
+        "Generate weekly scorecard aggregation",
+        "Generate monthly multi-dimensional performance audit"
+      ],
+      "required_skills": [
+        "Trade statement parsing",
+        "Statistical analysis",
+        "Behavioral pattern detection",
+        "Performance attribution"
+      ],
+      "scoring_dimensions": [
+        {
+          "dimension": "Execution Quality",
+          "metrics": ["slippage", "fill_rate_on_limit_orders"]
+        },
+        {
+          "dimension": "Strategy Adherence",
+          "metrics": ["tag_match_rate"]
+        },
+        {
+          "dimension": "Win/Loss Clustering",
+          "metrics": ["instrument", "time_of_day", "session_window", "setup_tag"]
+        },
+        {
+          "dimension": "Drawdown Characterization",
+          "metrics": ["max_drawdown", "drawdown_duration", "recovery_velocity", "consecutive_loss_clustering"]
+        },
+        {
+          "dimension": "Behavioral Pattern Detection",
+          "metrics": ["sizing_variance_vs_prior_outcome", "hold_time_variance", "time_of_day_return_skew"]
+        }
+      ],
+      "review_cadence": {
+        "daily": "Raw trade logs ingested, parsed, tagged. No scoring narrative.",
+        "weekly": "Scorecard aggregation vs. trailing 8-week distribution.",
+        "monthly": "Full multi-dimensional audit with trendlines and distribution-shift detection."
+      },
+      "output_constraint": "Behavioral variance metrics surface as informative warnings only. Do NOT mutate system execution parameters without explicit authenticated operator action."
+    },
+    {
+      "id": "ROLE_MS_OI",
+      "title": "Open Interest Analyst",
+      "department": "MKT_STRUCT",
+      "reports_to": "ROLE_ME",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Analytical",
+      "responsibilities": [
+        "Ingest daily OI from CME settlement data",
+        "Calculate session-over-session OI change (delta OI)",
+        "Flag sessions exceeding configurable threshold (default +/-5%)",
+        "Render OI as standalone panel beneath price/volume",
+        "Classify OI/Price into four-state correlation engine"
+      ],
+      "required_skills": [
+        "CME settlement data parsing",
+        "Time-series calculation",
+        "Threshold alerting"
+      ],
+      "four_state_engine": {
+        "state_1": {
+          "condition": "Price Up, OI Up",
+          "interpretation": "New longs entering -- trend confirmation and capital expansion"
+        },
+        "state_2": {
+          "condition": "Price Up, OI Down",
+          "interpretation": "Short covering -- technical rally driven by liquidation; lower conviction"
+        },
+        "state_3": {
+          "condition": "Price Down, OI Up",
+          "interpretation": "New shorts entering -- downtrend confirmation and aggressive selling"
+        },
+        "state_4": {
+          "condition": "Price Down, OI Down",
+          "interpretation": "Long liquidation -- decline driven by position closing; weaker trend conviction"
+        }
+      }
+    },
+    {
+      "id": "ROLE_MS_COT",
+      "title": "COT Positioning Analyst",
+      "department": "MKT_STRUCT",
+      "reports_to": "ROLE_ME",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Analytical",
+      "responsibilities": [
+        "Ingest CFTC COT Disaggregated Reports",
+        "Track Commercial, Non-Commercial, and Swap Dealer categories",
+        "Calculate rolling 3-year historical z-score",
+        "Flag positional extremes at |Z_COT| >= 2.0",
+        "Mark historical COT Flip Levels on charts",
+        "Label Swap Dealers strictly as 'Swap Dealers (Bank Proxy)'"
+      ],
+      "required_skills": [
+        "CFTC report parsing",
+        "Z-score normalization",
+        "Historical level tracking"
+      ],
+      "formulas": {
+        "z_score": "Z_COT = (X_current - mu_3Y) / sigma_3Y",
+        "extreme_threshold": "|Z_COT| >= 2.0"
+      },
+      "publication_constraint": "Released by CFTC every Friday at 15:30 ET, representing positioning from prior Tuesday. High-frequency polling prohibited."
+    },
+    {
+      "id": "ROLE_MS_DASH",
+      "title": "Composite Signal Dashboard Operator",
+      "department": "MKT_STRUCT",
+      "reports_to": "ROLE_MS_OI",
+      "employment_type": "Full-time",
+      "location": "[FILL: locations]",
+      "authority_level": "Display & Alert",
+      "responsibilities": [
+        "Render Composite Signal Dashboard for active instruments (GC, DX)",
+        "Display Price/OI State classification",
+        "Display Commercial Z-Score",
+        "Display Distance to COT Flip",
+        "Display Composite Flag (Aligned/Watch/None)",
+        "Dispatch automated alerts per configured thresholds"
+      ],
+      "required_skills": [
+        "Dashboard rendering",
+        "Alert pipeline management",
+        "Multi-panel UI architecture"
+      ],
+      "composite_flag_rules": {
+        "aligned": "All 3 factors met (COT extreme + OI contraction + COT Flip Level test)",
+        "watch": "2 criteria met",
+        "none": "Fewer than 2 criteria met"
+      },
+      "alert_triggers": [
+        {
+          "type": "OI Shock",
+          "threshold": "Single-session OI change >= user threshold (default +/-5%)",
+          "format": "Short push: Symbol, delta OI, Direction"
+        },
+        {
+          "type": "COT Extreme",
+          "threshold": "Commercial z-score crosses limit (|Z_COT| >= 2.0)",
+          "format": "Short push: Category, Z-score, Historical context"
+        },
+        {
+          "type": "Composite Alignment",
+          "threshold": "Dashboard flag changes to Aligned",
+          "format": "Priority push: Full factor alignment matrix"
+        },
+        {
+          "type": "Structural Divergence",
+          "threshold": "New swing high/low with opposing price/OI/COT state",
+          "format": "Cautionary push: Divergence classification"
+        }
+      ]
+    }
+  ],
+  "reporting_hierarchy": {
+    "root": "ROLE_PSO",
+    "children": {
+      "ROLE_PSO": ["ROLE_RC", "ROLE_ME", "ROLE_PERF"],
+      "ROLE_RC": ["ROLE_AEK"],
+      "ROLE_ME": ["ROLE_PMA", "ROLE_PMA_POST", "ROLE_MS_OI", "ROLE_MS_COT"],
+      "ROLE_MS_OI": ["ROLE_MS_DASH"]
+    }
+  },
+  "communication_channels": [
+    {
+      "from": "ROLE_ME",
+      "to": "ROLE_PMA",
+      "data": "Regime call (mandatory input for scenario probability weighting)",
+      "trigger": "Pre-session briefing generation"
+    },
+    {
+      "from": "ROLE_PMA_POST",
+      "to": "ROLE_PMA",
+      "data": "Unresolved market internals and sector divergences",
+      "trigger": "Session close"
+    },
+    {
+      "from": "ROLE_PERF",
+      "to": "ROLE_PMA",
+      "data": "Behavioral variance metrics (informative warnings only)",
+      "trigger": "Weekly aggregation"
+    }
+  ],
+  "formulas": {
+    "anomaly_score": {
+      "name": "System Anomaly Score",
+      "variable": "S_anomaly",
+      "range": "[0.0, 1.0]",
+      "critical_threshold": 0.85,
+      "action_on_breach": "Instantaneous execution freeze"
+    },
+    "capital_scale_delta": {
+      "name": "Capital Scale Modification",
+      "formula": "|delta| > 0.15 (15%)",
+      "requirement": "Board override + multi-party cryptographic authorization"
+    },
+    "oi_change": {
+      "name": "Open Interest Change",
+      "formula": "delta_OI = OI_current - OI_previous",
+      "default_threshold": "±5%",
+      "configurable_range": "±1% to ±15%"
+    },
+    "cot_z_score": {
+      "name": "COT Historical Z-Score",
+      "formula": "Z_COT = (X_current - mu_3Y) / sigma_3Y",
+      "extreme_threshold": "|Z_COT| >= 2.0",
+      "configurable_range": "|Z_COT| >= 1.5 to 3.0",
+      "lookback_window": "3 years rolling"
+    },
+    "high_probability_reversal": {
+      "name": "High-Probability Reversal Criteria",
+      "factors": {
+        "factor_a": "Commercial COT z-score at multi-year extreme (|Z_COT| >= 2.0)",
+        "factor_b": "Open Interest contracts into price extreme (liquidation profile)",
+        "factor_c": "Price tests documented COT Flip Level or historical macro liquidity pool"
+      },
+      "rule": "All three factors must align for reversal bias shift"
+    },
+    "performance_baseline": {
+      "name": "Trailing Performance Baseline",
+      "default_window": "8 weeks",
+      "configurable_range": "4 to 26 weeks"
+    }
+  },
+  "workflows": {
+    "daily_lifecycle": {
+      "stage_01_premarket": {
+        "name": "Pre-Market Telemetry, Key Rotation & Morning Briefings",
+        "steps": [
+          "Zero-trust key rotation for all communication channels",
+          "Infrastructure latency and telemetry integrity validation",
+          "Macro briefing generation (regime call, what changed, calendar, invalidation)",
+          "Overnight review (Asia/Europe session price action)",
+          "Futures/pre-market tape analysis (ES, NQ, RTY, GC, DX)",
+          "Earnings calendar filtering",
+          "Options flow tagging",
+          "Volatility surface detection",
+          "Watchlist ranking (3-25 instruments, default 10)",
+          "Scenario probability calculation (bull/bear/base)",
+          "Key level identification",
+          "Morning briefing delivery"
+        ]
+      },
+      "stage_02_intraday": {
+        "name": "Real-Time Intraday Execution",
+        "steps": [
+          "Real-time order flow routing and latency monitoring",
+          "Sub-millisecond latency evaluation against NBBO",
+          "Intraday anomaly scoring",
+          "Spread threshold supervision",
+          "Proactive event pushes",
+          "Dynamic invalidation traps",
+          "Automatic halt on telemetry integrity drop"
+        ]
+      },
+      "stage_03_postmarket": {
+        "name": "Post-Market Reconciliation & Audit",
+        "steps": [
+          "Ledger anchoring with hash verification",
+          "Trade and state reconciliation",
+          "Index vs. internals divergence analysis",
+          "Sector rotation analysis",
+          "Volume profile structural identification",
+          "After-hours activity review",
+          "End-of-day scorecard generation",
+          "Unresolved divergence feed-forward to next session"
+        ]
+      }
+    },
+    "incident_response": {
+      "trigger": "S_anomaly > 0.85",
+      "steps": [
+        "Instantaneous execution freeze",
+        "Cancel all pending limit and market orders across all broker gateways",
+        "Transition active positions to hedge protection or fail-safe stop coverage",
+        "Revoke all active API access keys and cryptographic session tokens",
+        "Quarantine execution kernels to offline state",
+        "Dispatch priority alerts to PSO and Risk Controller via encrypted push channels"
+      ]
+    },
+    "re_arming_protocol": {
+      "prerequisite": "System frozen via incident response",
+      "steps": [
+        "Complete diagnostic logging of anomaly trigger event",
+        "Dual cryptographic signatures from PSO and Risk Controller",
+        "Telemetry reset and key rotation",
+        "Staged re-connection starting with zero-capital paper routing",
+        "Verify state consistency before live capital deployment"
+      ],
+      "signing_required": ["ROLE_PSO", "ROLE_RC"]
+    },
+    "morning_briefing_format": {
+      "template": [
+        "[MACRO BRIEFING]",
+        "1. Regime Call: <reflation | disinflation | stagflation | goldilocks | risk-off>",
+        "2. What Changed: <indicator-level updates since last session>",
+        "3. Calendar: <today's releases | consensus | prior>",
+        "4. Invalidation Condition: <explicit print threshold required to flip regime>"
+      ]
+    },
+    "regime_synthesis": {
+      "inputs": "Multi-indicator convergence (never triggered by single release)",
+      "classification_vectors": ["Direction", "Surprise Magnitude", "Market Reaction"],
+      "output_states": ["reflation", "disinflation", "stagflation", "goldilocks", "risk-off"],
+      "delivery_mandate": [
+        "Authoritative regime call",
+        "2-3 economic indicators driving designation",
+        "Explicit invalidation condition"
+      ]
+    }
+  },
+  "operator_adjustable_parameters": {
+    "watchlist_capacity": {
+      "default": 10,
+      "range": "3 to 25",
+      "purpose": "Size of ranked pre-market focus universe"
+    },
+    "macro_indicator_weights": {
+      "default": "Equal-weight model",
+      "constraint": "w_i in [0.0, 1.0], sum(w_i) = 1.0",
+      "purpose": "Overrides relative weight per indicator in regime synthesis"
+    },
+    "scorecard_metrics": {
+      "default": "Section 3.4 standard defaults",
+      "purpose": "Adds/removes specific scoring dimensions in periodic reports"
+    },
+    "alert_sensitivity": {
+      "default": 1.0,
+      "range": "0.1 to 3.0 per individual alert type",
+      "purpose": "Calibrates trigger sensitivities independently across modules"
+    },
+    "historical_baseline_window": {
+      "default": "8 weeks",
+      "range": "4 to 26 weeks",
+      "purpose": "Trailing lookback window for personal performance scoring"
+    },
+    "oi_shock_threshold": {
+      "default": "±5.0%",
+      "range": "±1.0% to ±15.0%",
+      "purpose": "Session-over-session OI change flag threshold"
+    },
+    "cot_extreme_threshold": {
+      "default": "±2.0 Z-score",
+      "range": "±1.5 to ±3.0 Z-score",
+      "purpose": "Statistical threshold for identifying positioning extremes"
+    }
+  },
+  "ui_architecture": {
+    "layout": "Single-view vertical",
+    "panels": [
+      {
+        "panel": 1,
+        "position": "Top",
+        "content": "OHLC candlestick chart with volume histogram",
+        "controls": "Search bar and timeframe selectors pinned to top header"
+      },
+      {
+        "panel": 2,
+        "position": "Middle-Upper",
+        "content": "Open Interest line/bar graph with ±5% threshold session markers"
+      },
+      {
+        "panel": 3,
+        "position": "Middle-Lower",
+        "content": "Commercial net positioning histogram (weekly COT frequency; no artificial daily interpolation)"
+      },
+      {
+        "panel": 4,
+        "position": "Bottom - Pinned",
+        "content": "Composite Signal Dashboard status bar",
+        "behavior": "Visible across all scrolling states"
+      }
+    ],
+    "data_attribution_rules": [
+      {
+        "stream": "Price / Volume",
+        "attribution": "Exchange feed vendor",
+        "refresh": "Continuous / Per timeframe",
+        "age_rule": "Live streaming tape"
+      },
+      {
+        "stream": "Open Interest",
+        "attribution": "CME Group Daily Settlement",
+        "refresh": "Once daily post-settlement",
+        "age_rule": "Mandatory 'As of: [Date]' indicator"
+      },
+      {
+        "stream": "COT Positioning",
+        "attribution": "CFTC Disaggregated Report",
+        "refresh": "Weekly (Friday 15:30 ET)",
+        "age_rule": "Mandatory 'Data Date: [Prior Tuesday]' indicator"
+      }
+    ]
+  },
+  "execution_command_schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "ExecutionCommandPayload",
+    "type": "object",
+    "required": ["timestamp_utc", "operator_id", "macro_regime", "instrument", "action", "order_type", "quantity", "signature"],
+    "properties": {
+      "timestamp_utc": { "type": "string", "format": "date-time" },
+      "operator_id": { "type": "string" },
+      "macro_regime": {
+        "type": "string",
+        "enum": ["reflation", "disinflation", "stagflation", "goldilocks", "risk-off"]
+      },
+      "instrument": { "type": "string" },
+      "action": { "type": "string", "enum": ["BUY", "SELL", "HOLD", "CLOSE"] },
+      "order_type": { "type": "string", "enum": ["LIMIT", "MARKET", "STOP_LIMIT"] },
+      "quantity": { "type": "number", "minimum": 0 },
+      "limit_price": { "type": ["number", "null"] },
+      "stop_price": { "type": ["number", "null"] },
+      "setup_tag": { "type": "string" },
+      "signature": { "type": "string" }
+    },
+    "additionalProperties": false
+  },
+  "interaction_modes": [
+    {
+      "mode": "Scheduled Briefing",
+      "trigger": "Time-based (pre-market open, post-market close)",
+      "delivery": "Full structured output, fixed-format Markdown/report"
+    },
+    {
+      "mode": "On-Demand Query",
+      "trigger": "User/Operator manual request",
+      "delivery": "Scoped, contextual response (single analyzer or cross-engine)"
+    },
+    {
+      "mode": "Proactive Alert",
+      "trigger": "Threshold breach (regime flip, divergence, COT shock)",
+      "delivery": "Short-form push notification detailing immediate risk context"
+    }
+  ]
+}

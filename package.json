@@ -1,0 +1,21 @@
+{
+  "name": "trading-llc-site",
+  "type": "module",
+  "version": "2.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "mcp": "node mcp/server.mjs",
+    "mcp:http": "node mcp/server.mjs --http",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "astro": "^7.3.3",
+    "lightweight-charts": "^5.2.1",
+    "three": "^0.186.0",
+    "zod": "^4.6.7"
+  }
+}

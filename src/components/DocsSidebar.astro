@@ -1,0 +1,23 @@
+---
+import { getCollection } from 'astro:content';
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+const docs = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
+const currentPath = Astro.url.pathname;
+
+const links = [
+  { href: '/docs', label: 'Index' },
+  { href: '/docs/company-code', label: 'Company Code' },
+  ...docs.map((d) => ({ href: `/docs/${d.id}`, label: d.data.title })),
+];
+---
+
+<aside class="sidebar" aria-label="Documentation sections">
+  <div class="side-title">Reference Index</div>
+  {links.map((l) => (
+    <a href={l.href} class="side-link" aria-current={currentPath === l.href ? 'page' : undefined}>{l.label}</a>
+  ))}
+</aside>

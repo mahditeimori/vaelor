@@ -1,0 +1,56 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+  variant?: 'default' | 'landing';
+}
+const { title, description = 'Trading LLC — Master Operational Manual & Autonomous Execution Specification', variant = 'default' } = Astro.props;
+const pageTitle = `${title} — Trading LLC`;
+import '../styles/global.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="dark" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b0173f'/%3E%3Cpath d='M10 9h12v3h-9v2.5h7v3h-7V20h9v3H10z' fill='%23f6efe0'/%3E%3C/svg%3E" />
+    <title>{pageTitle}</title>
+  </head>
+  <body class={variant}>
+    {variant !== 'landing' && (
+      <header class="site-header">
+        <a href="/" class="brand" aria-label="Trading LLC home">
+          <span class="brand-mark">T</span>
+          <span>
+            <span style="display:block">Trading LLC</span>
+            <span class="sub">OPS v2.0.1 · TLLC-OPS-V2.0.1-FINAL</span>
+          </span>
+        </a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="/" class="nav-link" aria-current={Astro.url.pathname === '/' ? 'page' : undefined}>Overview</a>
+          <a href="/docs" class="nav-link" aria-current={Astro.url.pathname.startsWith('/docs') ? 'page' : undefined}>Documentation</a>
+          <a href="/dashboard" class="nav-link" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>Dashboard</a>
+        </nav>
+      </header>
+    )}
+    <slot />
+    <footer class="site-footer">
+      <div class="shell">
+        <div class="mono">TRADING LLC · MASTER OPERATIONAL MANUAL &amp; AUTONOMOUS EXECUTION SPECIFICATION</div>
+        <div class="mono" style="margin-top:6px">
+          Version 2.0.1 · Standard Identifier <span style="color:var(--accent-warm)">TLLC-OPS-V2.0.1-FINAL</span> · Classification: Operational Protocol
+        </div>
+      </div>
+    </footer>
+    <script>
+    import { mountMatrixBg } from '../scripts/matrix-bg.ts';
+    mountMatrixBg();
+  </script>
+</body>
+</html>

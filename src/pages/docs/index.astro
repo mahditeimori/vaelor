@@ -1,0 +1,40 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const docs = (await getCollection('docs')).sort((a, b) => a.data.order - b.data.order);
+---
+
+<BaseLayout title="Documentation" description="Trading LLC Operating Agreement v2.0.1 — reference documentation.">
+  <main class="shell">
+    <section class="hero">
+      <div class="kicker">Reference Index</div>
+      <h1>Trading LLC Operating Agreement</h1>
+      <p class="lede">
+        The master operational manual and autonomous execution specification, presented as structured documentation.
+        Each section below corresponds to a chapter of the agreement. For the machine-readable specification, see the
+        <a href="/docs/company-code">Company Code</a> reference.
+      </p>
+      <div class="badges">
+        <span class="badge ok">Version 2.0.1</span>
+        <span class="badge ok">TLLC-OPS-V2.0.1-FINAL</span>
+        <span class="badge">Classification: Operational Protocol</span>
+      </div>
+    </section>
+
+    <div class="grid grid-2">
+      {docs.map((doc, i) => (
+        <a href={`/docs/${doc.id}`} class="card" style="color:inherit; cursor:pointer">
+          <div class="meta">{doc.data.section ? `Section ${doc.data.section}` : doc.data.section ?? 'Baseline'}</div>
+          <h3>{doc.data.title}</h3>
+          <p>{doc.data.description}</p>
+        </a>
+      ))}
+      <a href="/docs/company-code" class="card" style="color:inherit; cursor:pointer">
+        <div class="meta">Structured Data</div>
+        <h3>Company Code</h3>
+        <p>Departments, role roster, reporting hierarchy, formulas, workflows, and UI architecture — generated from <code>trading_llc_company_code.json</code>.</p>
+      </a>
+    </div>
+  </main>
+</BaseLayout>

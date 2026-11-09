@@ -1,0 +1,398 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import aiState from '../data/ai-state.json';
+
+const departments = [
+  { id: 'EXEC', name: 'Executive Management', desc: 'Sovereign administrative authority, system override, and final governance.', icon: 'M3 13.5h18M3 9h18M3 19h12' },
+  { id: 'RISK', name: 'Risk Management', desc: 'Parametric exposure enforcement, circuit-breaker triggers, anomaly monitoring.', icon: 'M12 3l9 4v5c0 5-3.8 8.3-9 10-5.2-1.7-9-5-9-10V7z' },
+  { id: 'EXEC_AUTO', name: 'Automated Execution', desc: 'High-frequency algorithmic order execution within bounded limits.', icon: 'M13 2L4 14h6l-1 8 9-12h-6z' },
+  { id: 'MACRO', name: 'Macro Analysis', desc: 'Multi-asset macroeconomic data ingestion, regime synthesis, briefing generation.', icon: 'M3 21h18M5 17l5-5 4 3 5-7M3 3v18' },
+  { id: 'MKT_STRUCT', name: 'Market Structure', desc: 'Futures OI tracking, COT pipeline, composite signal dashboards.', icon: 'M4 20V10M10 20V4M16 20v-8M22 20H2' },
+  { id: 'PERF_AUDIT', name: 'Performance & Audit', desc: 'Trade reconciliation, scorecards, behavioral pattern detection.', icon: 'M12 8v8m0 0l-3-3m3 3l3-3M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+];
+
+const regimes = ['reflation', 'disinflation', 'stagflation', 'goldilocks', 'risk-off'];
+
+const controls = [
+  { tag: 'CIRCUIT', label: 'Execution Freeze', detail: 'when anomaly score S<sub>anomaly</sub> &gt; 0.85' },
+  { tag: 'CAPITAL', label: 'Capital Scale Changes', detail: '&gt; 15% delta require Board override + multi-party cryptographic authorization' },
+  { tag: 'COT', label: 'Positioning Extremes', detail: 'flagged at |Z<sub>COT</sub>| ≥ 2.0 (3-year rolling z-score)' },
+  { tag: 'OI', label: 'OI Shock', detail: 'flagged at ΔOI ≥ ±5% single session (default, configurable ±1%–±15%)' },
+  { tag: 'FLAG', label: 'Composite Signal', detail: 'Aligned (3 criteria) · Watch (2) · None (&lt; 2)' },
+  { tag: 'RE-ARM', label: 'System Re-Arming', detail: 'requires dual cryptographic signatures (PSO + Risk Controller)' },
+];
+---
+
+<BaseLayout title="Trading LLC — Operating Manual" variant="landing">
+  <main class="land-wrap">
+    <!-- ======= Top-left toolbar ======= -->
+    <nav class="topbar" aria-label="Primary">
+      <a href="/" class="brand" style="text-decoration:none">
+        <span class="brand-mark">T</span>
+        <span class="brand-id">
+          <span style="display:block">Trading LLC</span>
+          <span class="sub">OPS v2.0.1</span>
+        </span>
+      </a>
+      <span class="tb-sep"></span>
+      <a class="tb-link" href="/docs">Docs</a>
+      <a class="tb-link" href="/dashboard">Dashboard</a>
+      <a class="tb-link" href="/docs/company-code">Code</a>
+      <a class="tb-link" href="#ai">AI</a>
+    </nav>
+
+    <!-- ======= Auto-hiding search panel ======= -->
+    <div class="search-dock" id="searchDock" data-search>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="searchInput" type="search" placeholder="Search the manual…" autocomplete="off" spellcheck="false" aria-label="Search" />
+      <div class="search-results" id="searchResults"></div>
+    </div>
+
+    <!-- ======= Hero ======= -->
+    <section class="hero" id="hero" aria-label="Hero">
+      <div class="shell hero-inner">
+        <div class="hero-copy">
+          <div class="kicker">
+            Algorithmic Futures Trading &middot; Operational Protocol
+          </div>
+          <h1>
+            Precision that
+            <em>thinks.</em>
+          </h1>
+          <p class="lede">
+            Master Operational Manual &amp; Autonomous Execution Specification — macro analysis,
+            bounded autonomous execution, risk control, and futures market structure analytics.
+          </p>
+          <div class="badges">
+            <span class="badge ok">Version 2.0.1</span>
+            <span class="badge" style="font-family:var(--mono)">TLLC-OPS-V2.0.1-FINAL</span>
+            <span class="badge warm">Confirmed · Deployment Ready</span>
+          </div>
+          <div class="btn-row">
+            <a class="btn btn-primary" href="/docs">Open Documentation</a>
+            <a class="btn btn-ghost" href="/dashboard">Launch Dashboard</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="scroll-cue" aria-hidden="true">
+        <span>Scroll</span>
+        <span class="cue-line"></span>
+      </div>
+    </section>
+
+    <!-- ======= Stats ======= -->
+    <section class="shell section-block">
+      <div class="stat-grid reveal">
+        <div class="stat"><div class="num">6</div><div class="lbl">Departments</div></div>
+        <div class="stat"><div class="num">10</div><div class="lbl">Operational Roles</div></div>
+        <div class="stat"><div class="num">5</div><div class="lbl">Macro Regimes</div></div>
+        <div class="stat"><div class="num">4</div><div class="lbl">Dashboard Panels</div></div>
+        <div class="stat"><div class="num">7</div><div class="lbl">Config Hooks</div></div>
+      </div>
+    </section>
+
+    <!-- ======= Departments ======= -->
+    <section class="shell section-block">
+      <div class="sec-head reveal">
+        <div class="kicker">Organisation</div>
+        <h2>Six departments, one mandate</h2>
+      </div>
+      <div class="grid grid-3">
+        {departments.map((d, i) => (
+          <div class="card dept reveal" style={`transition-delay:${i * 60}ms`}>
+            <div class="dept-top">
+              <span class="dept-ic">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={d.icon} /></svg>
+              </span>
+              <span class="meta">{d.id}</span>
+            </div>
+            <h3>{d.name}</h3>
+            <p>{d.desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- ======= Regime states ======= -->
+    <section class="shell section-block">
+      <div class="sec-head reveal">
+        <div class="kicker">Macro Engine</div>
+        <h2>Regime synthesis states</h2>
+      </div>
+      <div class="regime-row reveal">
+        {regimes.map((r) => <span class="regime-pill">{r}</span>)}
+      </div>
+      <p style="color:var(--text-dim); margin-top:14px; max-width:640px">
+        Output of weighted multi-indicator convergence — never a single release. Each regime call ships with a
+        definitive invalidation condition.
+      </p>
+    </section>
+
+    <!-- ======= Key controls ======= -->
+    <section class="shell section-block">
+      <div class="sec-head reveal">
+        <div class="kicker">Safety Layer</div>
+        <h2>Key controls at a glance</h2>
+      </div>
+      <ul class="mini-list">
+        {controls.map((c, i) => (
+          <li class="reveal" style={`transition-delay:${i * 50}ms`}>
+            <span class="tag">{c.tag}</span><b>{c.label}</b> <span set:html={c.detail} />
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <!-- ======= AI layer ======= -->
+    <section class="shell section-block" id="ai">
+      <div class="sec-head reveal">
+        <div class="kicker">AI Layer · MCP</div>
+        <h2>Published analysis</h2>
+      </div>
+      {aiState.generatedAt ? (
+        <div class="ai-live reveal">
+          <div class="ai-head">
+            <span class="badge ok">AI · Published</span>
+            <span class="mono">{aiState.generatedAt}</span>
+            <span class="mono">source: {aiState.source}</span>
+          </div>
+          <div class="grid grid-3">
+            <div class="card">
+              <div class="meta">REGIME CALL</div>
+              <h3>{aiState.regime ?? '—'}</h3>
+              <p>{aiState.summary}</p>
+            </div>
+            <div class="card">
+              <div class="meta">COMPOSITE FLAG</div>
+              <h3>{aiState.signals?.compositeFlag ?? '—'}</h3>
+              <p>COT z: {aiState.signals?.cotZ ?? '—'} · OI shock: {aiState.signals?.oiShock ?? '—'}</p>
+            </div>
+            <div class="card">
+              <div class="meta">CONFIDENCE</div>
+              <h3>{aiState.confidence != null ? `${Math.round(aiState.confidence * 100)}%` : '—'}</h3>
+              <p>Weighted multi-indicator convergence, published by the connected AI.</p>
+            </div>
+          </div>
+          {aiState.decisions?.length ? (
+            <ul class="mini-list" style="margin-top:18px">
+              {aiState.decisions.map((d: any) => (
+                <li>
+                  <span class="tag">{d.action}</span><b>{d.instrument}</b> {d.thesis}
+                  {d.invalidation ? <em>&nbsp;· Invalidation: {d.invalidation}</em> : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : (
+        <div class="card ai-pending reveal">
+          <h3>No analysis published yet</h3>
+          <p>
+            Connect this site to your AI over MCP and let it publish results with <code>publish_analysis</code>.
+            The AI reads the manual here, you train it, it analyzes — the site shows the results.
+          </p>
+          <pre>npm run mcp:http      # MCP server → http://127.0.0.1:8890/mcp
+# paste that URL into your AI's connector screen (see mcp/README.md)</pre>
+        </div>
+      )}
+    </section>
+  </main>
+
+  <script>
+    import { initLanding } from '../scripts/landing.ts';
+    initLanding();
+  </script>
+
+  <style>
+    .land-wrap { min-height: 100vh; }
+    .land-wrap .kicker { font-family: var(--mono); font-size: 0.78rem; color: var(--cherry-bright); text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 14px; }
+
+    /* ---------- Top-left toolbar ---------- */
+    .topbar {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(21, 15, 19, 0.72);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+    .brand-id { display: flex; flex-direction: column; line-height: 1.1; }
+    .brand-id { color: var(--bone); font-family: var(--serif); font-weight: 700; font-size: 0.95rem; }
+    .brand-id .sub { font-family: var(--mono); font-size: 0.62rem; color: var(--text-faint); font-weight: 400; letter-spacing: 0.06em; }
+    .tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+    .tb-link {
+      font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.04em;
+      color: var(--text-dim); padding: 7px 11px; border-radius: 999px; transition: color 0.2s, background 0.2s;
+    }
+    .tb-link:hover { color: var(--bone); background: rgba(178, 23, 63, 0.16); text-decoration: none; }
+
+    /* ---------- Auto-hiding search dock ---------- */
+    .search-dock {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 60;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      border-radius: 999px;
+      background: rgba(21, 15, 19, 0.72);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border-soft);
+      color: var(--text-faint);
+      cursor: pointer;
+      overflow: visible;
+      transition: width 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s, background 0.25s, box-shadow 0.3s;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+    .search-dock > svg { flex: 0 0 auto; }
+    .search-dock input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      width: 100%;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--bone);
+      font-family: var(--mono);
+      font-size: 0.84rem;
+      padding: 0 44px 0 40px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .search-dock[data-open="true"] {
+      width: min(340px, calc(100vw - 132px));
+      background: rgba(27, 18, 24, 0.85);
+      border-color: rgba(178, 23, 63, 0.6);
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(178, 23, 63, 0.15);
+    }
+    .search-dock[data-open="true"] input { opacity: 1; cursor: text; }
+    .search-results {
+      position: absolute;
+      top: calc(100% + 12px);
+      left: 0;
+      right: 0;
+      max-height: min(320px, 60vh);
+      overflow-y: auto;
+      background: rgba(27, 18, 24, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 6px;
+      display: none;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+    }
+    .search-results[data-show="true"] { display: block; }
+    .search-results a {
+      display: block;
+      padding: 9px 12px;
+      border-radius: 9px;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      font-family: var(--mono);
+    }
+    .search-results a b { color: var(--gold); font-weight: 600; }
+    .search-results a:hover, .search-results a[aria-selected="true"] { background: rgba(178, 23, 63, 0.14); color: var(--bone); text-decoration: none; }
+
+    /* ---------- Hero ---------- */
+    .hero {
+      position: relative;
+      height: 100vh;
+      height: 100svh;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      background:
+        radial-gradient(1100px 620px at 70% 30%, rgba(178, 23, 63, 0.16), transparent 60%),
+        radial-gradient(900px 500px at 15% 80%, rgba(201, 162, 75, 0.1), transparent 55%);
+    }
+    .hero-inner { position: relative; z-index: 3; }
+    .hero-copy { max-width: 640px; }
+    .hero-copy h1 {
+      font-size: clamp(2.6rem, 6vw, 4.6rem);
+      line-height: 1.04;
+      letter-spacing: -0.015em;
+      color: var(--bone);
+      text-shadow: 0 2px 30px rgba(0, 0, 0, 0.45);
+      margin-bottom: 16px;
+    }
+    .hero-copy h1 em { font-style: italic; font-weight: 500; color: var(--cherry-bright); text-shadow: 0 0 28px rgba(226, 69, 108, 0.45); }
+    .hero-copy .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 540px; }
+    .hero-copy .btn-row { margin-top: 8px; }
+    @media (max-width: 760px) {
+      .hero-copy { max-width: 100%; }
+    }
+    .scroll-cue {
+      position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      color: var(--text-faint); font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase;
+      z-index: 3;
+    }
+    .cue-line { width: 1px; height: 44px; background: linear-gradient(var(--cherry-bright), transparent); animation: cueDrop 1.8s ease-in-out infinite; }
+    @keyframes cueDrop { 0% { transform: scaleY(0); transform-origin: top; opacity: 0.2; } 50% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(0); transform-origin: bottom; opacity: 0.2; } }
+
+    /* ---------- AI layer ---------- */
+    .ai-live .ai-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .ai-live .ai-head .mono { font-family: var(--mono); font-size: 0.74rem; color: var(--text-faint); }
+    .ai-pending pre {
+      margin: 14px 0 0;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-soft);
+      background: var(--bg-inner);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      overflow-x: auto;
+    }
+
+    /* ---------- Sections ---------- */
+    .section-block { margin-bottom: 64px; }
+    .sec-head { margin-bottom: 20px; }
+    .sec-head .kicker { margin-bottom: 6px; }
+    .sec-head h2 { font-size: 1.9rem; margin-top: 0; }
+    .dept { transition: transform 0.25s, border-color 0.25s, box-shadow 0.3s; }
+    .dept:hover { transform: translateY(-3px); border-color: rgba(178, 23, 63, 0.5); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4); }
+    .dept-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .dept-ic { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; color: var(--gold); background: rgba(201, 162, 75, 0.12); border: 1px solid rgba(201, 162, 75, 0.25); }
+    .regime-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .regime-pill {
+      font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.04em;
+      padding: 10px 18px; border-radius: 999px;
+      color: var(--bone); background: rgba(178, 23, 63, 0.1);
+      border: 1px solid rgba(178, 23, 63, 0.4);
+      transition: background 0.25s, transform 0.25s;
+    }
+    .regime-pill:hover { background: rgba(178, 23, 63, 0.22); transform: translateY(-2px); }
+    .mini-list li { display: flex; align-items: baseline; gap: 10px; padding: 13px 4px; }
+
+    /* ---------- Scroll reveal ---------- */
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .reveal.in { opacity: 1; transform: none; }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .hero-copy { animation: none; }
+    }
+
+    @media (max-width: 560px) {
+      .topbar { top: 12px; left: 12px; }
+      .search-dock { top: 12px; right: 12px; }
+      .search-dock[data-open="true"] { width: calc(100vw - 106px); }
+      .tb-link { display: none; }
+      .tb-sep { display: none; }
+    }
+  </style>
+</BaseLayout>

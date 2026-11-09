@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import DocsSidebar from '../components/DocsSidebar.astro';
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<BaseLayout title={title}>
+  <main class="shell">
+    <div class="docs-layout" style="padding-top:32px">
+      <DocsSidebar />
+      <article class="prose">
+        <slot />
+      </article>
+    </div>
+  </main>
+</BaseLayout>

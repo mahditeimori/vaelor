@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "generatedAt": null,
+  "source": "ai",
+  "summary": "",
+  "regime": null,
+  "confidence": null,
+  "signals": {
+    "compositeFlag": null,
+    "cotZ": null,
+    "oiShock": null
+  },
+  "decisions": []
+}
