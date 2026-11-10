@@ -1,0 +1,524 @@
+/**
+ * Scoped Styles for `#institutional-chart-section` (`src/styles/institutionalHub.css`)
+ * Matches Vaelor's `global.css` variables (`--bg`, `--bg-panel`, `--cherry-bright`, `--gold`, `--positive`, `--negative`)
+ * while enforcing `#0B0E14` institutional charting surfaces.
+ */
+
+#institutional-chart-section.ich-root {
+  margin-top: 28px;
+  margin-bottom: 40px;
+  color: var(--text, #efe8dd);
+  font-family: var(--sans, "Inter", system-ui, -apple-system, sans-serif);
+}
+
+#institutional-chart-section * {
+  box-sizing: border-box;
+}
+
+/* Telemetry Status Bar */
+#institutional-chart-section .ich-telemetry-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-inner, #0e0a0d);
+  border: 1px solid var(--border, #33222c);
+  border-radius: var(--radius-sm, 7px);
+  margin-bottom: 18px;
+  font-size: 12px;
+  color: var(--text-dim, #b6a99f);
+}
+
+#institutional-chart-section .ich-telemetry-left,
+#institutional-chart-section .ich-telemetry-right {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#institutional-chart-section .ich-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--positive, #5bd4a0);
+  box-shadow: 0 0 10px var(--positive, #5bd4a0);
+  display: inline-block;
+}
+
+#institutional-chart-section .ich-telemetry-badge {
+  background: rgba(91, 212, 160, 0.12);
+  color: var(--positive, #5bd4a0);
+  border: 1px solid rgba(91, 212, 160, 0.35);
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-family: var(--mono, monospace);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+#institutional-chart-section .ich-telemetry-item strong {
+  color: var(--bone, #f6efe0);
+  font-family: var(--mono, monospace);
+}
+
+#institutional-chart-section .ich-telemetry-sep {
+  color: var(--text-faint, #7c6e6f);
+}
+
+/* Workspace Panels */
+#institutional-chart-section .ich-panel {
+  background: var(--bg-panel, #1b1218);
+  border: 1px solid var(--border, #33222c);
+  border-radius: var(--radius, 12px);
+  padding: 20px;
+  margin-bottom: 22px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.38);
+}
+
+#institutional-chart-section .ich-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-soft, #21141c);
+}
+
+#institutional-chart-section .ich-kicker {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: var(--gold, #c9a24b);
+  margin-bottom: 4px;
+}
+
+#institutional-chart-section .ich-title {
+  font-family: var(--serif, "Playfair Display", Georgia, serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--bone, #f6efe0);
+  margin: 0 0 6px 0;
+}
+
+#institutional-chart-section .ich-subtitle {
+  font-size: 13px;
+  color: var(--text-dim, #b6a99f);
+  max-width: 780px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Control Groups & Toggle Buttons */
+#institutional-chart-section .ich-control-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#institutional-chart-section .ich-control-label {
+  font-size: 11.5px;
+  font-family: var(--mono, monospace);
+  text-transform: uppercase;
+  color: var(--text-faint, #7c6e6f);
+  letter-spacing: 0.6px;
+}
+
+#institutional-chart-section .ich-btn-group {
+  display: inline-flex;
+  background: var(--bg-inner, #0e0a0d);
+  border: 1px solid var(--border, #33222c);
+  border-radius: var(--radius-sm, 7px);
+  padding: 3px;
+  gap: 3px;
+}
+
+#institutional-chart-section .ich-toggle-btn {
+  background: transparent;
+  color: var(--text-dim, #b6a99f);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+#institutional-chart-section .ich-toggle-btn:hover {
+  color: var(--bone, #f6efe0);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#institutional-chart-section .ich-toggle-btn.active {
+  background: var(--cherry, #b0173f);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(176, 23, 63, 0.45);
+}
+
+/* Custom Instrument Switcher Tabs */
+#institutional-chart-section .ich-instrument-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+#institutional-chart-section .ich-inst-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: #0B0E14;
+  border: 1px solid var(--border, #33222c);
+  border-radius: var(--radius-sm, 7px);
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+}
+
+#institutional-chart-section .ich-inst-tab:hover {
+  border-color: var(--gold, #c9a24b);
+  transform: translateY(-1px);
+}
+
+#institutional-chart-section .ich-inst-tab.active {
+  background: linear-gradient(135deg, rgba(176, 23, 63, 0.25), rgba(201, 162, 75, 0.14));
+  border-color: var(--gold, #c9a24b);
+  box-shadow: 0 0 14px rgba(201, 162, 75, 0.2);
+}
+
+#institutional-chart-section .ich-inst-code {
+  font-family: var(--mono, monospace);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bone, #f6efe0);
+}
+
+#institutional-chart-section .ich-inst-name {
+  font-size: 11px;
+  color: var(--text-dim, #b6a99f);
+}
+
+/* Live TradingView Stage */
+#institutional-chart-section .ich-tv-stage-wrap {
+  background: #0B0E14;
+  border: 1px solid var(--border, #33222c);
+  border-radius: 8px;
+  overflow: hidden;
+  height: 580px;
+  width: 100%;
+}
+
+#institutional-chart-section .ich-tv-stage {
+  width: 100%;
+  height: 100%;
+}
+
+/* Lower Workspace Sub-View Tabs */
+#institutional-chart-section .ich-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#institutional-chart-section .ich-view-tab {
+  background: var(--bg-inner, #0e0a0d);
+  color: var(--text-dim, #b6a99f);
+  border: 1px solid var(--border, #33222c);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm, 7px);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+#institutional-chart-section .ich-view-tab:hover {
+  color: var(--bone, #f6efe0);
+  border-color: var(--gold-soft, #8f7430);
+}
+
+#institutional-chart-section .ich-view-tab.active {
+  background: var(--gold, #c9a24b);
+  color: #0b0709;
+  border-color: var(--gold, #c9a24b);
+  font-weight: 700;
+}
+
+/* Unified Macro Asset Toolbar */
+#institutional-chart-section .ich-macro-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: #0B0E14;
+  border: 1px solid var(--border, #33222c);
+  border-radius: var(--radius-sm, 7px);
+}
+
+#institutional-chart-section .ich-asset-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#institutional-chart-section .ich-asset-btn {
+  background: var(--bg-raise, #150f13);
+  color: var(--text-dim, #b6a99f);
+  border: 1px solid var(--border, #33222c);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#institutional-chart-section .ich-asset-btn:hover {
+  color: var(--bone, #f6efe0);
+  border-color: var(--cherry-bright, #e2456c);
+}
+
+#institutional-chart-section .ich-asset-btn.active {
+  background: var(--cherry-bright, #e2456c);
+  color: #ffffff;
+  border-color: var(--cherry-bright, #e2456c);
+}
+
+#institutional-chart-section .ich-cftc-meta {
+  font-size: 12px;
+  color: var(--text-dim, #b6a99f);
+  font-family: var(--mono, monospace);
+}
+
+#institutional-chart-section .ich-cftc-meta strong {
+  color: var(--gold, #c9a24b);
+}
+
+/* KPI Summary Cards */
+#institutional-chart-section .ich-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+#institutional-chart-section .ich-kpi-card {
+  background: #0B0E14;
+  border: 1px solid var(--border, #33222c);
+  border-radius: var(--radius-sm, 7px);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+#institutional-chart-section .ich-kpi-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-faint, #7c6e6f);
+}
+
+#institutional-chart-section .ich-kpi-value {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--bone, #f6efe0);
+  font-family: var(--mono, monospace);
+}
+
+#institutional-chart-section .ich-kpi-sub {
+  font-size: 11.5px;
+  color: var(--text-dim, #b6a99f);
+}
+
+#institutional-chart-section .ich-pos {
+  color: var(--positive, #5bd4a0) !important;
+}
+
+#institutional-chart-section .ich-neg {
+  color: var(--negative, #e0656b) !important;
+}
+
+#institutional-chart-section .ich-split-bar {
+  width: 100%;
+  height: 7px;
+  background: var(--negative, #e0656b);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+#institutional-chart-section .ich-split-fill {
+  height: 100%;
+  background: var(--positive, #5bd4a0);
+  transition: width 0.3s ease;
+}
+
+/* Sub-Views Visibility */
+#institutional-chart-section .ich-macro-view {
+  display: none;
+}
+
+#institutional-chart-section .ich-macro-view.active {
+  display: block;
+}
+
+/* Canvas Controls Bar */
+#institutional-chart-section .ich-canvas-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  background: var(--bg-inner, #0e0a0d);
+  border: 1px solid var(--border, #33222c);
+  border-radius: var(--radius-sm, 7px);
+}
+
+#institutional-chart-section .ich-series-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#institutional-chart-section .ich-check-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim, #b6a99f);
+  background: #0B0E14;
+  border: 1px solid var(--border, #33222c);
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+#institutional-chart-section .ich-check-pill input {
+  accent-color: var(--cherry-bright, #e2456c);
+  cursor: pointer;
+}
+
+#institutional-chart-section .ich-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+#institutional-chart-section .ich-dot-gold { background: #c9a24b; }
+#institutional-chart-section .ich-dot-cherry { background: #e2456c; }
+#institutional-chart-section .ich-dot-emerald { background: #5bd4a0; }
+#institutional-chart-section .ich-dot-cyan { background: #38bdf8; }
+
+/* Lightweight Charts Containers */
+#institutional-chart-section .ich-lw-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#institutional-chart-section .ich-lw-box {
+  background: #0B0E14;
+  border: 1px solid var(--border, #33222c);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+#institutional-chart-section .ich-lw-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--bone, #f6efe0);
+}
+
+#institutional-chart-section .ich-lw-tag {
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  color: var(--gold, #c9a24b);
+  background: rgba(201, 162, 75, 0.12);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+#institutional-chart-section .ich-lw-canvas {
+  width: 100%;
+  height: 320px;
+}
+
+#institutional-chart-section .ich-lw-canvas-sm {
+  width: 100%;
+  height: 190px;
+}
+
+/* Subview 2 & 3 Containers */
+#institutional-chart-section .ich-subview-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-inner, #0e0a0d);
+  border: 1px solid var(--border, #33222c);
+  border-radius: var(--radius-sm, 7px);
+  margin-bottom: 12px;
+  font-size: 12.5px;
+}
+
+#institutional-chart-section .ich-ext-link {
+  color: var(--gold, #c9a24b);
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+#institutional-chart-section .ich-ext-link:hover {
+  text-decoration: underline;
+}
+
+#institutional-chart-section .ich-tv-macro-stage {
+  width: 100%;
+  height: 520px;
+  background: #0B0E14;
+  border: 1px solid var(--border, #33222c);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#institutional-chart-section .ich-finviz-frame {
+  background: #0B0E14;
+  border: 1px solid var(--border, #33222c);
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+}
+
+#institutional-chart-section .ich-finviz-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border-soft, #21141c);
+}

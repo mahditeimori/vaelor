@@ -1,0 +1,458 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Institutional Market Structure & Macro Terminal"
+  description="Live price action, CFTC COT positioning, futures volume and open interest — automated institutional macro hub."
+>
+  <main id="chart-section-root" class="term-root">
+    <!-- ============ Section 1 · Top status header ============ -->
+    <header class="term-status" aria-label="Terminal status">
+      <div class="ts-left">
+        <div class="ts-titleline">
+          <span class="pulse-wrap" id="pulseWrap">
+            <span class="pulse-dot pulse-connecting" id="pulseDot" aria-hidden="true"></span>
+            <span class="pulse-label" id="pulseLabel">CONNECTING STREAM…</span>
+          </span>
+          <h1 class="ts-title">INSTITUTIONAL MARKET STRUCTURE &amp; MACRO TERMINAL</h1>
+        </div>
+        <div class="ts-sync" id="syncBadge">
+          Last automated CFTC &amp; CME sync: awaiting first bootstrap…
+        </div>
+      </div>
+      <div class="ts-assets" id="assetPills" role="tablist" aria-label="Global asset switcher">
+        <!-- pills injected by terminal.ts -->
+      </div>
+    </header>
+
+    <!-- ============ Section 2 · Live price panel ============ -->
+    <section class="term-panel" aria-labelledby="live-title">
+      <div class="panel-head-row">
+        <div class="phr-left">
+          <div class="panel-kicker">SECTION 01 · SUB-SECOND WEBSOCKET STREAM</div>
+          <h2 class="panel-title" id="live-title">LIVE PRICE ACTION &amp; TECHNICAL EXECUTION</h2>
+          <div class="panel-sub" id="liveSymbolLabel">OANDA:XAUUSD — Gold (XAU/USD)</div>
+        </div>
+        <div class="chart-controls">
+          <div class="ctl-block">
+            <div class="ctl-label">Chart type</div>
+            <div class="ctl-group" id="chartTypeBtns" role="group" aria-label="Chart type">
+              <button type="button" data-type="1" class="active">Candlestick</button>
+              <button type="button" data-type="0">Bar (OHLC)</button>
+              <button type="button" data-type="2">Line</button>
+            </div>
+          </div>
+          <div class="ctl-block">
+            <div class="ctl-label">Timeframe</div>
+            <div class="ctl-group" id="timeframeBtns" role="group" aria-label="Timeframe">
+              <button type="button" data-tf="1">1m</button>
+              <button type="button" data-tf="5">5m</button>
+              <button type="button" data-tf="15" class="active">15m</button>
+              <button type="button" data-tf="60">1H</button>
+              <button type="button" data-tf="240">4H</button>
+              <button type="button" data-tf="D">1D</button>
+              <button type="button" data-tf="W">1W</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tv-wrap" id="tvLiveWrap">
+        <div id="tv-live-chart"></div>
+        <div class="tv-fallback" id="tvFallback" hidden>
+          <div class="tv-fallback-inner">
+            <div class="panel-kicker">LIVE FEED UNAVAILABLE</div>
+            <p>
+              The TradingView real-time stream (tv.js CDN) could not be loaded from this network.
+              The automated CFTC / CME data hub below keeps updating regardless.
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="panel-foot">
+        Drawing tools &amp; indicators: <b>enabled</b> · Engine: TradingView Advanced Real-Time Widget (tv.js)
+        · Data: live WebSocket quotes — no manual refresh required
+      </div>
+    </section>
+
+    <!-- ============ Section 3 · Macro positioning hub ============ -->
+    <section class="term-panel" aria-labelledby="hub-title">
+      <div class="panel-head-row">
+        <div class="phr-left">
+          <div class="panel-kicker">SECTION 02 · AUTOMATED INGESTION</div>
+          <h2 class="panel-title" id="hub-title">MACRO POSITIONING, CFTC COT, OPEN INTEREST &amp; VOLUME HUB</h2>
+        </div>
+        <div class="hub-meta" id="hubMeta">Loading CFTC data…</div>
+      </div>
+
+      <div class="hub-tabs" role="tablist" aria-label="Macro hub views">
+        <button type="button" role="tab" aria-selected="true" data-tab="cftc" class="active">
+          1. US Gov CFTC Raw Data (Banks &amp; Commercials)
+        </button>
+        <button type="button" role="tab" aria-selected="false" data-tab="tvcot">
+          2. TradingView Interactive COT &amp; OI
+        </button>
+        <button type="button" role="tab" aria-selected="false" data-tab="finviz">
+          3. Finviz Macro COT Structure
+        </button>
+      </div>
+
+      <!-- Tab 1 · CFTC raw interactive -->
+      <div class="hub-tab-panel" id="tab-cftc" role="tabpanel" aria-label="CFTC raw data">
+        <div class="kpi-grid" id="kpiGrid"><!-- KPI cards injected by terminal.ts --></div>
+        <div class="cot-controls">
+          <div class="ctl-block">
+            <div class="ctl-label">Render mode</div>
+            <div class="ctl-group" id="cotModeBtns" role="group" aria-label="COT chart mode">
+              <button type="button" data-mode="candles" class="active">Candlestick</button>
+              <button type="button" data-mode="histo">Bar / Histogram</button>
+              <button type="button" data-mode="line">Line</button>
+            </div>
+          </div>
+          <div class="cot-legend" id="cotLegend"></div>
+        </div>
+        <div class="cot-chart" id="cotChart"></div>
+        <div class="cot-breakdown">
+          <div class="bd-title" id="bdTitle">Category breakdown — CFTC latest week</div>
+          <div class="bd-table" id="cotBreakdown"><!-- injected --></div>
+        </div>
+      </div>
+
+      <!-- Tab 2 · TradingView COT & OI -->
+      <div class="hub-tab-panel" id="tab-tvcot" role="tabpanel" aria-label="TradingView COT" hidden>
+        <div class="tv-wrap tv-cot-wrap" id="tvCotWrap">
+          <div id="tv-cot-chart"></div>
+        </div>
+        <div class="panel-foot">
+          Weekly futures contract with CFTC COT &amp; Open Interest studies. Studies auto-load when the
+          TradingView library exposes them; otherwise open the indicator menu (enabled) and add “COT”.
+        </div>
+      </div>
+
+      <!-- Tab 3 · Finviz COT structure -->
+      <div class="hub-tab-panel" id="tab-finviz" role="tabpanel" aria-label="Finviz COT" hidden>
+        <div class="finviz-main">
+          <img id="finvizMain" alt="Finviz futures COT chart" loading="lazy" />
+          <div class="finviz-fallback" id="finvizFallback" hidden>
+            Finviz upstream is not reachable from this network — the proxy retries on every automated
+            sync cycle. CFTC raw data (tab 1) remains the authoritative source.
+          </div>
+        </div>
+        <div class="finviz-compare-title">CROSS-ASSET COMPARISON · AUTO-REFRESHED</div>
+        <div class="finviz-compare" id="finvizCompare"><!-- thumbs injected --></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    import { initTerminal } from '../scripts/terminal.ts';
+    initTerminal();
+  </script>
+
+  <style>
+    /* Scoped institutional palette for the terminal (per architecture spec). */
+    .term-root {
+      --tbg: #0b0e14;
+      --tpanel: #151921;
+      --tpanel-raise: #1a2029;
+      --tborder: #262c36;
+      --tborder-soft: #1d232d;
+      --ttxt: #e6e8ec;
+      --tdim: #8b93a1;
+      --tfaint: #5a6270;
+      --tacc: #e2456c;
+      --tgold: #c9a24b;
+      --tgreen: #3dd68c;
+      --tred: #e0656b;
+      background: var(--tbg);
+      color: var(--ttxt);
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 24px 24px 56px;
+    }
+
+    /* The [hidden] attribute must win over display rules inside the terminal. */
+    .term-root [hidden] { display: none !important; }
+
+    .term-root .mono,
+    .term-root .panel-kicker,
+    .term-root .ctl-label,
+    .term-root .ts-sync,
+    .term-root .pulse-label {
+      font-family: var(--mono);
+    }
+
+    /* ---------- Section 1 · status header ---------- */
+    .term-status {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      background: var(--tpanel);
+      border: 1px solid var(--tborder);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+    }
+    .ts-titleline { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .ts-title {
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--ttxt);
+      margin: 0;
+    }
+    .pulse-wrap { display: inline-flex; align-items: center; gap: 8px; }
+    .pulse-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      display: inline-block; flex: 0 0 auto;
+    }
+    .pulse-connecting { background: var(--tgold); box-shadow: 0 0 10px rgba(201, 162, 75, 0.8); animation: pulseBreathe 1.4s ease-in-out infinite; }
+    .pulse-live { background: var(--tgreen); box-shadow: 0 0 12px rgba(61, 214, 140, 0.9); animation: pulseBreathe 2s ease-in-out infinite; }
+    .pulse-dead { background: var(--tred); box-shadow: 0 0 10px rgba(224, 101, 107, 0.8); animation: none; }
+    @keyframes pulseBreathe {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.45); opacity: 0.65; }
+    }
+    .pulse-label { font-size: 0.68rem; letter-spacing: 0.18em; color: var(--tdim); text-transform: uppercase; }
+    .ts-sync { font-size: 0.72rem; color: var(--tdim); margin-top: 6px; }
+
+    .ts-assets { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .asset-pill {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      color: var(--tdim);
+      background: var(--tbg);
+      border: 1px solid var(--tborder);
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .asset-pill:hover { color: var(--ttxt); border-color: var(--tacc); }
+    .asset-pill.active {
+      color: #fff;
+      background: linear-gradient(135deg, #e2456c, #b0173f);
+      border-color: transparent;
+    }
+
+    /* ---------- Panels ---------- */
+    .term-panel {
+      background: var(--tpanel);
+      border: 1px solid var(--tborder);
+      border-radius: 12px;
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .panel-head-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 16px 20px 12px;
+    }
+    .panel-kicker {
+      font-size: 0.66rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--tacc);
+      margin-bottom: 6px;
+    }
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ttxt);
+      margin: 0;
+    }
+    .panel-sub { font-family: var(--mono); font-size: 0.72rem; color: var(--tfaint); margin-top: 6px; }
+    .panel-foot {
+      border-top: 1px solid var(--tborder-soft);
+      padding: 10px 20px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--tfaint);
+    }
+    .panel-foot b { color: var(--tdim); }
+
+    /* ---------- Chart controls ---------- */
+    .chart-controls { display: flex; gap: 18px; flex-wrap: wrap; }
+    .ctl-block { display: flex; flex-direction: column; gap: 6px; }
+    .ctl-label {
+      font-size: 0.62rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--tfaint);
+    }
+    .ctl-group { display: flex; border: 1px solid var(--tborder); border-radius: 8px; overflow: hidden; }
+    .ctl-group button {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      color: var(--tdim);
+      background: var(--tbg);
+      border: none;
+      border-right: 1px solid var(--tborder-soft);
+      padding: 8px 13px;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+    }
+    .ctl-group button:last-child { border-right: none; }
+    .ctl-group button:hover { color: var(--ttxt); }
+    .ctl-group button.active {
+      background: linear-gradient(135deg, #e2456c, #b0173f);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* ---------- TV chart ---------- */
+    .tv-wrap { position: relative; height: 560px; border-top: 1px solid var(--tborder-soft); background: var(--tbg); }
+    .tv-wrap > div:first-child { height: 100%; }
+    .tv-fallback {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      background: var(--tbg);
+    }
+    .tv-fallback-inner { max-width: 480px; text-align: center; padding: 24px; color: var(--tdim); }
+    .tv-cot-wrap { height: 480px; }
+
+    /* ---------- Hub tabs ---------- */
+    .hub-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--tfaint); text-align: right; }
+    .hub-tabs {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      padding: 0 20px;
+      border-top: 1px solid var(--tborder-soft);
+      background: var(--tpanel-raise);
+    }
+    .hub-tabs button {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      letter-spacing: 0.03em;
+      color: var(--tdim);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 12px 14px;
+      cursor: pointer;
+    }
+    .hub-tabs button:hover { color: var(--ttxt); }
+    .hub-tabs button.active { color: var(--tacc); border-bottom-color: var(--tacc); }
+    .hub-tab-panel { padding: 18px 20px 20px; }
+
+    /* ---------- KPI cards ---------- */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi {
+      background: var(--tpanel-raise);
+      border: 1px solid var(--tborder-soft);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .kpi-label { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--tfaint); margin-bottom: 8px; }
+    .kpi-value { font-family: var(--mono); font-size: 1.45rem; font-weight: 700; color: var(--ttxt); }
+    .kpi-value.pos { color: var(--tgreen); }
+    .kpi-value.neg { color: var(--tred); }
+    .kpi-delta { font-family: var(--mono); font-size: 0.78rem; margin-top: 4px; color: var(--tdim); }
+    .kpi-delta.pos { color: var(--tgreen); }
+    .kpi-delta.neg { color: var(--tred); }
+    .kpi-src { font-family: var(--mono); font-size: 0.66rem; color: var(--tfaint); margin-top: 6px; }
+
+    /* ---------- COT chart + breakdown ---------- */
+    .cot-controls { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+    .cot-legend { font-family: var(--mono); font-size: 0.7rem; color: var(--tfaint); display: flex; gap: 16px; flex-wrap: wrap; }
+    .cot-legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+    .cot-legend .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    .cot-chart { height: 360px; border: 1px solid var(--tborder-soft); border-radius: 10px; overflow: hidden; background: var(--tbg); }
+    .cot-breakdown { margin-top: 16px; }
+    .bd-title { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tfaint); margin-bottom: 8px; }
+    .bd-table { overflow-x: auto; }
+    .bd-table table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.76rem; }
+    .bd-table th {
+      text-align: right;
+      font-weight: 600;
+      color: var(--tfaint);
+      text-transform: uppercase;
+      font-size: 0.64rem;
+      letter-spacing: 0.1em;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--tborder);
+    }
+    .bd-table th:first-child, .bd-table td:first-child { text-align: left; }
+    .bd-table td { padding: 7px 10px; color: var(--tdim); border-bottom: 1px solid var(--tborder-soft); }
+    .bd-table tr:last-child td { border-bottom: none; }
+    .bd-table .net-pos { color: var(--tgreen); }
+    .bd-table .net-neg { color: var(--tred); }
+
+    /* ---------- Finviz ---------- */
+    .finviz-main {
+      position: relative;
+      min-height: 420px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--tborder-soft);
+      border-radius: 10px;
+      background: var(--tbg);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .finviz-main img { width: 100%; height: auto; display: block; }
+    .finviz-fallback {
+      position: absolute; inset: 0;
+      display: grid; place-items: center;
+      padding: 24px; text-align: center;
+      color: var(--tfaint);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      background: var(--tbg);
+    }
+    .finviz-compare-title { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.18em; color: var(--tfaint); margin-bottom: 10px; }
+    .finviz-compare {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .finviz-thumb {
+      position: relative;
+      border: 1px solid var(--tborder-soft);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--tbg);
+    }
+    .finviz-thumb img { width: 100%; display: block; }
+    .finviz-thumb .thumb-label {
+      position: absolute; top: 6px; left: 8px;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      color: var(--tfaint);
+      background: rgba(11, 14, 20, 0.85);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .finviz-thumb.failed { min-height: 120px; display: grid; place-items: center; color: var(--tfaint); font-family: var(--mono); font-size: 0.68rem; }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 900px) {
+      .term-root { padding: 16px 12px 40px; }
+      .tv-wrap { height: 400px; }
+      .tv-cot-wrap { height: 380px; }
+      .hub-meta { text-align: left; }
+    }
+    @media (max-width: 560px) {
+      .tv-wrap { height: 320px; }
+      .kpi-value { font-size: 1.2rem; }
+      .ts-assets { justify-content: flex-start; }
+    }
+  </style>
+</BaseLayout>

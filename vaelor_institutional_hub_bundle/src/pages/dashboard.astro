@@ -1,0 +1,125 @@
+---
+/**
+ * src/pages/dashboard.astro
+ * Updated Vaelor Dashboard integrating the Autonomous Institutional Chart & Macro Intelligence Hub
+ * while preserving the existing Market Structure Terminal and styles.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import InstitutionalChartHub from '../components/InstitutionalChartHub.astro';
+import { CURRENT_REGIME, LAST_SESSION_DATE, COT_DATA_DATE } from '../scripts/mockData';
+import '../styles/institutionalHub.css';
+---
+<BaseLayout title="Dashboard – Market Structure & Live Institutional Hub">
+  <main class="shell dash">
+    <section class="hero" style="padding-bottom:16px">
+      <div class="kicker">Composite Signal &amp; Autonomous Macro Hub · Section 4.7</div>
+      <h1>Market Structure Terminal</h1>
+      <p class="lede">
+        Real-time TradingView streaming terminal, autonomous US Government CFTC Commitment of Traders (COT) &amp;
+        Open Interest engine, Finviz Macro COT visuals, and the Composite Signal bar.
+      </p>
+    </section>
+
+    <!-- NEW: Isolated Autonomous Live Charting & Institutional Macro Section (#institutional-chart-section) -->
+    <InstitutionalChartHub />
+
+    <!-- EXISTING VAELOR COMPOSITE SIGNAL TERMINAL -->
+    <div class="dash-toolbar">
+      <div style="display:flex; align-items:center; gap:10px; min-width:0">
+        <label for="symbolSearch">Symbol</label>
+        <div class="search-box">
+          <input id="symbolSearch" type="text" value="GC" placeholder="GC · DX · Gold Futures · XAUUSD · USD Index..." />
+          <button id="symbolGo" type="button">Go</button>
+        </div>
+        <span id="resolveNote" class="panel-src" style="color:var(--text-faint)">GC → Gold Futures · XAUUSD</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px">
+        <label>Timeframe</label>
+        <div class="tf-toggle" id="tfToggle" role="group" aria-label="Timeframe">
+          <button data-tf="D" class="active" type="button">Daily</button>
+          <button data-tf="W" type="button">Weekly</button>
+          <button data-tf="M" type="button">Monthly</button>
+          <button data-tf="Q" type="button">Quarterly</button>
+        </div>
+      </div>
+      <span class="regime-chip" id="regimeChip">REGIME: {CURRENT_REGIME.toUpperCase()}</span>
+    </div>
+
+    <div class="dash-panel">
+      <div class="panel-head">
+        <div class="panel-title">Panel 1 – Price / Volume</div>
+        <div class="panel-src">
+          <span>Source: <b>Exchange feed vendor</b></span>
+          <span>Refresh: <b>Continuous / Per timeframe</b></span>
+          <span>Age: <b>Live streaming tape (mock)</b></span>
+        </div>
+      </div>
+      <div id="priceChart" class="chart"></div>
+    </div>
+
+    <div class="dash-panel">
+      <div class="panel-head">
+        <div class="panel-title">Panel 2 – Open Interest</div>
+        <div class="panel-src">
+          <span>Source: <b>CME Group Daily Settlement</b></span>
+          <span>Refresh: <b>Once daily post-settlement</b></span>
+          <span id="oiAge">Age: <b>As of: {LAST_SESSION_DATE}</b></span>
+        </div>
+      </div>
+      <div id="oiChart" class="chart"></div>
+    </div>
+
+    <div class="dash-panel">
+      <div class="panel-head">
+        <div class="panel-title">Panel 3 – Commercial Net Positioning (Weekly COT)</div>
+        <div class="panel-src">
+          <span>Source: <b>CFTC Disaggregated Report</b></span>
+          <span>Refresh: <b>Weekly (Friday 15:30 ET)</b></span>
+          <span id="cotAge">Age: <b>Data Date: {COT_DATA_DATE} (prior Tuesday)</b></span>
+        </div>
+      </div>
+      <div id="cotChart" class="chart"></div>
+    </div>
+
+    <aside class="composite-bar" aria-label="Composite Signal Dashboard">
+      <div class="composite-grid">
+        <div class="comp-cell">
+          <span class="k">Price / OI State</span>
+          <span class="v" id="stateLabel">-</span>
+          <span class="sub" id="stateDetail">Four-state classification per §4.3</span>
+        </div>
+        <div class="comp-cell">
+          <span class="k">Commercial Z-Score</span>
+          <span class="v mono" id="zScore">-</span>
+          <span class="sub">3Y rolling · extreme at |Z| ≥ 2.0</span>
+        </div>
+        <div class="comp-cell">
+          <span class="k">Distance to COT Flip</span>
+          <span class="v" id="flipDist">-</span>
+          <span class="sub">bps to nearest historical flip zone</span>
+        </div>
+        <div class="comp-cell">
+          <span class="k">Composite Flag</span>
+          <span class="v" id="compFlag">-</span>
+          <span class="sub">Aligned (3) · Watch (2) · None (&lt;2)</span>
+        </div>
+        <div class="comp-cell">
+          <span class="k">Current Regime</span>
+          <span class="v" id="regimeValue">{CURRENT_REGIME}</span>
+          <span class="sub">Macro Analysis Engine</span>
+        </div>
+      </div>
+      <div class="composite-foot">
+        <span id="footAttrib">Attribution: CME "As of: date" · CFTC "Data Date: prior Tuesday"</span>
+        <span>Operational Note: Composite Flag indicates alignment; it is not an unhedged autonomous order command</span>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    import { mountDashboard } from '../scripts/dashboard.ts';
+    import { mountInstitutionalHub } from '../scripts/institutionalHub.ts';
+    mountDashboard();
+    mountInstitutionalHub();
+  </script>
+</BaseLayout>

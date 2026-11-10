@@ -19,6 +19,9 @@ build/
 src/data/ai-state.json
 src/data/ai-state.json.tmp
 
+# Runtime-scraped macro/COT cache (backend bootstrap + cron writes this)
+data/cache/
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
