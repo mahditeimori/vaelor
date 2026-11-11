@@ -1,0 +1,290 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
+---
+
+<BaseLayout
+  title="AI & Machine Access"
+  description="Connect any AI assistant to the Vaelor macro terminal over MCP or plain REST — live CFTC COT, open interest, futures volume and price series."
+>
+  <main class="shell ai-page">
+    <section class="hero" style="padding-bottom:18px">
+      <div class="kicker">Machine access · MCP + REST</div>
+      <h1>Connect an AI to the terminal</h1>
+      <p class="lede">
+        The macro engine is exposed as a stateless <b>MCP over HTTP</b> server and a plain JSON API.
+        No API key, CORS open. Point any cloud assistant at the MCP endpoint and it can read the
+        operating manual, pull live CFTC positioning, and publish analysis back to the site.
+      </p>
+      <div class="ai-badges">
+        <span class="ai-badge">JSON-RPC 2.0</span>
+        <span class="ai-badge">Stateless · no session</span>
+        <span class="ai-badge">CORS *</span>
+        <span class="ai-badge">6 tools</span>
+      </div>
+    </section>
+
+    <section class="ai-section" aria-labelledby="endpoints-title">
+      <div class="ai-section-head">
+        <div>
+          <div class="panel-kicker">01 · ENDPOINTS</div>
+          <h2 id="endpoints-title">URLs to paste into your AI</h2>
+        </div>
+      </div>
+
+      <div class="ai-grid">
+        <article class="ai-card ai-card-primary">
+          <div class="ai-label">MCP over HTTP · recommended for AI clients</div>
+          <code id="mcpUrl">{WORKER}/mcp</code>
+          <div class="ai-card-foot">
+            <button type="button" class="ai-copy" data-copy="mcpUrl">Copy endpoint</button>
+            <span class="ai-hint">Streamable HTTP transport · <code class="inline">POST</code></span>
+          </div>
+        </article>
+
+        <article class="ai-card">
+          <div class="ai-label">Terminal state · full JSON snapshot</div>
+          <code id="stateUrl">{WORKER}/api/terminal/state</code>
+          <div class="ai-card-foot">
+            <button type="button" class="ai-copy" data-copy="stateUrl">Copy endpoint</button>
+            <span class="ai-hint">7 instruments · COT · volume · OI</span>
+          </div>
+        </article>
+
+        <article class="ai-card">
+          <div class="ai-label">Price series · OHLCV proxy</div>
+          <code id="chartUrl">{WORKER}/api/chart?id=gold&amp;range=5d&amp;interval=15m</code>
+          <div class="ai-card-foot">
+            <button type="button" class="ai-copy" data-copy="chartUrl">Copy endpoint</button>
+            <span class="ai-hint">Ranges 1d → 2y · intervals 1m → 1wk</span>
+          </div>
+        </article>
+
+        <article class="ai-card">
+          <div class="ai-label">Operating manual &amp; company code</div>
+          <code id="docsUrl">https://vaelor.pages.dev/docs</code>
+          <div class="ai-card-foot">
+            <button type="button" class="ai-copy" data-copy="docsUrl">Copy URL</button>
+            <span class="ai-hint">Also available as MCP resources</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="ai-section" aria-labelledby="tools-title">
+      <div class="ai-section-head">
+        <div>
+          <div class="panel-kicker">02 · TOOLS</div>
+          <h2 id="tools-title">What the AI can call</h2>
+        </div>
+      </div>
+
+      <div class="ai-table-wrap">
+        <table class="ai-table">
+          <thead>
+            <tr><th>Tool</th><th>Purpose</th><th>Input</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>get_manual_index</td><td>List every operating-manual document</td><td>—</td></tr>
+            <tr><td>read_manual</td><td>Read one manual document by slug</td><td>slug</td></tr>
+            <tr><td>search_manual</td><td>Full-text search across the manual</td><td>query</td></tr>
+            <tr><td>get_company_code</td><td>Return the company code package</td><td>—</td></tr>
+            <tr><td>publish_analysis</td><td>Publish a regime call to the site</td><td>analysis payload</td></tr>
+            <tr><td>get_latest_analysis</td><td>Read the latest published call</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="ai-section" aria-labelledby="quickstart-title">
+      <div class="ai-section-head">
+        <div>
+          <div class="panel-kicker">03 · QUICK START</div>
+          <h2 id="quickstart-title">Two ways to connect</h2>
+        </div>
+      </div>
+
+      <div class="ai-two-col">
+        <div class="ai-code-card">
+          <div class="ai-label">MCP client (Claude, Cursor, any MCP host)</div>
+          <pre><code>&#123;
+  "mcpServers": &#123;
+    "vaelor-terminal": &#123;
+      "type": "http",
+      "url": "{WORKER}/mcp"
+    &#125;
+  &#125;
+&#125;</code></pre>
+        </div>
+
+        <div class="ai-code-card">
+          <div class="ai-label">Plain HTTP — handshake then tools/list</div>
+          <pre><code>curl -X POST "{WORKER}/mcp" \
+  -H "content-type: application/json" \
+  -H "accept: application/json, text/event-stream" \
+  -d '&#123;"jsonrpc":"2.0","id":1,"method":"initialize",
+       "params":&#123;"protocolVersion":"2024-11-05",
+                 "capabilities":&#123;&#125;,
+                 "clientInfo":&#123;"name":"my-ai","version":"1.0"&#125;&#125;&#125;'</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="ai-section" aria-labelledby="live-title">
+      <div class="ai-section-head">
+        <div>
+          <div class="panel-kicker">04 · LIVE DATA</div>
+          <h2 id="live-title">What the endpoint returns</h2>
+        </div>
+        <a class="ai-link" href="/terminal">Open the terminal →</a>
+      </div>
+      <p class="ai-note">
+        Every instrument carries the latest CFTC report date, commercial / large-speculator net
+        positioning, weekly open interest, daily futures volume and a 96-week history. The site polls
+        this same payload every 60 seconds, so an AI reading it sees exactly what a human sees.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    document.querySelectorAll<HTMLButtonElement>('.ai-copy').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.copy;
+        const text = id ? document.getElementById(id)?.textContent?.trim() : '';
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          const prev = btn.textContent;
+          btn.textContent = 'Copied ✓';
+          window.setTimeout(() => { btn.textContent = prev; }, 1600);
+        } catch {
+          /* clipboard blocked — the value stays selectable */
+        }
+      });
+    });
+  </script>
+
+  <style>
+    .ai-page { padding-top: 32px; padding-bottom: 64px; }
+    .ai-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+    .ai-badge {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-warm);
+      border: 1px solid rgba(201, 162, 75, 0.35);
+      background: rgba(201, 162, 75, 0.07);
+      border-radius: 999px;
+      padding: 5px 12px;
+    }
+
+    .ai-section { margin-top: 34px; }
+    .ai-section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .ai-section-head h2 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 6px 0 0;
+      color: var(--text);
+    }
+    .ai-link { font-family: var(--mono); font-size: 0.78rem; color: var(--accent); }
+
+    .ai-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+    }
+    .ai-card {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .ai-card-primary { border-color: rgba(226, 69, 108, 0.45); box-shadow: 0 0 0 1px rgba(226, 69, 108, 0.12) inset; }
+    .ai-label {
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .ai-card > code,
+    .ai-card code.inline {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--accent-warm);
+      background: var(--bg);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 10px 12px;
+      word-break: break-all;
+    }
+    .ai-card code.inline { padding: 1px 5px; border-radius: 4px; }
+    .ai-card-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .ai-copy {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .ai-copy:hover { color: var(--text); border-color: var(--accent); }
+    .ai-hint { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); }
+
+    .ai-table-wrap { overflow-x: auto; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--bg-panel); }
+    .ai-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.78rem; }
+    .ai-table th {
+      text-align: left;
+      font-size: 0.64rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ai-table td { padding: 11px 16px; color: var(--text-dim); border-bottom: 1px solid var(--border-soft); }
+    .ai-table td:first-child { color: var(--accent-warm); }
+    .ai-table tr:last-child td { border-bottom: none; }
+
+    .ai-two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+    .ai-code-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .ai-code-card pre {
+      margin: 0;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      line-height: 1.6;
+      color: var(--text-dim);
+      background: var(--bg);
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .ai-note { max-width: 820px; color: var(--text-dim); line-height: 1.7; margin: 0; }
+  </style>
+</BaseLayout>

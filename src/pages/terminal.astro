@@ -7,6 +7,25 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   description="Live price action, CFTC COT positioning, futures volume and open interest — automated institutional macro hub."
 >
   <main id="institutional-chart-section" class="term-root" data-api="https://trading-llc-mcp.mahdi-t8256.workers.dev">
+    <!-- ============ Quick access bar (sticky) ============ -->
+    <div class="term-quickbar" id="termQuickbar">
+      <div class="tq-left">
+        <span class="tq-kicker">Quick access</span>
+        <nav class="tq-links" aria-label="Terminal quick navigation">
+          <a class="tq-link" href="#live-chart">Live chart</a>
+          <a class="tq-link" href="#macro-hub">Macro &amp; COT</a>
+          <a class="tq-link" href="#cross-asset">Cross-asset</a>
+          <a class="tq-link tq-link-ai" href="/ai">AI / MCP</a>
+        </nav>
+      </div>
+      <div class="tq-instrument">
+        <span class="ctl-label">Asset / Pair</span>
+        <div class="asset-select-wrap">
+          <select id="assetSelect" class="asset-select" aria-label="Select asset or pair"></select>
+        </div>
+      </div>
+    </div>
+
     <!-- ============ Section 1 · Top status header ============ -->
     <header class="term-status" aria-label="Terminal status">
       <div class="ts-left">
@@ -21,26 +40,17 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           Last automated CFTC &amp; CME sync: awaiting first bootstrap…
         </div>
       </div>
-      <div class="ts-assets" id="assetPills" role="tablist" aria-label="Global asset switcher">
-        <!-- pills injected by terminal.ts -->
-      </div>
     </header>
 
     <!-- ============ Section 2 · Live price panel ============ -->
-    <section class="term-panel" aria-labelledby="live-title">
+    <section class="term-panel" id="live-chart" aria-labelledby="live-title">
       <div class="panel-head-row">
         <div class="phr-left">
-          <div class="panel-kicker">SECTION 01 · SUB-SECOND WEBSOCKET STREAM</div>
-          <h2 class="panel-title" id="live-title">LIVE PRICE ACTION &amp; TECHNICAL EXECUTION</h2>
+          <div class="panel-kicker">SECTION 01 · LIVE PRICE &amp; TECHNICAL EXECUTION</div>
+          <h2 class="panel-title" id="live-title">TRADINGVIEW PRICE ACTION</h2>
           <div class="panel-sub" id="liveSymbolLabel">FOREXCOM:XAUUSD — Gold (XAU/USD)</div>
         </div>
         <div class="chart-controls">
-          <div class="ctl-block">
-            <div class="ctl-label">Asset / Pair</div>
-            <div class="asset-select-wrap">
-              <select id="assetSelect" class="asset-select" aria-label="Select asset or pair"></select>
-            </div>
-          </div>
           <div class="ctl-block">
             <div class="ctl-label">Chart type</div>
             <div class="ctl-group" id="chartTypeBtns" role="group" aria-label="Chart type">
@@ -61,6 +71,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <button type="button" data-tf="W">1W</button>
             </div>
           </div>
+          <div class="ctl-block">
+            <div class="ctl-label">Chart engine</div>
+            <div class="ctl-group" id="engineBtns" role="group" aria-label="Chart engine">
+              <button type="button" data-engine="tradingview" class="active">TradingView</button>
+              <button type="button" data-engine="fallback">Basic</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="tv-wrap" id="tvLiveWrap">
@@ -70,20 +87,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <div class="tv-fallback-inner">
             <div class="panel-kicker">LIVE FEED UNAVAILABLE</div>
             <p>
-              The TradingView real-time stream (tv.js CDN) could not be loaded from this network.
-              The automated CFTC / CME data hub below keeps updating regardless.
+              TradingView could not be reached from this network. The automated CFTC / CME hub below
+              keeps updating, and the Basic engine is available from the chart-engine switch.
             </p>
           </div>
         </div>
       </div>
-      <div class="panel-foot">
-        Drawing tools &amp; indicators: <b>enabled</b> · Engine: TradingView Advanced Real-Time Widget (tv.js)
-        · Data: live WebSocket quotes — no manual refresh required
+      <div class="panel-foot" id="liveFoot">
+        Full <b>TradingView</b> chart with drawing tools, Fibonacci, indicators and symbol search.
+        Switch to <b>Basic</b> if your network blocks TradingView — no manual refresh required.
       </div>
     </section>
 
     <!-- ============ Section 3 · Macro positioning hub ============ -->
-    <section class="term-panel" aria-labelledby="hub-title">
+    <section class="term-panel" id="macro-hub" aria-labelledby="hub-title">
       <div class="panel-head-row">
         <div class="phr-left">
           <div class="panel-kicker">SECTION 02 · AUTOMATED INGESTION</div>
@@ -145,39 +162,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             sync cycle. CFTC raw data (tab 1) remains the authoritative source.
           </div>
         </div>
-        <div class="finviz-compare-title">CROSS-ASSET COMPARISON · AUTO-REFRESHED</div>
+        <div class="finviz-compare-title" id="cross-asset">CROSS-ASSET COMPARISON · AUTO-REFRESHED</div>
         <div class="finviz-compare" id="finvizCompare"><!-- thumbs injected --></div>
-      </div>
-    </section>
-
-    <!-- ============ Section 4 · AI / MCP access ============ -->
-    <section class="term-panel" aria-labelledby="ai-title">
-      <div class="panel-head-row">
-        <div class="phr-left">
-          <div class="panel-kicker">SECTION 03 · MACHINE ACCESS</div>
-          <h2 class="panel-title" id="ai-title">CONNECT AN AI — MCP &amp; REST ENDPOINTS</h2>
-        </div>
-      </div>
-      <div class="ai-grid">
-        <div class="ai-card">
-          <div class="ai-label">MCP OVER HTTP · paste into any cloud AI</div>
-          <code id="mcpUrl">https://trading-llc-mcp.mahdi-t8256.workers.dev/mcp</code>
-          <button type="button" class="ai-copy" data-copy="mcpUrl">Copy</button>
-        </div>
-        <div class="ai-card">
-          <div class="ai-label">LIVE TERMINAL STATE · JSON</div>
-          <code id="stateUrl">https://trading-llc-mcp.mahdi-t8256.workers.dev/api/terminal/state</code>
-          <button type="button" class="ai-copy" data-copy="stateUrl">Copy</button>
-        </div>
-        <div class="ai-card">
-          <div class="ai-label">MANUAL &amp; COMPANY CODE · live docs</div>
-          <code id="docsUrl">https://vaelor.pages.dev/docs</code>
-          <button type="button" class="ai-copy" data-copy="docsUrl">Copy</button>
-        </div>
-      </div>
-      <div class="panel-foot">
-        Stateless JSON-RPC 2.0 · no API key · CORS open · tools: read / search manual, company code,
-        publish &amp; get latest analysis.
       </div>
     </section>
   </main>
@@ -219,6 +205,51 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     .term-root .pulse-label {
       font-family: var(--mono);
     }
+
+    /* ---------- Quick access bar ---------- */
+    .term-quickbar {
+      position: sticky;
+      top: var(--header-h);
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      background: rgba(17, 21, 29, 0.94);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--tborder);
+      border-radius: 12px;
+      padding: 10px 14px 10px 18px;
+      margin-bottom: 16px;
+    }
+    .tq-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; min-width: 0; }
+    .tq-kicker {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--tfaint);
+    }
+    .tq-links { display: flex; gap: 6px; flex-wrap: wrap; }
+    .tq-link {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      color: var(--tdim);
+      text-decoration: none;
+      border: 1px solid var(--tborder-soft);
+      border-radius: 999px;
+      padding: 6px 13px;
+      transition: color 0.15s, border-color 0.15s, background 0.15s;
+    }
+    .tq-link:hover { color: var(--ttxt); border-color: var(--tacc); text-decoration: none; }
+    .tq-link-ai { color: var(--tgold); border-color: rgba(201, 162, 75, 0.4); }
+    .tq-instrument { display: flex; align-items: center; gap: 10px; }
+    .tq-instrument .ctl-label { margin: 0; }
+
+    /* Deep-link targets clear the sticky header + quick bar. */
+    #live-chart, #macro-hub, #cross-asset { scroll-margin-top: calc(var(--header-h) + 86px); }
 
     /* ---------- Section 1 · status header ---------- */
     .term-status {
@@ -521,52 +552,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       border-radius: 999px;
     }
     .finviz-thumb.failed { min-height: 120px; display: grid; place-items: center; color: var(--tfaint); font-family: var(--mono); font-size: 0.68rem; }
-
-    /* ---------- AI / MCP access ---------- */
-    .ai-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 12px;
-      padding: 0 20px 18px;
-    }
-    .ai-card {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: var(--tpanel-raise);
-      border: 1px solid var(--tborder-soft);
-      border-radius: 10px;
-      padding: 14px 16px;
-    }
-    .ai-label {
-      font-family: var(--mono);
-      font-size: 0.64rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--tfaint);
-    }
-    .ai-card code {
-      font-family: var(--mono);
-      font-size: 0.76rem;
-      color: var(--tgold);
-      word-break: break-all;
-      background: var(--tbg);
-      border: 1px solid var(--tborder-soft);
-      border-radius: 6px;
-      padding: 8px 10px;
-    }
-    .ai-copy {
-      align-self: flex-start;
-      font-family: var(--mono);
-      font-size: 0.72rem;
-      color: var(--tdim);
-      background: var(--tbg);
-      border: 1px solid var(--tborder);
-      border-radius: 6px;
-      padding: 6px 14px;
-      cursor: pointer;
-    }
-    .ai-copy:hover { color: var(--ttxt); border-color: var(--tacc); }
 
     /* ---------- Responsive ---------- */
     @media (max-width: 900px) {

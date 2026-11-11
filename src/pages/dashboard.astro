@@ -1,48 +1,55 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { CURRENT_REGIME, LAST_SESSION_DATE, COT_DATA_DATE } from '../scripts/mockData';
 ---
 
-<BaseLayout title="Dashboard — Mock Composite Terminal">
+<BaseLayout
+  title="Composite Dashboard"
+  description="Live price, futures open interest, CME volume and CFTC commercial positioning for gold, silver, DXY and index futures."
+>
   <main class="shell dash">
     <section class="hero" style="padding-bottom:16px">
-      <div class="kicker">Mock Composite Signal Dashboard · Section 4.7</div>
-      <h1>Market Structure Terminal</h1>
+      <div class="kicker">Live composite dashboard · Section 4.7</div>
+      <h1>Market Structure Dashboard</h1>
       <p class="lede">
-        Multi-panel visualization mirroring the configured UI architecture: price/volume, Open Interest (CME cadence),
-        weekly Commercial COT positioning (CFTC cadence), and the pinned Composite Signal bar. All data is
-        <b style="color:var(--accent-warm)">deterministically simulated</b> — no live feeds or executable orders.
+        Live price and volume, <b>futures open interest</b>, and weekly <b>CFTC commercial positioning</b>
+        for every instrument in the terminal. Pulled automatically from the macro engine — the same
+        data the institutional terminal uses, with no manual refresh.
       </p>
+      <div class="dash-status">
+        <span class="dash-live-dot" aria-hidden="true"></span>
+        <span id="dashStatus">Connecting to the macro engine…</span>
+      </div>
     </section>
 
     <div class="dash-toolbar">
       <div style="display:flex; align-items:center; gap:10px; min-width:0">
-        <label for="symbolSearch">Symbol</label>
-        <div class="search-box">
-          <input id="symbolSearch" type="text" value="GC" placeholder="GC · DX · Gold Futures · XAUUSD · USD Index" autocomplete="off" spellcheck="false" />
-          <button id="symbolGo" type="button">Go</button>
+        <label for="symbolSelect">Instrument</label>
+        <div class="asset-select-wrap">
+          <select id="symbolSelect" class="dash-select" aria-label="Select instrument">
+            <option value="gold">Gold (XAU/USD)</option>
+          </select>
         </div>
-        <span id="resolveNote" class="panel-src" style="color:var(--text-faint)">GC → Gold Futures · XAUUSD</span>
+        <span id="resolveNote" class="panel-src" style="color:var(--text-faint)">FOREXCOM:XAUUSD</span>
       </div>
       <div style="display:flex; align-items:center; gap:10px">
         <label>Timeframe</label>
         <div class="tf-toggle" id="tfToggle" role="group" aria-label="Timeframe">
-          <button data-tf="D" class="active" type="button">Daily</button>
-          <button data-tf="W" type="button">Weekly</button>
+          <button data-tf="W" class="active" type="button">Weekly</button>
           <button data-tf="M" type="button">Monthly</button>
           <button data-tf="Q" type="button">Quarterly</button>
         </div>
       </div>
-      <span class="regime-chip" id="regimeChip">REGIME: {CURRENT_REGIME.toUpperCase()}</span>
+      <span class="regime-chip" id="regimeChip">REGIME: —</span>
     </div>
 
     <div class="dash-panel">
       <div class="panel-head">
         <div class="panel-title">Panel 1 — Price / Volume</div>
         <div class="panel-src">
-          <span>Source: <b>Exchange feed vendor</b></span>
-          <span>Refresh: <b>Continuous / Per timeframe</b></span>
-          <span>Age: <b>Live streaming tape (mock)</b></span>
+          <span id="priceStat">Last <b>—</b></span>
+          <span>Source: <b>Automated OHLCV feed</b></span>
+          <span>Refresh: <b>60 s auto-sync</b></span>
+          <span id="priceAge">Updated: <b>—</b></span>
         </div>
       </div>
       <div id="priceChart" class="chart"></div>
@@ -50,11 +57,12 @@ import { CURRENT_REGIME, LAST_SESSION_DATE, COT_DATA_DATE } from '../scripts/moc
 
     <div class="dash-panel">
       <div class="panel-head">
-        <div class="panel-title">Panel 2 — Open Interest</div>
+        <div class="panel-title">Panel 2 — Futures Open Interest</div>
         <div class="panel-src">
-          <span>Source: <b>CME Group Daily Settlement</b></span>
-          <span>Refresh: <b>Once daily post-settlement</b></span>
-          <span id="oiAge">Age: <b>As of: {LAST_SESSION_DATE}</b></span>
+          <span id="oiStat">Latest <b>—</b></span>
+          <span>Source: <b>CFTC futures open interest</b></span>
+          <span>Refresh: <b>Weekly · Fri 15:30 ET</b></span>
+          <span id="oiAge">Report: <b>—</b></span>
         </div>
       </div>
       <div id="oiChart" class="chart"></div>
@@ -62,11 +70,12 @@ import { CURRENT_REGIME, LAST_SESSION_DATE, COT_DATA_DATE } from '../scripts/moc
 
     <div class="dash-panel">
       <div class="panel-head">
-        <div class="panel-title">Panel 3 — Commercial Net Positioning (Weekly COT)</div>
+        <div class="panel-title">Panel 3 — Commercial vs Large Speculator Net (Weekly COT)</div>
         <div class="panel-src">
-          <span>Source: <b>CFTC Disaggregated Report</b></span>
-          <span>Refresh: <b>Weekly (Friday 15:30 ET)</b></span>
-          <span id="cotAge">Age: <b>Data Date: {COT_DATA_DATE} (prior Tuesday)</b></span>
+          <span id="cotStat">Commercials <b>—</b></span>
+          <span>Source: <b>CFTC Disaggregated / TFF</b></span>
+          <span>Refresh: <b>Weekly · Fri 15:30 ET</b></span>
+          <span id="cotAge">Report: <b>—</b></span>
         </div>
       </div>
       <div id="cotChart" class="chart"></div>
@@ -96,18 +105,73 @@ import { CURRENT_REGIME, LAST_SESSION_DATE, COT_DATA_DATE } from '../scripts/moc
         </div>
         <div class="comp-cell">
           <span class="k">Current Regime</span>
-          <span class="v" id="regimeValue">{CURRENT_REGIME}</span>
+          <span class="v" id="regimeValue">—</span>
           <span class="sub">Macro Analysis Engine</span>
         </div>
       </div>
       <div class="composite-foot">
-        <span id="footAttrib">Attribution: CME "As of: date" · CFTC "Data Date: prior Tuesday"</span>
+        <span id="footAttrib">Attribution: CFTC "Data Date: prior Tuesday" · automated ingest</span>
         <span>Operational Note: Composite Flag indicates alignment; it is not an unhedged autonomous order command.</span>
       </div>
     </aside>
   </main>
+
   <script>
     import { mountDashboard } from '../scripts/dashboard.ts';
     mountDashboard();
   </script>
+
+  <style>
+    .dash-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 16px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+    .dash-live-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #3dd68c;
+      box-shadow: 0 0 10px rgba(61, 214, 140, 0.9);
+      animation: dashPulse 2s ease-in-out infinite;
+    }
+    @keyframes dashPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .asset-select-wrap { position: relative; display: inline-block; }
+    .asset-select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--text-faint);
+      font-size: 0.75rem;
+    }
+    .dash-select {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--text);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 32px 8px 12px;
+      min-width: 230px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+    }
+    .dash-select:hover, .dash-select:focus { border-color: var(--accent); }
+    .dash-select option { background: var(--bg-panel); color: var(--text); }
+    #priceChart { height: 420px; }
+    #oiChart { height: 240px; }
+    #cotChart { height: 260px; }
+    .panel-src span b { color: var(--text-dim); }
+    .panel-src #priceStat, .panel-src #oiStat, .panel-src #cotStat { color: var(--accent-warm); }
+  </style>
 </BaseLayout>

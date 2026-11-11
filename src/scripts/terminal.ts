@@ -93,7 +93,7 @@ function $(id: string): HTMLElement {
 const el = (id: string): HTMLElement | null => document.getElementById(id);
 
 const POLL_INTERVAL_MS = 60_000;
-const TV_LOAD_TIMEOUT_MS = 7000;
+const TV_LOAD_TIMEOUT_MS = 15000;
 
 /* ------------------------------------------------------------------ */
 /* Module state                                                        */
@@ -104,8 +104,6 @@ let activeId = 'gold';
 let cotMode: 'candles' | 'histo' | 'line' = 'candles';
 let chartType = '1';
 let timeframe = '15';
-let tvWidget: any = null;
-let tvChartApi: any = null;
 let tvCotWidget: any = null;
 let tvCotStarted = false;
 let cotLwChart: IChartApi | null = null;
@@ -120,8 +118,6 @@ const FALLBACK_SYMBOL = 'FOREXCOM:XAUUSD';
 
 const current = (): InstrumentState | null =>
   state?.instruments.find((i) => i.id === activeId) ?? state?.instruments[0] ?? null;
-
-const currentTvSymbol = (): string => current()?.tvLiveSymbol ?? FALLBACK_SYMBOL;
 
 /* ------------------------------------------------------------------ */
 /* Formatting                                                          */
@@ -153,22 +149,6 @@ function setPulse(kind: 'connecting' | 'live' | 'dead', label: string): void {
   if (labelEl) labelEl.textContent = label;
 }
 
-/* ------------------------------------------------------------------ */
-/* TradingView live widget (tv.js CDN)                                 */
-/* ------------------------------------------------------------------ */
-
-function loadTradingView(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.TradingView) return resolve();
-    const s = document.createElement('script');
-    s.src = 'https://s3.tradingview.com/tv.js';
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('tv.js CDN failed to load'));
-    document.head.appendChild(s);
-  });
-}
-
 const TV_OVERRIDES = {
   'paneProperties.background': '#0B0E14',
   'paneProperties.vertGridProperties.color': '#1B2230',
@@ -181,71 +161,140 @@ const TV_OVERRIDES = {
   'mainSeriesProperties.candleStyle.borderDownColor': '#E0656B',
 };
 
-function tvWidgetOptions(symbol: string): Record<string, unknown> {
-  return {
-    container_id: 'tv-live-chart',
+/* ------------------------------------------------------------------ */
+/* TradingView Advanced Chart embed (full drawing toolbar)             */
+/* ------------------------------------------------------------------ */
+
+/** tv.js is still used by the optional COT tab; the price chart uses the embed. */
+function loadTradingView(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.TradingView) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://s3.tradingview.com/tv.js';
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('tv.js CDN failed to load'));
+    document.head.appendChild(s);
+  });
+}
+
+const TV_EMBED_SRC = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+let tvEmbedWatchdog: number | null = null;
+
+/** Map the terminal timeframe buttons to TradingView intervals. */
+function tvInterval(): string {
+  switch (timeframe) {
+    case '1': return '1';
+    case '5': return '5';
+    case '15': return '15';
+    case '60': return '60';
+    case '240': return '240';
+    case 'D': return 'D';
+    case 'W': return 'W';
+    default: return '15';
+  }
+}
+
+/** 1 = candles, 0 = bars, 2 = line — same mapping as TradingView. */
+function tvStyle(): string {
+  return chartType === '2' ? '2' : chartType === '0' ? '0' : '1';
+}
+
+function syncEngineButtons(): void {
+  document.querySelectorAll<HTMLButtonElement>('#engineBtns button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.engine === chartEngine);
+  });
+}
+
+/**
+ * Render the official TradingView Advanced Chart widget. It ships the complete
+ * TradingView toolbar: drawing tools, Fibonacci, indicators, symbol search.
+ */
+function renderTradingView(): void {
+  const host = el('tv-live-chart');
+  if (!host) return;
+
+  chartEngine = 'tradingview';
+  syncEngineButtons();
+  setPulse('connecting', 'CONNECTING TO TRADINGVIEW…');
+
+  const lw = el('lw-live-chart');
+  if (lw) lw.hidden = true;
+  const fallbackNote = el('tvFallback');
+  if (fallbackNote) fallbackNote.hidden = true;
+  host.style.display = '';
+  host.innerHTML = '';
+
+  const container = document.createElement('div');
+  container.className = 'tradingview-widget-container';
+  container.style.cssText = 'width:100%;height:100%';
+  const widgetHost = document.createElement('div');
+  widgetHost.className = 'tradingview-widget-container__widget';
+  widgetHost.style.cssText = 'width:100%;height:100%';
+  container.appendChild(widgetHost);
+  host.appendChild(container);
+
+  const inst = current();
+  const symbol = inst?.tvLiveSymbol ?? FALLBACK_SYMBOL;
+
+  const script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.async = true;
+  script.src = TV_EMBED_SRC;
+  script.innerHTML = JSON.stringify({
     autosize: true,
     symbol,
-    interval: timeframe,
+    interval: tvInterval(),
     timezone: 'Etc/UTC',
     theme: 'dark',
-    style: Number(chartType),
+    style: tvStyle(),
     locale: 'en',
-    toolbar_bg: '#151921',
     enable_publishing: false,
     allow_symbol_change: true,
     withdateranges: true,
     hide_side_toolbar: false,
-    details: true,
+    hide_top_toolbar: false,
+    hide_legend: false,
+    hide_volume: false,
+    save_image: false,
+    calendar: false,
+    details: false,
     studies: [],
-    overrides: TV_OVERRIDES,
+    support_host: 'https://www.tradingview.com',
+  });
+  script.onerror = () => {
+    if (chartEngine === 'tradingview') activateFallbackChart('TradingView embed blocked');
   };
-}
+  container.appendChild(script);
 
-function initLiveWidget(): void {
-  let settled = false;
-  const timer = window.setTimeout(() => {
-    if (!settled) {
-      settled = true;
-      activateFallbackChart('TradingView stream timed out');
+  const foot = el('liveFoot');
+  if (foot) {
+    foot.innerHTML =
+      'Engine: <b>TradingView Advanced Chart</b> · drawing tools, Fibonacci, indicators and symbol ' +
+      'search enabled · Data: TradingView real-time feed';
+  }
+
+  // The embed gives no ready callback, so watch for its iframe. A mutation
+  // observer flips the status the moment the chart appears; the timeout is
+  // only the failure path.
+  if (tvEmbedWatchdog) window.clearTimeout(tvEmbedWatchdog);
+  const readyObserver = new MutationObserver(() => {
+    if (!host.querySelector('iframe')) return;
+    readyObserver.disconnect();
+    if (tvEmbedWatchdog) window.clearTimeout(tvEmbedWatchdog);
+    if (chartEngine === 'tradingview') {
+      setPulse('live', 'TRADINGVIEW CHARTS · DRAWING TOOLS ENABLED');
+    }
+  });
+  readyObserver.observe(container, { childList: true, subtree: true });
+  tvEmbedWatchdog = window.setTimeout(() => {
+    readyObserver.disconnect();
+    if (host.querySelector('iframe')) {
+      setPulse('live', 'TRADINGVIEW CHARTS · DRAWING TOOLS ENABLED');
+    } else if (chartEngine === 'tradingview') {
+      activateFallbackChart('TradingView did not render');
     }
   }, TV_LOAD_TIMEOUT_MS);
-
-  loadTradingView()
-    .then(() => {
-      if (settled) return;
-      tvWidget = new window.TradingView.widget(tvWidgetOptions(currentTvSymbol()));
-      tvWidget.onChartReady(() => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(timer);
-        chartEngine = 'tradingview';
-        tvChartApi = tvWidget.chart();
-        try { tvChartApi.setChartType(Number(chartType)); } catch { /* ignore */ }
-        setPulse('live', 'REAL-TIME TRADINGVIEW STREAM ACTIVE');
-        const fallback = el('tvFallback');
-        if (fallback) fallback.hidden = true;
-      });
-    })
-    .catch(() => {
-      if (settled) return;
-      settled = true;
-      window.clearTimeout(timer);
-      activateFallbackChart('TradingView unreachable');
-    });
-}
-
-function applyTvControls(): void {
-  if (!tvChartApi) return;
-  try { tvChartApi.setChartType(Number(chartType)); } catch { /* ignore */ }
-  try { tvChartApi.setResolution(timeframe); } catch { /* ignore */ }
-}
-
-function switchTvSymbol(symbol: string): void {
-  if (chartEngine === 'tradingview' && tvChartApi) {
-    try { tvChartApi.setSymbol(symbol); return; } catch { /* fall through */ }
-  }
-  if (chartEngine === 'fallback') void loadLiveFallbackData();
 }
 
 /* ------------------------------------------------------------------ */
@@ -333,21 +382,26 @@ function yahooWindow(): { range: string; interval: string } {
 
 function activateFallbackChart(reason: string): void {
   chartEngine = 'fallback';
+  syncEngineButtons();
   setPulse('live', 'LIVE CHART ACTIVE · AUTOMATED FEED');
 
   const tvContainer = el('tv-live-chart');
-  if (tvContainer) tvContainer.style.display = 'none';
+  if (tvContainer) {
+    tvContainer.style.display = 'none';
+    // Kill the embed iframe so TradingView stops streaming in the background.
+    tvContainer.innerHTML = '';
+  }
   const lwContainer = el('lw-live-chart');
   if (lwContainer) lwContainer.hidden = false;
   const fallback = el('tvFallback');
   if (fallback) fallback.hidden = true;
 
-  // Keep a subtle note in the panel footer about the engine switch.
-  const foot = document.querySelector('.term-root .panel-foot');
+  // Keep a clear note in the chart footer about the engine switch.
+  const foot = el('liveFoot');
   if (foot) {
     foot.innerHTML =
-      `Drawing tools &amp; indicators: <b>enabled</b> · Engine: Lightweight Charts (${reason}) ` +
-      '· Data: automated Yahoo OHLC proxy — no manual refresh required';
+      `Engine: <b>Basic</b> (Lightweight Charts — ${reason}) · Data: automated Yahoo OHLC proxy ` +
+      '· switch back to TradingView any time — no manual refresh required';
   }
 
   buildLiveFallbackChart();
@@ -635,25 +689,10 @@ function updateCotChartData(inst: InstrumentState): void {
 /* ------------------------------------------------------------------ */
 
 function renderPills(): void {
-  if (!state) return;
-  const wrap = el('assetPills');
-  if (wrap) {
-    wrap.innerHTML = state.instruments
-      .map(
-        (i) =>
-          `<button type="button" role="tab" aria-selected="${i.id === activeId}" class="asset-pill${
-            i.id === activeId ? ' active' : ''
-          }" data-asset="${i.id}">${i.displayName}</button>`,
-      )
-      .join('');
-    wrap.querySelectorAll<HTMLButtonElement>('.asset-pill').forEach((b) => {
-      b.addEventListener('click', () => switchInstrument(b.dataset.asset ?? 'gold'));
-    });
-  }
   renderAssetSelect();
 }
 
-/** The prominent "Asset / Pair" dropdown in the chart control bar. */
+/** The single "Asset / Pair" dropdown lives in the sticky quick bar. */
 function renderAssetSelect(): void {
   const select = el('assetSelect') as HTMLSelectElement | null;
   if (!select || !state) return;
@@ -801,18 +840,14 @@ function renderInstrument(inst: InstrumentState, bust: number): void {
 function switchInstrument(id: string): void {
   if (!state) return;
   activeId = id;
-  document.querySelectorAll<HTMLButtonElement>('.asset-pill').forEach((b) => {
-    const active = b.dataset.asset === id;
-    b.classList.toggle('active', active);
-    b.setAttribute('aria-selected', String(active));
-  });
   const select = el('assetSelect') as HTMLSelectElement | null;
   if (select) select.value = id;
 
   const inst = current();
   if (!inst) return;
   renderInstrument(inst, Date.now());
-  switchTvSymbol(inst.tvLiveSymbol);
+  if (chartEngine === 'tradingview') renderTradingView();
+  else void loadLiveFallbackData();
   if (tvCotWidget && typeof tvCotWidget.setSymbol === 'function') {
     try { tvCotWidget.setSymbol(inst.tvFuturesSymbol); } catch { /* ignore */ }
   }
@@ -869,33 +904,6 @@ async function poll(): Promise<void> {
 /* Boot                                                                */
 /* ------------------------------------------------------------------ */
 
-/** Point the MCP / REST cards at the actual Worker host. */
-function renderAiLinks(): void {
-  if (!API_BASE) return;
-  const mcp = el('mcpUrl');
-  if (mcp) mcp.textContent = `${API_BASE}/mcp`;
-  const stateUrl = el('stateUrl');
-  if (stateUrl) stateUrl.textContent = `${API_BASE}/api/terminal/state`;
-}
-
-function wireCopyButtons(): void {
-  document.querySelectorAll<HTMLButtonElement>('.ai-copy').forEach((b) => {
-    b.addEventListener('click', async () => {
-      const target = b.dataset.copy;
-      const text = (target ? el(target)?.textContent : '')?.trim() ?? '';
-      if (!text) return;
-      try {
-        await navigator.clipboard.writeText(text);
-        const prev = b.textContent;
-        b.textContent = 'Copied ✓';
-        window.setTimeout(() => { b.textContent = prev; }, 1500);
-      } catch {
-        /* clipboard permission blocked — the URL stays selectable */
-      }
-    });
-  });
-}
-
 /** Run one init block; a single failure must never abort the whole app. */
 function guard(name: string, fn: () => void): void {
   try {
@@ -906,14 +914,14 @@ function guard(name: string, fn: () => void): void {
 }
 
 export function initTerminal(): void {
-  // Chart-type controls (live price panel + fallback engine).
+  // Chart-type controls (TradingView embed + Basic engine).
   guard('chart-type', () => {
     $('chartTypeBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
       b.addEventListener('click', () => {
         chartType = b.dataset.type ?? '1';
         document.querySelectorAll('#chartTypeBtns button').forEach((x) => x.classList.toggle('active', x === b));
-        if (chartEngine === 'tradingview' && tvChartApi) {
-          try { tvChartApi.setChartType(Number(chartType)); } catch { /* ignore */ }
+        if (chartEngine === 'tradingview') {
+          renderTradingView();
         } else if (chartEngine === 'fallback') {
           buildLiveFallbackChart();
           void loadLiveFallbackData();
@@ -928,11 +936,41 @@ export function initTerminal(): void {
       b.addEventListener('click', () => {
         timeframe = b.dataset.tf ?? '15';
         document.querySelectorAll('#timeframeBtns button').forEach((x) => x.classList.toggle('active', x === b));
-        if (chartEngine === 'tradingview' && tvChartApi) {
-          try { tvChartApi.setResolution(timeframe); } catch { /* ignore */ }
+        if (chartEngine === 'tradingview') {
+          renderTradingView();
         } else if (chartEngine === 'fallback') {
           void loadLiveFallbackData();
         }
+      });
+    });
+  });
+
+  // Chart engine switch (TradingView tools ↔ guaranteed Basic chart).
+  guard('engine', () => {
+    $('engineBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        if (b.dataset.engine === 'fallback') {
+          activateFallbackChart('manual switch');
+        } else {
+          renderTradingView();
+        }
+      });
+    });
+  });
+
+  // Quick-access anchors — jump without scrolling hunting, and open the
+  // cross-asset tab before jumping to it.
+  guard('quick-nav', () => {
+    document.querySelectorAll<HTMLAnchorElement>('.tq-link[href^="#"]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        const id = (a.getAttribute('href') ?? '').slice(1);
+        if (!id) return;
+        if (id === 'cross-asset') activateHubTab('finviz');
+        const target = el(id);
+        if (!target) return;
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.replaceState(null, '', `#${id}`);
       });
     });
   });
@@ -952,27 +990,28 @@ export function initTerminal(): void {
   // Hub tabs.
   guard('hub-tabs', () => {
     $('hubTabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
-      b.addEventListener('click', () => {
-        const tab = b.dataset.tab ?? 'cftc';
-        document.querySelectorAll('#hubTabs button').forEach((x) => {
-          const active = x === b;
-          x.classList.toggle('active', active);
-          x.setAttribute('aria-selected', String(active));
-        });
-        (['cftc', 'tvcot', 'finviz'] as const).forEach((t) => {
-          const panel = el('tab-' + t);
-          if (panel) panel.hidden = t !== tab;
-        });
-        if (tab === 'tvcot') initCotWidget();
-      });
+      b.addEventListener('click', () => activateHubTab(b.dataset.tab ?? 'cftc'));
     });
   });
 
   // Live price chart + automated state polling. No manual refresh anywhere.
-  guard('ai-links', () => { renderAiLinks(); wireCopyButtons(); });
-  guard('live-chart', () => initLiveWidget());
+  guard('live-chart', () => renderTradingView());
   guard('poll', () => {
     void poll();
     window.setInterval(() => void poll(), POLL_INTERVAL_MS);
   });
+}
+
+/** Switch the macro hub tab, keeping ARIA state and lazy widgets in sync. */
+function activateHubTab(tab: string): void {
+  document.querySelectorAll<HTMLButtonElement>('#hubTabs button').forEach((b) => {
+    const active = b.dataset.tab === tab;
+    b.classList.toggle('active', active);
+    b.setAttribute('aria-selected', String(active));
+  });
+  (['cftc', 'tvcot', 'finviz'] as const).forEach((t) => {
+    const panel = el('tab-' + t);
+    if (panel) panel.hidden = t !== tab;
+  });
+  if (tab === 'tvcot') initCotWidget();
 }
