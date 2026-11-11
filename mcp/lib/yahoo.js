@@ -36,6 +36,49 @@ export async function fetchYahooChart(ticker, range = '3mo', interval = '1d') {
   }
 }
 
+/**
+ * Full OHLCV bars for the on-site price chart (TradingView fallback).
+ * Returns `{ symbol, interval, bars: [{ time, open, high, low, close, volume }] }`
+ * with `time` as a Unix timestamp in seconds (Lightweight Charts format).
+ */
+export async function fetchYahooOhlc(ticker, range = '5d', interval = '15m') {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    ticker,
+  )}?range=${range}&interval=${interval}&includePrePost=false`;
+  try {
+    const res = await fetch(url, {
+      headers: { 'user-agent': UA, accept: 'application/json' },
+      signal: AbortSignal.timeout(25_000),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const r = json.chart?.result?.[0];
+    if (!r?.timestamp) return null;
+    const q = r.indicators?.quote?.[0] ?? {};
+    const bars = [];
+    for (let i = 0; i < r.timestamp.length; i++) {
+      const open = q.open?.[i];
+      const high = q.high?.[i];
+      const low = q.low?.[i];
+      const close = q.close?.[i];
+      if (typeof open !== 'number' || typeof high !== 'number' || typeof low !== 'number' || typeof close !== 'number') {
+        continue;
+      }
+      bars.push({
+        time: r.timestamp[i],
+        open,
+        high,
+        low,
+        close,
+        volume: typeof q.volume?.[i] === 'number' ? q.volume[i] : 0,
+      });
+    }
+    return bars.length ? { symbol: r.meta?.symbol ?? ticker, interval, bars } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Best-effort v7 quote behind the cookie+crumb flow; null on any failure. */
 export async function fetchYahooQuote(ticker) {
   try {

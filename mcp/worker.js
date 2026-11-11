@@ -21,8 +21,11 @@ import {
   FINVIZ_CODES,
 } from "./lib/instruments.js";
 import {
+  CHART_INTERVALS,
+  CHART_RANGES,
   bootstrapIfStale,
   buildTerminalState,
+  chartSeries,
   finvizImage,
   readStatus,
   runScheduled,
@@ -318,6 +321,32 @@ export default {
           "cache-control": "public, max-age=300",
         },
       });
+    }
+
+    if (path === "/api/chart") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      const id = (url.searchParams.get("id") ?? "gold").toLowerCase();
+      const range = (url.searchParams.get("range") ?? "5d").toLowerCase();
+      const interval = (url.searchParams.get("interval") ?? "15m").toLowerCase();
+      if (!CHART_RANGES.has(range)) {
+        return jsonResponse({ error: "invalid range", allowed: [...CHART_RANGES] }, 400);
+      }
+      if (!CHART_INTERVALS.has(interval)) {
+        return jsonResponse({ error: "invalid interval", allowed: [...CHART_INTERVALS] }, 400);
+      }
+      try {
+        const series = await chartSeries(id, range, interval);
+        if (!series) return jsonResponse({ error: "no chart data for instrument", id }, 502);
+        return new Response(JSON.stringify(series), {
+          headers: {
+            ...corsHeaders(),
+            "content-type": "application/json; charset=utf-8",
+            "cache-control": "public, max-age=60",
+          },
+        });
+      } catch (err) {
+        return jsonResponse({ error: String(err?.message ?? err) }, 502);
+      }
     }
 
     return new Response(null, { status: 404, headers: corsHeaders() });

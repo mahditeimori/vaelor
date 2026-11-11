@@ -11,7 +11,7 @@
  *   - bootstrapIfStale : first HTTP request after a cold/empty cache seeds in the background
  *   - buildTerminalState: KV-only read, safe for 60s frontend polling
  */
-import { INSTRUMENTS } from './instruments.js';
+import { INSTRUMENTS, INSTRUMENT_BY_ID } from './instruments.js';
 import * as cftc from './cftc.js';
 import * as yahoo from './yahoo.js';
 
@@ -465,6 +465,20 @@ export async function buildTerminalState(env) {
   );
 
   return { generatedAt: isoNow(), serverTime: new Date().toISOString(), sync, instruments };
+}
+
+/* ------------------------------------------------------------------ */
+/* Price chart proxy (TradingView fallback)                            */
+/* ------------------------------------------------------------------ */
+
+/** Allowed intraday ranges/intervals for the on-site OHLC proxy. */
+export const CHART_RANGES = new Set(['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y']);
+export const CHART_INTERVALS = new Set(['1m', '5m', '15m', '30m', '1h', '1d', '1wk']);
+
+export async function chartSeries(id, range = '5d', interval = '15m') {
+  const inst = INSTRUMENT_BY_ID.get(id);
+  if (!inst) return null;
+  return await yahoo.fetchYahooOhlc(inst.yahooFuturesTicker, range, interval);
 }
 
 /* ------------------------------------------------------------------ */

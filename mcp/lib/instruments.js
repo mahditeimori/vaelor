@@ -7,7 +7,7 @@ export const INSTRUMENTS = [
   {
     id: 'gold',
     displayName: 'Gold (XAU/USD)',
-    tvLiveSymbol: 'OANDA:XAUUSD',
+    tvLiveSymbol: 'FOREXCOM:XAUUSD',
     tvFuturesSymbol: 'COMEX:GC1!',
     cftcContractCode: '088691',
     cftcReportSource: 'disaggregated',
@@ -17,7 +17,7 @@ export const INSTRUMENTS = [
   {
     id: 'silver',
     displayName: 'Silver (XAG/USD)',
-    tvLiveSymbol: 'OANDA:XAGUSD',
+    tvLiveSymbol: 'FOREXCOM:XAGUSD',
     tvFuturesSymbol: 'COMEX:SI1!',
     cftcContractCode: '084691',
     cftcReportSource: 'disaggregated',

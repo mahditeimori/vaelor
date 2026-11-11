@@ -1,17 +1,19 @@
 /**
  * Institutional Market Structure & Macro Terminal — client engine.
  *
- * Responsibilities (fully automated, zero manual refresh):
- *  - boots the TradingView tv.js live chart (sub-second WebSocket stream)
- *  - renders the CFTC COT visualizer with Lightweight Charts (candle/histogram/line)
- *  - silently polls /api/terminal/state every 60 seconds with cache busting and
- *    re-renders KPIs, charts and Finviz panels in place (no page reload)
+ * Fully automated, zero manual refresh:
+ *  - TradingView Advanced Real-Time chart (tv.js CDN) when reachable
+ *  - Automatic Lightweight Charts fallback fed by the Worker `/api/chart` proxy,
+ *    so a live price chart is ALWAYS visible even if TradingView is blocked
+ *  - CFTC COT visualizer (candle / histogram / line)
+ *  - 60-second silent poll of /api/terminal/state with cache busting
  */
 import {
   createChart,
   ColorType,
   CrosshairMode,
   CandlestickSeries,
+  BarSeries,
   HistogramSeries,
   LineSeries,
   type IChartApi,
@@ -20,7 +22,7 @@ import {
 
 /**
  * Base URL of the Cloudflare Worker that owns the macro/COT pipeline.
- * Overridable per page with `data-api="https://…"` on #chart-section-root.
+ * Overridable per page with `data-api="https://…"` on #institutional-chart-section.
  */
 const API_BASE = (
   document.getElementById('institutional-chart-section')?.getAttribute('data-api') ?? ''
@@ -71,6 +73,8 @@ interface TerminalState {
   };
   instruments: InstrumentState[];
 }
+interface ChartBar { time: number; open: number; high: number; low: number; close: number; volume: number }
+interface ChartPayload { symbol: string; interval: string; bars: ChartBar[] }
 
 declare global {
   interface Window { TradingView?: any }
@@ -86,7 +90,10 @@ function $(id: string): HTMLElement {
   return el;
 }
 
+const el = (id: string): HTMLElement | null => document.getElementById(id);
+
 const POLL_INTERVAL_MS = 60_000;
+const TV_LOAD_TIMEOUT_MS = 7000;
 
 /* ------------------------------------------------------------------ */
 /* Module state                                                        */
@@ -104,11 +111,17 @@ let tvCotStarted = false;
 let cotLwChart: IChartApi | null = null;
 let cotLwSeries: ISeriesApi<any>[] = [];
 let polling = false;
+let chartEngine: 'none' | 'tradingview' | 'fallback' = 'none';
+let lwLiveChart: IChartApi | null = null;
+let lwLiveSeries: ISeriesApi<any>[] = [];
+let lwLoading = false;
 
-const current = (): InstrumentState => {
-  const s = state?.instruments.find((i) => i.id === activeId);
-  return s ?? (state?.instruments[0] as InstrumentState);
-};
+const FALLBACK_SYMBOL = 'FOREXCOM:XAUUSD';
+
+const current = (): InstrumentState | null =>
+  state?.instruments.find((i) => i.id === activeId) ?? state?.instruments[0] ?? null;
+
+const currentTvSymbol = (): string => current()?.tvLiveSymbol ?? FALLBACK_SYMBOL;
 
 /* ------------------------------------------------------------------ */
 /* Formatting                                                          */
@@ -130,9 +143,14 @@ const signClass = (n: number | null): string => (n == null ? '' : n > 0 ? 'pos' 
 /* ------------------------------------------------------------------ */
 
 function setPulse(kind: 'connecting' | 'live' | 'dead', label: string): void {
-  const dot = $('pulseDot');
-  dot.className = `pulse-dot ${kind === 'live' ? 'pulse-live' : kind === 'dead' ? 'pulse-dead' : 'pulse-connecting'}`;
-  $('pulseLabel').textContent = label;
+  const dot = el('pulseDot');
+  const labelEl = el('pulseLabel');
+  if (dot) {
+    dot.className = `pulse-dot ${
+      kind === 'live' ? 'pulse-live' : kind === 'dead' ? 'pulse-dead' : 'pulse-connecting'
+    }`;
+  }
+  if (labelEl) labelEl.textContent = label;
 }
 
 /* ------------------------------------------------------------------ */
@@ -163,109 +181,75 @@ const TV_OVERRIDES = {
   'mainSeriesProperties.candleStyle.borderDownColor': '#E0656B',
 };
 
+function tvWidgetOptions(symbol: string): Record<string, unknown> {
+  return {
+    container_id: 'tv-live-chart',
+    autosize: true,
+    symbol,
+    interval: timeframe,
+    timezone: 'Etc/UTC',
+    theme: 'dark',
+    style: Number(chartType),
+    locale: 'en',
+    toolbar_bg: '#151921',
+    enable_publishing: false,
+    allow_symbol_change: true,
+    withdateranges: true,
+    hide_side_toolbar: false,
+    details: true,
+    studies: [],
+    overrides: TV_OVERRIDES,
+  };
+}
+
 function initLiveWidget(): void {
+  let settled = false;
+  const timer = window.setTimeout(() => {
+    if (!settled) {
+      settled = true;
+      activateFallbackChart('TradingView stream timed out');
+    }
+  }, TV_LOAD_TIMEOUT_MS);
+
   loadTradingView()
     .then(() => {
-      const inst = current();
-      tvWidget = new window.TradingView.widget({
-        container_id: 'tv-live-chart',
-        autosize: true,
-        symbol: inst.tvLiveSymbol,
-        interval: timeframe,
-        timezone: 'Etc/UTC',
-        theme: 'dark',
-        style: chartType,
-        locale: 'en',
-        toolbar_bg: '#151921',
-        enable_publishing: false,
-        allow_symbol_change: false,
-        withdateranges: true,
-        fullscreen: true,
-        studies: [],
-        overrides: TV_OVERRIDES,
-      });
+      if (settled) return;
+      tvWidget = new window.TradingView.widget(tvWidgetOptions(currentTvSymbol()));
       tvWidget.onChartReady(() => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        chartEngine = 'tradingview';
         tvChartApi = tvWidget.chart();
-        setPulse('live', 'REAL-TIME STREAM ACTIVE');
-        applyTvControls();
+        try { tvChartApi.setChartType(Number(chartType)); } catch { /* ignore */ }
+        setPulse('live', 'REAL-TIME TRADINGVIEW STREAM ACTIVE');
+        const fallback = el('tvFallback');
+        if (fallback) fallback.hidden = true;
       });
     })
     .catch(() => {
-      setPulse('dead', 'STREAM UNAVAILABLE');
-      $('tvFallback').hidden = false;
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      activateFallbackChart('TradingView unreachable');
     });
 }
 
 function applyTvControls(): void {
   if (!tvChartApi) return;
-  try { tvChartApi.setChartType(chartType); } catch { /* ignore */ }
+  try { tvChartApi.setChartType(Number(chartType)); } catch { /* ignore */ }
   try { tvChartApi.setResolution(timeframe); } catch { /* ignore */ }
 }
 
 function switchTvSymbol(symbol: string): void {
-  if (!tvWidget) return;
-  if (typeof tvWidget.setSymbol === 'function') {
-    tvWidget.setSymbol(symbol);
-  } else {
-    // Older embed: recreate the widget with the new symbol.
-    const inst = current();
-    tvWidget = new window.TradingView.widget({
-      container_id: 'tv-live-chart',
-      autosize: true,
-      symbol: inst.tvLiveSymbol,
-      interval: timeframe,
-      timezone: 'Etc/UTC',
-      theme: 'dark',
-      style: chartType,
-      locale: 'en',
-      toolbar_bg: '#151921',
-      enable_publishing: false,
-      allow_symbol_change: false,
-      withdateranges: true,
-      fullscreen: true,
-      studies: [],
-      overrides: TV_OVERRIDES,
-    });
-    tvWidget.onChartReady(() => {
-      tvChartApi = tvWidget.chart();
-      applyTvControls();
-    });
+  if (chartEngine === 'tradingview' && tvChartApi) {
+    try { tvChartApi.setSymbol(symbol); return; } catch { /* fall through */ }
   }
-}
-
-/** Lazily created the first time tab 2 (TradingView COT & OI) is opened. */
-function initCotWidget(): void {
-  if (tvCotStarted) return;
-  tvCotStarted = true;
-  loadTradingView()
-    .then(() => {
-      const inst = current();
-      tvCotWidget = new window.TradingView.widget({
-        container_id: 'tv-cot-chart',
-        autosize: true,
-        symbol: inst.tvFuturesSymbol,
-        interval: '1W',
-        timezone: 'Etc/UTC',
-        theme: 'dark',
-        style: '1',
-        locale: 'en',
-        toolbar_bg: '#151921',
-        enable_publishing: false,
-        allow_symbol_change: false,
-        withdateranges: true,
-        studies: [],
-        overrides: TV_OVERRIDES,
-      });
-      tvCotWidget.onChartReady(() => {
-        try { tvCotWidget.chart().createStudy('COT', false, false); } catch { /* optional study */ }
-        try { tvCotWidget.chart().createStudy('OpenInterest@tv-basicstudies', false, false); } catch { /* optional study */ }
-      });
-    })
-    .catch(() => { /* the CFTC tab remains authoritative */ });
+  if (chartEngine === 'fallback') void loadLiveFallbackData();
 }
 
 /* ------------------------------------------------------------------ */
-/* Lightweight Charts COT visualizer                                   */
+/* Lightweight Charts — guaranteed live price fallback                 */
 /* ------------------------------------------------------------------ */
 
 const LW_LAYOUT = {
@@ -279,26 +263,234 @@ const LW_GRID = {
   horzLines: { color: '#1D232D' },
 };
 
-function cotTimeData(series: CotSeriesRow[]): { time: string; value: number }[] {
-  return series.map((r) => ({ time: r.date, value: r.commNet }));
+/** Measure a container, falling back to sane defaults when hidden. */
+function measure(container: HTMLElement): { width: number; height: number } {
+  const rect = container.getBoundingClientRect();
+  return {
+    width: Math.max(1, Math.floor(rect.width || container.clientWidth || 320)),
+    height: Math.max(1, Math.floor(rect.height || container.clientHeight || 300)),
+  };
 }
 
-function buildCotChart(inst: InstrumentState): void {
-  if (cotLwChart) { cotLwChart.remove(); cotLwChart = null; }
-  cotLwSeries = [];
-
-  const el = $('cotChart');
-  const chart = createChart(el, {
-    autoSize: true,
+/** Create a chart at the container's real pixel size and keep it in sync. */
+function mountChart(container: HTMLElement, onResize: (c: IChartApi) => void): IChartApi {
+  const { width, height } = measure(container);
+  const chart = createChart(container, {
+    width,
+    height,
     layout: LW_LAYOUT,
     grid: LW_GRID,
     rightPriceScale: { borderColor: '#262C36' },
     timeScale: { borderColor: '#262C36' },
     crosshair: { mode: CrosshairMode.Normal },
   });
+  const ro = new ResizeObserver(() => {
+    const r = container.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) {
+      chart.applyOptions({ width: Math.floor(r.width), height: Math.floor(r.height) });
+    }
+    onResize(chart);
+  });
+  ro.observe(container);
+  (chart as any).__ro = ro;
+  return chart;
+}
+
+function teardownChart(chart: IChartApi | null): void {
+  if (!chart) return;
+  try { (chart as any).__ro?.disconnect?.(); } catch { /* ignore */ }
+  try { chart.remove(); } catch { /* ignore */ }
+}
+
+/** Map the UI timeframe button to Yahoo range + interval. */
+function yahooWindow(): { range: string; interval: string } {
+  switch (timeframe) {
+    case '1': return { range: '1d', interval: '1m' };
+    case '5': return { range: '5d', interval: '5m' };
+    case '15': return { range: '5d', interval: '15m' };
+    case '60': return { range: '1mo', interval: '1h' };
+    case '240': return { range: '3mo', interval: '1h' };
+    case 'D': return { range: '1y', interval: '1d' };
+    case 'W': return { range: '2y', interval: '1wk' };
+    default: return { range: '5d', interval: '15m' };
+  }
+}
+
+function activateFallbackChart(reason: string): void {
+  chartEngine = 'fallback';
+  setPulse('live', 'LIVE CHART ACTIVE · AUTOMATED FEED');
+
+  const tvContainer = el('tv-live-chart');
+  if (tvContainer) tvContainer.style.display = 'none';
+  const lwContainer = el('lw-live-chart');
+  if (lwContainer) lwContainer.hidden = false;
+  const fallback = el('tvFallback');
+  if (fallback) fallback.hidden = true;
+
+  // Keep a subtle note in the panel footer about the engine switch.
+  const foot = document.querySelector('.term-root .panel-foot');
+  if (foot) {
+    foot.innerHTML =
+      `Drawing tools &amp; indicators: <b>enabled</b> · Engine: Lightweight Charts (${reason}) ` +
+      '· Data: automated Yahoo OHLC proxy — no manual refresh required';
+  }
+
+  buildLiveFallbackChart();
+  void loadLiveFallbackData();
+}
+
+function buildLiveFallbackChart(): void {
+  const container = el('lw-live-chart');
+  if (!container) return;
+  teardownChart(lwLiveChart);
+  lwLiveChart = null;
+  lwLiveSeries = [];
+
+  lwLiveChart = mountChart(container, () => {
+    // No-op: mountChart already applies the new size.
+  });
+  lwLiveChart.applyOptions({
+    rightPriceScale: { borderColor: '#262C36', scaleMargins: { top: 0.08, bottom: 0.28 } },
+    timeScale: { borderColor: '#262C36', timeVisible: true, secondsVisible: false },
+  });
+
+  const chart = lwLiveChart;
+
+  if (chartType === '2') {
+    const s = chart.addSeries(LineSeries, { color: '#c9a24b', lineWidth: 2, priceLineVisible: false });
+    lwLiveSeries = [s];
+  } else if (chartType === '0') {
+    const s = chart.addSeries(BarSeries, {
+      upColor: '#3DD68C',
+      downColor: '#E0656B',
+    });
+    lwLiveSeries = [s];
+  } else {
+    const s = chart.addSeries(CandlestickSeries, {
+      upColor: '#3DD68C',
+      downColor: '#E0656B',
+      borderUpColor: '#3DD68C',
+      borderDownColor: '#E0656B',
+      wickUpColor: '#3DD68C',
+      wickDownColor: '#E0656B',
+    });
+    const vol = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+    lwLiveSeries = [s, vol];
+  }
+}
+
+async function loadLiveFallbackData(): Promise<void> {
+  if (chartEngine !== 'fallback' || lwLoading) return;
+  const inst = current();
+  if (!inst) return;
+  lwLoading = true;
+  try {
+    const { range, interval } = yahooWindow();
+    const url = `${API_BASE}/api/chart?id=${encodeURIComponent(inst.id)}&range=${range}&interval=${interval}&t=${Date.now()}`;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = (await res.json()) as ChartPayload;
+    if (!lwLiveChart || !payload.bars?.length) return;
+
+    const bars = payload.bars;
+    if (chartType === '2') {
+      (lwLiveSeries[0] as ISeriesApi<'Line'>).setData(bars.map((b) => ({ time: b.time as any, value: b.close })));
+    } else if (chartType === '0') {
+      (lwLiveSeries[0] as ISeriesApi<'Bar'>).setData(
+        bars.map((b) => ({ time: b.time as any, open: b.open, high: b.high, low: b.low, close: b.close })),
+      );
+    } else {
+      (lwLiveSeries[0] as ISeriesApi<'Candlestick'>).setData(
+        bars.map((b) => ({ time: b.time as any, open: b.open, high: b.high, low: b.low, close: b.close })),
+      );
+      (lwLiveSeries[1] as ISeriesApi<'Histogram'>).setData(
+        bars.map((b) => ({
+          time: b.time as any,
+          value: b.volume,
+          color: b.close >= b.open ? 'rgba(61,214,140,0.35)' : 'rgba(224,101,107,0.35)',
+        })),
+      );
+    }
+    lwLiveChart.timeScale().fitContent();
+  } catch {
+    // Next poll retries automatically.
+  } finally {
+    lwLoading = false;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* TradingView COT & OI widget (tab 2)                                 */
+/* ------------------------------------------------------------------ */
+
+/** Lazily created the first time tab 2 (TradingView COT & OI) is opened. */
+function initCotWidget(): void {
+  if (tvCotStarted) return;
+  tvCotStarted = true;
+  const inst = current();
+  if (!inst) return;
+  loadTradingView()
+    .then(() => {
+      const host = el('tv-cot-chart');
+      if (!host) return;
+      tvCotWidget = new window.TradingView.widget({
+        container_id: 'tv-cot-chart',
+        autosize: true,
+        symbol: inst.tvFuturesSymbol,
+        interval: '1W',
+        timezone: 'Etc/UTC',
+        theme: 'dark',
+        style: '1',
+        locale: 'en',
+        toolbar_bg: '#151921',
+        enable_publishing: false,
+        allow_symbol_change: true,
+        withdateranges: true,
+        studies: [],
+        overrides: TV_OVERRIDES,
+      });
+      tvCotWidget.onChartReady(() => {
+        try { tvCotWidget.chart().createStudy('COT', false, false); } catch { /* optional study */ }
+        try { tvCotWidget.chart().createStudy('OpenInterest@tv-basicstudies', false, false); } catch { /* optional study */ }
+      });
+    })
+    .catch(() => {
+      const host = el('tv-cot-chart');
+      if (host) {
+        host.innerHTML =
+          '<div class="tv-cot-offline">TradingView is not reachable from this network. ' +
+          'Use tab 1 (CFTC raw data) — it is authoritative and fully automated.</div>';
+      }
+    });
+}
+
+/* ------------------------------------------------------------------ */
+/* Lightweight Charts COT visualizer                                   */
+/* ------------------------------------------------------------------ */
+
+function buildCotChart(inst: InstrumentState): void {
+  const container = el('cotChart');
+  if (!container) return;
+
+  if (cotLwChart) {
+    teardownChart(cotLwChart);
+    cotLwChart = null;
+  }
+  cotLwSeries = [];
+
+  const chart = mountChart(container, (c) => {
+    // Keep the COT chart fitted after a resize.
+    try { c.timeScale().fitContent(); } catch { /* ignore */ }
+  });
 
   const series = inst.cot?.series ?? [];
-  const legend = $('cotLegend');
+  const legend = el('cotLegend');
 
   if (cotMode === 'candles') {
     const s = chart.addSeries(CandlestickSeries, {
@@ -313,7 +505,7 @@ function buildCotChart(inst: InstrumentState): void {
       series
         .filter((r) => r.candle)
         .map((r) => ({
-          time: r.date,
+          time: r.date as any,
           open: r.candle!.open,
           high: r.candle!.high,
           low: r.candle!.low,
@@ -321,15 +513,17 @@ function buildCotChart(inst: InstrumentState): void {
         })),
     );
     cotLwSeries = [s];
-    legend.innerHTML =
-      '<span class="lg"><span class="sw" style="background:#3DD68C"></span>Commercial net weekly candle (open/close = net, range padded by |ΔOI|)</span>';
+    if (legend) {
+      legend.innerHTML =
+        '<span class="lg"><span class="sw" style="background:#3DD68C"></span>Commercial net weekly candle (open/close = net, range padded by |ΔOI|)</span>';
+    }
   } else if (cotMode === 'histo') {
     const s1 = chart.addSeries(HistogramSeries, { priceFormat: { type: 'volume' } });
     s1.setData(
       series
         .filter((r) => r.commNetChange != null)
         .map((r) => ({
-          time: r.date,
+          time: r.date as any,
           value: r.commNetChange!,
           color: r.commNetChange! >= 0 ? 'rgba(61,214,140,0.85)' : 'rgba(224,101,107,0.85)',
         })),
@@ -339,33 +533,37 @@ function buildCotChart(inst: InstrumentState): void {
       series
         .filter((r) => r.nonCommNetChange != null)
         .map((r) => ({
-          time: r.date,
+          time: r.date as any,
           value: r.nonCommNetChange!,
           color: r.nonCommNetChange! >= 0 ? 'rgba(201,162,75,0.8)' : 'rgba(201,162,75,0.35)',
         })),
     );
     cotLwSeries = [s1, s2];
-    legend.innerHTML =
-      '<span class="lg"><span class="sw" style="background:rgba(61,214,140,0.85)"></span>Commercial net change (w/w)</span>' +
-      '<span class="lg"><span class="sw" style="background:rgba(201,162,75,0.8)"></span>Large speculator net change (w/w)</span>';
+    if (legend) {
+      legend.innerHTML =
+        '<span class="lg"><span class="sw" style="background:rgba(61,214,140,0.85)"></span>Commercial net change (w/w)</span>' +
+        '<span class="lg"><span class="sw" style="background:rgba(201,162,75,0.8)"></span>Large speculator net change (w/w)</span>';
+    }
   } else {
     const s1 = chart.addSeries(LineSeries, { color: '#3DD68C', lineWidth: 2, priceLineVisible: false });
-    s1.setData(series.map((r) => ({ time: r.date, value: r.commNet })));
+    s1.setData(series.map((r) => ({ time: r.date as any, value: r.commNet })));
     const s2 = chart.addSeries(LineSeries, { color: '#C9A24B', lineWidth: 2, priceLineVisible: false });
-    s2.setData(series.map((r) => ({ time: r.date, value: r.nonCommNet })));
+    s2.setData(series.map((r) => ({ time: r.date as any, value: r.nonCommNet })));
     const s3 = chart.addSeries(LineSeries, {
       color: '#5A6270',
       lineWidth: 1,
       priceLineVisible: false,
       priceScaleId: 'right',
     });
-    s3.setData(series.map((r) => ({ time: r.date, value: r.oi })));
+    s3.setData(series.map((r) => ({ time: r.date as any, value: r.oi })));
     chart.priceScale('right').applyOptions({ visible: true });
     cotLwSeries = [s1, s2, s3];
-    legend.innerHTML =
-      '<span class="lg"><span class="sw" style="background:#3DD68C"></span>Commercial net</span>' +
-      '<span class="lg"><span class="sw" style="background:#C9A24B"></span>Large speculator net</span>' +
-      '<span class="lg"><span class="sw" style="background:#5A6270"></span>Open interest (right scale)</span>';
+    if (legend) {
+      legend.innerHTML =
+        '<span class="lg"><span class="sw" style="background:#3DD68C"></span>Commercial net</span>' +
+        '<span class="lg"><span class="sw" style="background:#C9A24B"></span>Large speculator net</span>' +
+        '<span class="lg"><span class="sw" style="background:#5A6270"></span>Open interest (right scale)</span>';
+    }
   }
 
   if (series.length) chart.timeScale().fitContent();
@@ -374,14 +572,17 @@ function buildCotChart(inst: InstrumentState): void {
 
 /** Silent in-place update: re-feed series data without rebuilding the chart. */
 function updateCotChartData(inst: InstrumentState): void {
-  if (!cotLwChart) return;
+  if (!cotLwChart) {
+    buildCotChart(inst);
+    return;
+  }
   const series = inst.cot?.series ?? [];
   if (cotMode === 'candles') {
     (cotLwSeries[0] as ISeriesApi<'Candlestick'>).setData(
       series
         .filter((r) => r.candle)
         .map((r) => ({
-          time: r.date,
+          time: r.date as any,
           open: r.candle!.open,
           high: r.candle!.high,
           low: r.candle!.low,
@@ -393,7 +594,7 @@ function updateCotChartData(inst: InstrumentState): void {
       series
         .filter((r) => r.commNetChange != null)
         .map((r) => ({
-          time: r.date,
+          time: r.date as any,
           value: r.commNetChange!,
           color: r.commNetChange! >= 0 ? 'rgba(61,214,140,0.85)' : 'rgba(224,101,107,0.85)',
         })),
@@ -402,15 +603,15 @@ function updateCotChartData(inst: InstrumentState): void {
       series
         .filter((r) => r.nonCommNetChange != null)
         .map((r) => ({
-          time: r.date,
+          time: r.date as any,
           value: r.nonCommNetChange!,
           color: r.nonCommNetChange! >= 0 ? 'rgba(201,162,75,0.8)' : 'rgba(201,162,75,0.35)',
         })),
     );
   } else {
-    (cotLwSeries[0] as ISeriesApi<'Line'>).setData(series.map((r) => ({ time: r.date, value: r.commNet })));
-    (cotLwSeries[1] as ISeriesApi<'Line'>).setData(series.map((r) => ({ time: r.date, value: r.nonCommNet })));
-    (cotLwSeries[2] as ISeriesApi<'Line'>).setData(series.map((r) => ({ time: r.date, value: r.oi })));
+    (cotLwSeries[0] as ISeriesApi<'Line'>).setData(series.map((r) => ({ time: r.date as any, value: r.commNet })));
+    (cotLwSeries[1] as ISeriesApi<'Line'>).setData(series.map((r) => ({ time: r.date as any, value: r.nonCommNet })));
+    (cotLwSeries[2] as ISeriesApi<'Line'>).setData(series.map((r) => ({ time: r.date as any, value: r.oi })));
   }
 }
 
@@ -420,20 +621,44 @@ function updateCotChartData(inst: InstrumentState): void {
 
 function renderPills(): void {
   if (!state) return;
-  const wrap = $('assetPills');
-  wrap.innerHTML = state.instruments
-    .map(
-      (i) =>
-        `<button type="button" role="tab" aria-selected="${i.id === activeId}" class="asset-pill${i.id === activeId ? ' active' : ''}" data-asset="${i.id}">${i.displayName}</button>`,
-    )
+  const wrap = el('assetPills');
+  if (wrap) {
+    wrap.innerHTML = state.instruments
+      .map(
+        (i) =>
+          `<button type="button" role="tab" aria-selected="${i.id === activeId}" class="asset-pill${
+            i.id === activeId ? ' active' : ''
+          }" data-asset="${i.id}">${i.displayName}</button>`,
+      )
+      .join('');
+    wrap.querySelectorAll<HTMLButtonElement>('.asset-pill').forEach((b) => {
+      b.addEventListener('click', () => switchInstrument(b.dataset.asset ?? 'gold'));
+    });
+  }
+  renderAssetSelect();
+}
+
+/** The prominent "Asset / Pair" dropdown in the chart control bar. */
+function renderAssetSelect(): void {
+  const select = el('assetSelect') as HTMLSelectElement | null;
+  if (!select || !state) return;
+  select.innerHTML = state.instruments
+    .map((i) => {
+      const label = i.tvLiveSymbol.includes(':') ? i.tvLiveSymbol.split(':')[1] : i.tvLiveSymbol;
+      return `<option value="${i.id}">${i.displayName} · ${label}</option>`;
+    })
     .join('');
-  wrap.querySelectorAll<HTMLButtonElement>('.asset-pill').forEach((b) => {
-    b.addEventListener('click', () => switchInstrument(b.dataset.asset ?? 'gold'));
-  });
+  select.value = activeId;
+  if (!select.dataset.bound) {
+    select.dataset.bound = '1';
+    select.addEventListener('change', () => switchInstrument(select.value));
+  }
 }
 
 function renderSyncBadge(): void {
   if (!state) return;
+  const badge = el('syncBadge');
+  if (!badge) return;
   const { cftc, volumeOi, bootstrap } = state.sync;
   const parts: string[] = [];
   parts.push(
@@ -443,10 +668,14 @@ function renderSyncBadge(): void {
   );
   parts.push(volumeOi.ok ? `Futures Vol/OI ${fmtTime(volumeOi.lastSuccessAt)}` : 'Futures Vol/OI: pending');
   if (!cftc.ok || !volumeOi.ok) parts.push('⚠ partial — retrying automatically');
-  $('syncBadge').textContent = `Last automated CFTC & CME sync — ${parts.join(' · ')}${bootstrap.ranAt ? ' · next check: 60s' : ''}`;
+  badge.textContent = `Last automated CFTC & CME sync — ${parts.join(' · ')}${
+    bootstrap.ranAt ? ' · next check: 60s' : ''
+  }`;
 }
 
 function renderKpis(inst: InstrumentState): void {
+  const grid = el('kpiGrid');
+  if (!grid) return;
   const k = inst.kpis;
   const cards: string[] = [
     `<div class="kpi">
@@ -470,17 +699,20 @@ function renderKpis(inst: InstrumentState): void {
     `<div class="kpi">
       <div class="kpi-label">DAILY FUTURES VOLUME &amp; INSTITUTIONAL PARTICIPATION</div>
       <div class="kpi-value">${fmt(k.dailyVolume)}</div>
-      <div class="kpi-delta">Participation ${k.institutionalRatio != null ? (k.institutionalRatio * 100).toFixed(1) + '%' : '—'} of OI · vol Δ ${fmtSigned(k.dailyVolumeDelta)}</div>
+      <div class="kpi-delta">Participation ${
+        k.institutionalRatio != null ? (k.institutionalRatio * 100).toFixed(1) + '%' : '—'
+      } of OI · vol Δ ${fmtSigned(k.dailyVolumeDelta)}</div>
       <div class="kpi-src">Yahoo v8 daily tape · ${inst.market ? fmtTime(inst.market.updatedAt) : '—'}</div>
     </div>`,
   ];
-  $('kpiGrid').innerHTML = cards.join('');
+  grid.innerHTML = cards.join('');
 }
 
 function renderBreakdown(inst: InstrumentState): void {
   const snap = inst.cot?.snapshot;
-  const title = $('bdTitle');
-  const table = $('cotBreakdown');
+  const title = el('bdTitle');
+  const table = el('cotBreakdown');
+  if (!title || !table) return;
   if (!snap) {
     title.textContent = 'Category breakdown — awaiting first CFTC ingest…';
     table.innerHTML = '';
@@ -507,37 +739,43 @@ function renderBreakdown(inst: InstrumentState): void {
 }
 
 function renderHubMeta(inst: InstrumentState): void {
+  const meta = el('hubMeta');
+  if (!meta) return;
   const cot = inst.cot;
-  $('hubMeta').textContent = cot
+  meta.textContent = cot
     ? `CFTC ${cot.reportDate ?? '—'} · ${cot.series.length} weekly observations · ${inst.displayName}`
     : 'CFTC: awaiting bootstrap…';
 }
 
 function renderFinviz(inst: InstrumentState, bust: number): void {
-  const main = $('finvizMain') as HTMLImageElement;
-  const fallback = $('finvizFallback');
-  main.src = `${API_BASE}/api/finviz?code=${inst.finvizCode}&p=w1&t=${bust}`;
-  main.onload = () => { main.style.display = ''; fallback.hidden = true; };
-  main.onerror = () => { main.style.display = 'none'; fallback.hidden = false; };
+  const main = el('finvizMain') as HTMLImageElement | null;
+  const fallback = el('finvizFallback');
+  if (main) {
+    main.src = `${API_BASE}/api/finviz?code=${inst.finvizCode}&p=w1&t=${bust}`;
+    main.onload = () => { main.style.display = ''; if (fallback) fallback.hidden = true; };
+    main.onerror = () => { main.style.display = 'none'; if (fallback) fallback.hidden = false; };
+  }
 
-  // Cross-asset comparison strip (unique Finviz codes).
+  const compare = el('finvizCompare');
+  if (!compare || !state) return;
   const seen = new Set<string>();
   const uniq: InstrumentState[] = [];
-  for (const i of state!.instruments) {
+  for (const i of state.instruments) {
     if (!seen.has(i.finvizCode)) { seen.add(i.finvizCode); uniq.push(i); }
   }
-  $('finvizCompare').innerHTML = uniq
+  compare.innerHTML = uniq
     .map(
       (i) => `<div class="finviz-thumb" data-thumb="${i.finvizCode}">
         <span class="thumb-label">${i.finvizCode}</span>
-        <img src="${API_BASE}/api/finviz?code=${i.finvizCode}&p=w1&t=${bust}" alt="Finviz COT ${i.finvizCode}" loading="lazy" />
+        <img src="${API_BASE}/api/finviz?code=${i.finvizCode}&p=w1&t=${bust}" alt="Finviz COT ${i.finvizCode}" loading="lazy" onerror="this.closest('.finviz-thumb')?.classList.add('failed')" />
       </div>`,
     )
     .join('');
 }
 
 function renderInstrument(inst: InstrumentState, bust: number): void {
-  $('liveSymbolLabel').textContent = `${inst.tvLiveSymbol} — ${inst.displayName}`;
+  const label = el('liveSymbolLabel');
+  if (label) label.textContent = `${inst.tvLiveSymbol} — ${inst.displayName}`;
   renderKpis(inst);
   buildCotChart(inst);
   renderBreakdown(inst);
@@ -553,11 +791,15 @@ function switchInstrument(id: string): void {
     b.classList.toggle('active', active);
     b.setAttribute('aria-selected', String(active));
   });
+  const select = el('assetSelect') as HTMLSelectElement | null;
+  if (select) select.value = id;
+
   const inst = current();
+  if (!inst) return;
   renderInstrument(inst, Date.now());
   switchTvSymbol(inst.tvLiveSymbol);
   if (tvCotWidget && typeof tvCotWidget.setSymbol === 'function') {
-    tvCotWidget.setSymbol(inst.tvFuturesSymbol);
+    try { tvCotWidget.setSymbol(inst.tvFuturesSymbol); } catch { /* ignore */ }
   }
 }
 
@@ -576,24 +818,33 @@ async function poll(): Promise<void> {
     state = next;
     if (first) {
       renderPills();
-      renderInstrument(current(), Date.now());
+      renderInstrument(current() ?? next.instruments[0], Date.now());
       renderSyncBadge();
+      if (chartEngine === 'fallback') void loadLiveFallbackData();
     } else {
       // Silent in-place refresh: KPIs, chart data, badges, images.
       renderSyncBadge();
-      renderKpis(current());
-      updateCotChartData(current());
-      renderBreakdown(current());
-      renderHubMeta(current());
+      const inst = current();
+      if (inst) {
+        renderKpis(inst);
+        updateCotChartData(inst);
+        renderBreakdown(inst);
+        renderHubMeta(inst);
+        if (chartEngine === 'fallback') void loadLiveFallbackData();
+      }
       const bust = Date.now();
-      (($('finvizMain') as HTMLImageElement)).src = `${API_BASE}/api/finviz?code=${current().finvizCode}&p=w1&t=${bust}`;
+      const main = el('finvizMain') as HTMLImageElement | null;
+      if (main && inst) main.src = `${API_BASE}/api/finviz?code=${inst.finvizCode}&p=w1&t=${bust}`;
       document.querySelectorAll<HTMLImageElement>('#finvizCompare img').forEach((img) => {
         img.src = `${img.src.split('&t=')[0]}&t=${bust}`;
       });
     }
   } catch {
     // Keep the last known state; the next cycle retries automatically.
-    if (!state) $('syncBadge').textContent = 'Backend not reachable yet — automated retry in 60s…';
+    if (!state) {
+      const badge = el('syncBadge');
+      if (badge) badge.textContent = 'Backend not reachable yet — automated retry in 60s…';
+    }
   } finally {
     polling = false;
   }
@@ -603,50 +854,110 @@ async function poll(): Promise<void> {
 /* Boot                                                                */
 /* ------------------------------------------------------------------ */
 
-export function initTerminal(): void {
-  // Chart-type / timeframe controls (live TV panel).
-  $('chartTypeBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
-    b.addEventListener('click', () => {
-      chartType = b.dataset.type ?? '1';
-      document.querySelectorAll('#chartTypeBtns button').forEach((x) => x.classList.toggle('active', x === b));
-      if (tvChartApi) { try { tvChartApi.setChartType(chartType); } catch { /* ignore */ } }
+/** Point the MCP / REST cards at the actual Worker host. */
+function renderAiLinks(): void {
+  if (!API_BASE) return;
+  const mcp = el('mcpUrl');
+  if (mcp) mcp.textContent = `${API_BASE}/mcp`;
+  const stateUrl = el('stateUrl');
+  if (stateUrl) stateUrl.textContent = `${API_BASE}/api/terminal/state`;
+}
+
+function wireCopyButtons(): void {
+  document.querySelectorAll<HTMLButtonElement>('.ai-copy').forEach((b) => {
+    b.addEventListener('click', async () => {
+      const target = b.dataset.copy;
+      const text = (target ? el(target)?.textContent : '')?.trim() ?? '';
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        const prev = b.textContent;
+        b.textContent = 'Copied ✓';
+        window.setTimeout(() => { b.textContent = prev; }, 1500);
+      } catch {
+        /* clipboard permission blocked — the URL stays selectable */
+      }
     });
   });
-  $('timeframeBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
-    b.addEventListener('click', () => {
-      timeframe = b.dataset.tf ?? '15';
-      document.querySelectorAll('#timeframeBtns button').forEach((x) => x.classList.toggle('active', x === b));
-      if (tvChartApi) { try { tvChartApi.setResolution(timeframe); } catch { /* ignore */ } }
+}
+
+/** Run one init block; a single failure must never abort the whole app. */
+function guard(name: string, fn: () => void): void {
+  try {
+    fn();
+  } catch (e) {
+    console.warn(`[terminal] ${name} init skipped:`, e);
+  }
+}
+
+export function initTerminal(): void {
+  // Chart-type controls (live price panel + fallback engine).
+  guard('chart-type', () => {
+    $('chartTypeBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        chartType = b.dataset.type ?? '1';
+        document.querySelectorAll('#chartTypeBtns button').forEach((x) => x.classList.toggle('active', x === b));
+        if (chartEngine === 'tradingview' && tvChartApi) {
+          try { tvChartApi.setChartType(Number(chartType)); } catch { /* ignore */ }
+        } else if (chartEngine === 'fallback') {
+          buildLiveFallbackChart();
+          void loadLiveFallbackData();
+        }
+      });
+    });
+  });
+
+  // Timeframe controls.
+  guard('timeframe', () => {
+    $('timeframeBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        timeframe = b.dataset.tf ?? '15';
+        document.querySelectorAll('#timeframeBtns button').forEach((x) => x.classList.toggle('active', x === b));
+        if (chartEngine === 'tradingview' && tvChartApi) {
+          try { tvChartApi.setResolution(timeframe); } catch { /* ignore */ }
+        } else if (chartEngine === 'fallback') {
+          void loadLiveFallbackData();
+        }
+      });
     });
   });
 
   // COT render-mode switcher.
-  $('cotModeBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
-    b.addEventListener('click', () => {
-      cotMode = (b.dataset.mode ?? 'candles') as 'candles' | 'histo' | 'line';
-      document.querySelectorAll('#cotModeBtns button').forEach((x) => x.classList.toggle('active', x === b));
-      if (state) buildCotChart(current());
+  guard('cot-mode', () => {
+    $('cotModeBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        cotMode = (b.dataset.mode ?? 'candles') as 'candles' | 'histo' | 'line';
+        document.querySelectorAll('#cotModeBtns button').forEach((x) => x.classList.toggle('active', x === b));
+        const inst = current();
+        if (inst) buildCotChart(inst);
+      });
     });
   });
 
   // Hub tabs.
-  $('hubTabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
-    b.addEventListener('click', () => {
-      const tab = b.dataset.tab ?? 'cftc';
-      document.querySelectorAll('#hubTabs button').forEach((x) => {
-        const active = x === b;
-        x.classList.toggle('active', active);
-        x.setAttribute('aria-selected', String(active));
+  guard('hub-tabs', () => {
+    $('hubTabs').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        const tab = b.dataset.tab ?? 'cftc';
+        document.querySelectorAll('#hubTabs button').forEach((x) => {
+          const active = x === b;
+          x.classList.toggle('active', active);
+          x.setAttribute('aria-selected', String(active));
+        });
+        (['cftc', 'tvcot', 'finviz'] as const).forEach((t) => {
+          const panel = el('tab-' + t);
+          if (panel) panel.hidden = t !== tab;
+        });
+        if (tab === 'tvcot') initCotWidget();
       });
-      (['cftc', 'tvcot', 'finviz'] as const).forEach((t) => {
-        $('tab-' + t).hidden = t !== tab;
-      });
-      if (tab === 'tvcot') initCotWidget();
     });
   });
 
-  // Live stream + automated state polling. No manual refresh anywhere.
-  initLiveWidget();
-  void poll();
-  setInterval(() => void poll(), POLL_INTERVAL_MS);
+  // Live price chart + automated state polling. No manual refresh anywhere.
+  guard('ai-links', () => { renderAiLinks(); wireCopyButtons(); });
+  guard('live-chart', () => initLiveWidget());
+  guard('poll', () => {
+    void poll();
+    window.setInterval(() => void poll(), POLL_INTERVAL_MS);
+  });
 }

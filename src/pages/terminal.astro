@@ -32,9 +32,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <div class="phr-left">
           <div class="panel-kicker">SECTION 01 · SUB-SECOND WEBSOCKET STREAM</div>
           <h2 class="panel-title" id="live-title">LIVE PRICE ACTION &amp; TECHNICAL EXECUTION</h2>
-          <div class="panel-sub" id="liveSymbolLabel">OANDA:XAUUSD — Gold (XAU/USD)</div>
+          <div class="panel-sub" id="liveSymbolLabel">FOREXCOM:XAUUSD — Gold (XAU/USD)</div>
         </div>
         <div class="chart-controls">
+          <div class="ctl-block">
+            <div class="ctl-label">Asset / Pair</div>
+            <div class="asset-select-wrap">
+              <select id="assetSelect" class="asset-select" aria-label="Select asset or pair"></select>
+            </div>
+          </div>
           <div class="ctl-block">
             <div class="ctl-label">Chart type</div>
             <div class="ctl-group" id="chartTypeBtns" role="group" aria-label="Chart type">
@@ -59,6 +65,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
       <div class="tv-wrap" id="tvLiveWrap">
         <div id="tv-live-chart"></div>
+        <div id="lw-live-chart" hidden></div>
         <div class="tv-fallback" id="tvFallback" hidden>
           <div class="tv-fallback-inner">
             <div class="panel-kicker">LIVE FEED UNAVAILABLE</div>
@@ -85,7 +92,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <div class="hub-meta" id="hubMeta">Loading CFTC data…</div>
       </div>
 
-      <div class="hub-tabs" role="tablist" aria-label="Macro hub views">
+      <div class="hub-tabs" id="hubTabs" role="tablist" aria-label="Macro hub views">
         <button type="button" role="tab" aria-selected="true" data-tab="cftc" class="active">
           1. US Gov CFTC Raw Data (Banks &amp; Commercials)
         </button>
@@ -140,6 +147,37 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </div>
         <div class="finviz-compare-title">CROSS-ASSET COMPARISON · AUTO-REFRESHED</div>
         <div class="finviz-compare" id="finvizCompare"><!-- thumbs injected --></div>
+      </div>
+    </section>
+
+    <!-- ============ Section 4 · AI / MCP access ============ -->
+    <section class="term-panel" aria-labelledby="ai-title">
+      <div class="panel-head-row">
+        <div class="phr-left">
+          <div class="panel-kicker">SECTION 03 · MACHINE ACCESS</div>
+          <h2 class="panel-title" id="ai-title">CONNECT AN AI — MCP &amp; REST ENDPOINTS</h2>
+        </div>
+      </div>
+      <div class="ai-grid">
+        <div class="ai-card">
+          <div class="ai-label">MCP OVER HTTP · paste into any cloud AI</div>
+          <code id="mcpUrl">https://trading-llc-mcp.mahdi-t8256.workers.dev/mcp</code>
+          <button type="button" class="ai-copy" data-copy="mcpUrl">Copy</button>
+        </div>
+        <div class="ai-card">
+          <div class="ai-label">LIVE TERMINAL STATE · JSON</div>
+          <code id="stateUrl">https://trading-llc-mcp.mahdi-t8256.workers.dev/api/terminal/state</code>
+          <button type="button" class="ai-copy" data-copy="stateUrl">Copy</button>
+        </div>
+        <div class="ai-card">
+          <div class="ai-label">MANUAL &amp; COMPANY CODE · live docs</div>
+          <code id="docsUrl">https://vaelor.pages.dev/docs</code>
+          <button type="button" class="ai-copy" data-copy="docsUrl">Copy</button>
+        </div>
+      </div>
+      <div class="panel-foot">
+        Stateless JSON-RPC 2.0 · no API key · CORS open · tools: read / search manual, company code,
+        publish &amp; get latest analysis.
       </div>
     </section>
   </main>
@@ -310,9 +348,41 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       font-weight: 700;
     }
 
+    /* ---------- Asset / pair selector ---------- */
+    .asset-select-wrap { position: relative; display: inline-block; }
+    .asset-select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--tdim);
+      font-size: 0.8rem;
+    }
+    .asset-select {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      letter-spacing: 0.03em;
+      color: var(--ttxt);
+      background: var(--tbg);
+      border: 1px solid var(--tborder);
+      border-radius: 8px;
+      padding: 9px 34px 9px 13px;
+      min-width: 220px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+    }
+    .asset-select:hover { border-color: var(--tacc); }
+    .asset-select:focus { border-color: var(--tacc); box-shadow: 0 0 0 2px rgba(226, 69, 108, 0.25); }
+    .asset-select option { background: #151921; color: var(--ttxt); }
+
     /* ---------- TV chart ---------- */
     .tv-wrap { position: relative; height: 560px; border-top: 1px solid var(--tborder-soft); background: var(--tbg); }
     .tv-wrap > div:first-child { height: 100%; }
+    #lw-live-chart { height: 100%; width: 100%; }
     .tv-fallback {
       position: absolute; inset: 0;
       display: grid; place-items: center;
@@ -320,6 +390,16 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     }
     .tv-fallback-inner { max-width: 480px; text-align: center; padding: 24px; color: var(--tdim); }
     .tv-cot-wrap { height: 480px; }
+    .tv-cot-offline {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      padding: 24px;
+      text-align: center;
+      color: var(--tfaint);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
 
     /* ---------- Hub tabs ---------- */
     .hub-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--tfaint); text-align: right; }
@@ -441,6 +521,52 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       border-radius: 999px;
     }
     .finviz-thumb.failed { min-height: 120px; display: grid; place-items: center; color: var(--tfaint); font-family: var(--mono); font-size: 0.68rem; }
+
+    /* ---------- AI / MCP access ---------- */
+    .ai-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+      padding: 0 20px 18px;
+    }
+    .ai-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--tpanel-raise);
+      border: 1px solid var(--tborder-soft);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .ai-label {
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--tfaint);
+    }
+    .ai-card code {
+      font-family: var(--mono);
+      font-size: 0.76rem;
+      color: var(--tgold);
+      word-break: break-all;
+      background: var(--tbg);
+      border: 1px solid var(--tborder-soft);
+      border-radius: 6px;
+      padding: 8px 10px;
+    }
+    .ai-copy {
+      align-self: flex-start;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--tdim);
+      background: var(--tbg);
+      border: 1px solid var(--tborder);
+      border-radius: 6px;
+      padding: 6px 14px;
+      cursor: pointer;
+    }
+    .ai-copy:hover { color: var(--ttxt); border-color: var(--tacc); }
 
     /* ---------- Responsive ---------- */
     @media (max-width: 900px) {
