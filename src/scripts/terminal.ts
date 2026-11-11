@@ -284,16 +284,31 @@ function mountChart(container: HTMLElement, onResize: (c: IChartApi) => void): I
     timeScale: { borderColor: '#262C36' },
     crosshair: { mode: CrosshairMode.Normal },
   });
+  // Lightweight Charts defers canvas bitmap sizing to an animation frame. In a
+  // background/throttled tab that frame never runs, leaving a blurry 300×150
+  // bitmap stretched over the container. resize() sizes the bitmap immediately.
+  forceChartSize(chart, width, height);
   const ro = new ResizeObserver(() => {
     const r = container.getBoundingClientRect();
     if (r.width > 0 && r.height > 0) {
-      chart.applyOptions({ width: Math.floor(r.width), height: Math.floor(r.height) });
+      forceChartSize(chart, Math.floor(r.width), Math.floor(r.height));
     }
     onResize(chart);
   });
   ro.observe(container);
   (chart as any).__ro = ro;
   return chart;
+}
+
+/** Apply a size synchronously to both layout and canvas bitmap. */
+function forceChartSize(chart: IChartApi, width: number, height: number): void {
+  const w = Math.max(1, Math.floor(width));
+  const h = Math.max(1, Math.floor(height));
+  try {
+    (chart as any).resize?.(w, h, true);
+  } catch {
+    try { chart.applyOptions({ width: w, height: h }); } catch { /* ignore */ }
+  }
 }
 
 function teardownChart(chart: IChartApi | null): void {

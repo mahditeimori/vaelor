@@ -30,6 +30,7 @@ Base URL: **https://trading-llc-mcp.mahdi-t8256.workers.dev**
 | `GET`  | `/api/macro/status` | Sync health + cron job registry |
 | `POST` | `/api/macro/refresh` | Force CFTC + futures volume/OI refresh (optional Bearer `MACRO_REFRESH_TOKEN`) |
 | `GET`  | `/api/finviz?code=GC&p=w1` | Finviz COT chart proxy → `image/png` |
+| `GET`  | `/api/chart?id=gold&range=5d&interval=15m` | OHLCV bars for the on-site price chart (Yahoo proxy, TradingView fallback) |
 
 CORS is open (`*`), so browser apps and cloud AIs can call it directly.
 
@@ -59,7 +60,20 @@ curl.exe "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/terminal/state"
 
 # Finviz COT chart (PNG)
 curl.exe -o cot.png "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/finviz?code=GC&p=w1"
+
+# OHLCV bars for the price chart (TradingView-free fallback)
+curl.exe "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/chart?id=gold&range=5d&interval=15m"
 ```
+
+### Price chart engine
+
+The terminal renders TradingView Advanced Real-Time when `tv.js` is reachable. If the CDN or
+WebSocket is blocked, it switches automatically to a bundled Lightweight Charts engine fed by
+`/api/chart` (Yahoo OHLC, 60 s cache). Gold/silver use the **FOREX.com** broker symbols
+(`FOREXCOM:XAUUSD`, `FOREXCOM:XAGUSD`) inside TradingView; the fallback tracks the COMEX futures
+contracts (`GC=F`, `SI=F`) because Yahoo has no XAUUSD/XAGUSD spot ticker.
+
+Range allowlist: `1d,5d,1mo,3mo,6mo,1y,2y`. Interval allowlist: `1m,5m,15m,30m,1h,1d,1wk`.
 
 Instruments: Gold (088691), Silver (084691), DXY (098662), Nasdaq spot+futures (209742), S&P 500 (13874A), Dow (124603).
 
