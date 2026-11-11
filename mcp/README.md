@@ -26,8 +26,42 @@ Base URL: **https://trading-llc-mcp.mahdi-t8256.workers.dev**
 | `GET`  | `/api/analysis` | Latest published analysis (JSON) |
 | `POST` | `/api/analysis` | Publish analysis (same payload as the MCP tool) |
 | `GET`  | `/api/health` | `{"ok":true,"service":"trading-llc-mcp"}` |
+| `GET`  | `/api/terminal/state` | Institutional macro/COT/volume-OI state (KV only, safe for 60s polling) |
+| `GET`  | `/api/macro/status` | Sync health + cron job registry |
+| `POST` | `/api/macro/refresh` | Force CFTC + futures volume/OI refresh (optional Bearer `MACRO_REFRESH_TOKEN`) |
+| `GET`  | `/api/finviz?code=GC&p=w1` | Finviz COT chart proxy → `image/png` |
 
 CORS is open (`*`), so browser apps and cloud AIs can call it directly.
+
+## Macro / COT automation (zero-touch)
+
+All live market data is sourced and cached automatically — no manual refresh anywhere on the site.
+
+| Source | Endpoint | Cadence | KV key prefix |
+|--------|----------|---------|---------------|
+| CFTC Legacy / Disaggregated / TFF | `syncCOT()` | daily 00:05 UTC + Friday 15:30–16:30 ET release window (poll every 5 min) | `macro:cot:<id>` |
+| Yahoo Finance v8 chart + CFTC OI fallback | `syncVolumeOi()` | hourly EOD volume/OI | `macro:vol:<id>` |
+| Finviz COT chart images | `finvizImage()` | on-demand via `/api/finviz` (5-min cache) | n/a |
+
+- Cron: `*/5 * * * *` → `runScheduled()` derives the Friday release window, daily integrity sync, and hourly volume/OI from cache staleness.
+- Bootstrap: first HTTP request after a cold/empty cache seeds CFTC + volume in the background.
+- Frontend (`#institutional-chart-section`) polls `/api/terminal/state` every 60 s with cache-busting; KPIs, chart data and Finviz panels re-render in place.
+
+```powershell
+# Force an immediate full refresh
+curl.exe -X POST "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/macro/refresh"
+
+# Check sync health
+curl.exe "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/macro/status"
+
+# Get live terminal state (what the site consumes)
+curl.exe "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/terminal/state"
+
+# Finviz COT chart (PNG)
+curl.exe -o cot.png "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/finviz?code=GC&p=w1"
+```
+
+Instruments: Gold (088691), Silver (084691), DXY (098662), Nasdaq spot+futures (209742), S&P 500 (13874A), Dow (124603).
 
 ## Connect an AI (paste one URL)
 
@@ -96,12 +130,15 @@ The landing page polls `GET /api/analysis` on load and renders **REGIME CALL**,
 
 ```powershell
 # wrangler must be authenticated (wrangler login)
-wrangler deploy
+$env:HTTPS_PROXY="http://127.0.0.1:10808"
+$env:NO_PROXY="127.0.0.1,localhost,::1"
+wrangler deploy --config mcp/wrangler.toml
 ```
 
-- Config: `wrangler.toml` (worker name, KV binding `AI_STATE`, `PAGES_ORIGIN`)
-- Code: `mcp/worker.js`
-- KV key: `ai-state` in namespace `a1776533b5cb4299accd800aac8d2256`
+- Config: `mcp/wrangler.toml` (worker name, KV binding `AI_STATE`, crons `*/5 * * * *`, `PAGES_ORIGIN`)
+- Code: `mcp/worker.js` + `mcp/lib/` (instruments, csv, cftc, yahoo, pipeline)
+- KV namespace: `a1776533b5cb4299accd800aac8d2256` bound as `AI_STATE`
+- Pages project: `vaelor` (Git-connected, branch `main`) — static output, no root `wrangler.toml`
 - Clear published state: `wrangler kv key delete --namespace-id=a1776533b5cb4299accd800aac8d2256 ai-state --remote`
 
 ## Local-only mode (legacy, optional)

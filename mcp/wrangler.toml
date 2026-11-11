@@ -1,0 +1,17 @@
+name = "trading-llc-mcp"
+main = "worker.js"
+compatibility_date = "2026-11-10"
+account_id = "3cd600058fe97fbab666f060a2037044"
+
+# Live state: AI analysis + macro/COT/volume caches (keys are prefixed).
+[[kv_namespaces]]
+binding = "AI_STATE"
+id = "a1776533b5cb4299accd800aac8d2256"
+
+# Every 5 minutes; runScheduled() decides the Friday release window,
+# the daily integrity sync and the hourly futures volume/OI sync.
+[triggers]
+crons = ["*/5 * * * *"]
+
+[vars]
+PAGES_ORIGIN = "https://vaelor.pages.dev"

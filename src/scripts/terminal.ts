@@ -18,6 +18,14 @@ import {
   type ISeriesApi,
 } from 'lightweight-charts';
 
+/**
+ * Base URL of the Cloudflare Worker that owns the macro/COT pipeline.
+ * Overridable per page with `data-api="https://…"` on #chart-section-root.
+ */
+const API_BASE = (
+  document.getElementById('institutional-chart-section')?.getAttribute('data-api') ?? ''
+).replace(/\/+$/, '');
+
 /* ------------------------------------------------------------------ */
 /* Types (mirror of the /api/terminal/state payload)                   */
 /* ------------------------------------------------------------------ */
@@ -508,7 +516,7 @@ function renderHubMeta(inst: InstrumentState): void {
 function renderFinviz(inst: InstrumentState, bust: number): void {
   const main = $('finvizMain') as HTMLImageElement;
   const fallback = $('finvizFallback');
-  main.src = `/api/finviz?code=${inst.finvizCode}&p=w1&t=${bust}`;
+  main.src = `${API_BASE}/api/finviz?code=${inst.finvizCode}&p=w1&t=${bust}`;
   main.onload = () => { main.style.display = ''; fallback.hidden = true; };
   main.onerror = () => { main.style.display = 'none'; fallback.hidden = false; };
 
@@ -522,7 +530,7 @@ function renderFinviz(inst: InstrumentState, bust: number): void {
     .map(
       (i) => `<div class="finviz-thumb" data-thumb="${i.finvizCode}">
         <span class="thumb-label">${i.finvizCode}</span>
-        <img src="/api/finviz?code=${i.finvizCode}&p=w1&t=${bust}" alt="Finviz COT ${i.finvizCode}" loading="lazy" />
+        <img src="${API_BASE}/api/finviz?code=${i.finvizCode}&p=w1&t=${bust}" alt="Finviz COT ${i.finvizCode}" loading="lazy" />
       </div>`,
     )
     .join('');
@@ -561,7 +569,7 @@ async function poll(): Promise<void> {
   if (polling) return;
   polling = true;
   try {
-    const res = await fetch(`/api/terminal/state?t=${Date.now()}`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE}/api/terminal/state?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const next = (await res.json()) as TerminalState;
     const first = !state;
@@ -578,7 +586,7 @@ async function poll(): Promise<void> {
       renderBreakdown(current());
       renderHubMeta(current());
       const bust = Date.now();
-      (($('finvizMain') as HTMLImageElement)).src = `/api/finviz?code=${current().finvizCode}&p=w1&t=${bust}`;
+      (($('finvizMain') as HTMLImageElement)).src = `${API_BASE}/api/finviz?code=${current().finvizCode}&p=w1&t=${bust}`;
       document.querySelectorAll<HTMLImageElement>('#finvizCompare img').forEach((img) => {
         img.src = `${img.src.split('&t=')[0]}&t=${bust}`;
       });

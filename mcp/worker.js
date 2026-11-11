@@ -1,18 +1,39 @@
 /**
- * Trading LLC — Cloudflare Worker (MCP over HTTP + REST API)
+ * Vaelor Trading LLC — Cloudflare Worker
  *
- * Public URL (after `wrangler deploy`): https://<worker-name>.<subdomain>.workers.dev
- * MCP endpoint:  https://<worker>.<sub>.workers.dev/mcp
- * REST API:      GET  /api/analysis   → read latest analysis
- *                POST /api/analysis   → publish analysis (same payload as MCP publish_analysis)
+ * MCP endpoint:  https://<worker>.workers.dev/mcp
+ * REST API:
+ *   GET  /api/analysis          read latest AI analysis
+ *   POST /api/analysis          publish AI analysis
+ *   GET  /api/terminal/state    institutional macro/COT/volume state (KV only)
+ *   GET  /api/macro/status      sync health + cron job registry
+ *   POST /api/macro/refresh     force CFTC + futures refresh (optional MACRO_REFRESH_TOKEN)
+ *   GET  /api/finviz?code=GC    Finviz COT chart proxy (image)
+ *   GET  /api/health
  *
- * State: Cloudflare KV namespace bound as AI_STATE (key: "ai-state").
- * Manual docs: fetched live from your Pages site (https://vaelor.pages.dev/docs/<slug>)
- *              and HTML-stripped so the AI can read them.
+ * State: Cloudflare KV namespace bound as AI_STATE.
+ * Manual docs: fetched live from the Pages site and HTML-stripped.
+ *
+ * Cron: every 5 minutes → runScheduled() decides the Friday release window,
+ * daily integrity sync and hourly futures volume/OI sync from staleness.
  */
+import {
+  FINVIZ_CODES,
+} from "./lib/instruments.js";
+import {
+  bootstrapIfStale,
+  buildTerminalState,
+  finvizImage,
+  readStatus,
+  runScheduled,
+  syncCOT,
+  syncVolumeOi,
+} from "./lib/pipeline.js";
+
+const FINVIZ_PERIODS = new Set(["d1", "w1", "m1"]);
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
 
@@ -238,7 +259,73 @@ export default {
       return jsonResponse({ ok: true, service: "trading-llc-mcp" });
     }
 
+    /* ================= INSTITUTIONAL MACRO TERMINAL ================= */
+    if (path === "/api/terminal/state") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      try {
+        const bootstrap = await bootstrapIfStale(env, ctx);
+        const state = await buildTerminalState(env);
+        return jsonResponse({ ...state, bootstrap });
+      } catch (err) {
+        return jsonResponse(
+          { error: "state assembly failed", detail: String(err?.message ?? err) },
+          500,
+        );
+      }
+    }
+
+    if (path === "/api/macro/status") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      try {
+        return jsonResponse(await readStatus(env));
+      } catch (err) {
+        return jsonResponse({ error: String(err?.message ?? err) }, 500);
+      }
+    }
+
+    if (path === "/api/macro/refresh") {
+      if (request.method !== "POST") return new Response(null, { status: 405, headers: corsHeaders() });
+      const expected = env.MACRO_REFRESH_TOKEN;
+      if (expected) {
+        const got = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+        if (got !== expected) return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      const results = { cot: await syncCOT(env), volume: await syncVolumeOi(env) };
+      return jsonResponse({ ok: true, ...results });
+    }
+
+    if (path === "/api/finviz") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      const code = (url.searchParams.get("code") ?? "GC").toUpperCase();
+      const period = (url.searchParams.get("p") ?? "w1").toLowerCase();
+      if (!FINVIZ_CODES.has(code)) {
+        return jsonResponse({ error: "unknown finviz code", allowed: [...FINVIZ_CODES] }, 400);
+      }
+      if (!FINVIZ_PERIODS.has(period)) {
+        return jsonResponse({ error: "invalid period", allowed: [...FINVIZ_PERIODS] }, 400);
+      }
+      const img = await finvizImage(code, period);
+      if (!img.ok) {
+        return jsonResponse(
+          { error: img.error, detail: "Finviz rejected the request; retrying next sync cycle." },
+          502,
+        );
+      }
+      return new Response(img.body, {
+        headers: {
+          ...corsHeaders(),
+          "content-type": img.type,
+          "cache-control": "public, max-age=300",
+        },
+      });
+    }
+
     return new Response(null, { status: 404, headers: corsHeaders() });
+  },
+
+  /** Cloudflare Cron Trigger: every 5 minutes. */
+  async scheduled(_controller, env, ctx) {
+    ctx.waitUntil(runScheduled(env).catch(() => {}));
   },
 };
 
