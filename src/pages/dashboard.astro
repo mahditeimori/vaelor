@@ -11,9 +11,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       <div class="kicker">Live composite dashboard · Section 4.7</div>
       <h1>Market Structure Dashboard</h1>
       <p class="lede">
-        Live price and volume, <b>futures open interest</b>, and weekly <b>CFTC commercial positioning</b>
-        for every instrument in the terminal. Pulled automatically from the macro engine — the same
-        data the institutional terminal uses, with no manual refresh.
+        Live candlestick price and volume, <b>CFTC commercial vs speculative positioning</b>, and
+        <b>futures open interest</b> for every instrument in the terminal. Every series is pulled
+        automatically from the macro engine — no manual refresh.
       </p>
       <div class="dash-status">
         <span class="dash-live-dot" aria-hidden="true"></span>
@@ -42,6 +42,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       <span class="regime-chip" id="regimeChip">REGIME: —</span>
     </div>
 
+    <!-- Panel 1 · Price / Volume -->
     <div class="dash-panel">
       <div class="panel-head">
         <div class="panel-title">Panel 1 — Price / Volume</div>
@@ -52,25 +53,28 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <span id="priceAge">Updated: <b>—</b></span>
         </div>
       </div>
+      <div class="chart-opts">
+        <div class="opt-group">
+          <span class="opt-label">Style</span>
+          <div class="opt-seg" id="priceStyleBtns" role="group" aria-label="Price chart style">
+            <button type="button" data-style="candles" class="active">Candlestick</button>
+            <button type="button" data-style="bars">Bar (OHLC)</button>
+          </div>
+        </div>
+        <label class="opt-check"><input type="checkbox" id="volToggle" checked /> Volume</label>
+        <div class="c-legend">
+          <span class="lg"><i style="background:#26a69a"></i>Up week (close ≥ open)</span>
+          <span class="lg"><i style="background:#ef5350"></i>Down week (close &lt; open)</span>
+          <span class="lg"><i style="background:linear-gradient(#26a69a,#ef5350)"></i>Volume bars tinted by direction</span>
+        </div>
+      </div>
       <div id="priceChart" class="chart"></div>
     </div>
 
+    <!-- Panel 2 · COT -->
     <div class="dash-panel">
       <div class="panel-head">
-        <div class="panel-title">Panel 2 — Futures Open Interest</div>
-        <div class="panel-src">
-          <span id="oiStat">Latest <b>—</b></span>
-          <span>Source: <b>CFTC futures open interest</b></span>
-          <span>Refresh: <b>Weekly · Fri 15:30 ET</b></span>
-          <span id="oiAge">Report: <b>—</b></span>
-        </div>
-      </div>
-      <div id="oiChart" class="chart"></div>
-    </div>
-
-    <div class="dash-panel">
-      <div class="panel-head">
-        <div class="panel-title">Panel 3 — Commercial vs Large Speculator Net (Weekly COT)</div>
+        <div class="panel-title">Panel 2 — CFTC COT: Commercial vs Large Speculator</div>
         <div class="panel-src">
           <span id="cotStat">Commercials <b>—</b></span>
           <span>Source: <b>CFTC Disaggregated / TFF</b></span>
@@ -78,7 +82,45 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <span id="cotAge">Report: <b>—</b></span>
         </div>
       </div>
+      <div class="chart-opts">
+        <label class="opt-check"><input type="checkbox" id="commToggle" checked /> Commercials</label>
+        <label class="opt-check"><input type="checkbox" id="specsToggle" checked /> Large Speculators</label>
+        <div class="c-legend">
+          <span class="lg"><i style="background:#ef5350"></i><b>Commercials</b> — banks &amp; producers net (hedging flow)</span>
+          <span class="lg"><i style="background:#26a69a"></i><b>Large speculators</b> — managed money net (trend flow)</span>
+          <span class="lg" id="cotOiLegend" hidden><i class="dashed" style="background:#a855f7"></i>Open interest overlay</span>
+        </div>
+      </div>
       <div id="cotChart" class="chart"></div>
+    </div>
+
+    <!-- Panel 3 · Open Interest -->
+    <div class="dash-panel" id="oiPanel">
+      <div class="panel-head">
+        <div class="panel-title">Panel 3 — Futures Open Interest</div>
+        <div class="panel-src">
+          <span id="oiStat">Latest <b>—</b></span>
+          <span>Source: <b>CFTC futures open interest</b></span>
+          <span id="oiAge">Report: <b>—</b></span>
+        </div>
+      </div>
+      <div class="chart-opts">
+        <div class="opt-group">
+          <span class="opt-label">Open interest</span>
+          <div class="asset-select-wrap">
+            <select id="oiMode" class="dash-select small" aria-label="Open interest placement">
+              <option value="panel" selected>Separate panel</option>
+              <option value="overlay">Overlay on COT chart</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+        </div>
+        <div class="c-legend">
+          <span class="lg"><i style="background:#a855f7"></i><b>Open interest</b> — total contracts outstanding (weekly)</span>
+          <span class="lg">Rising OI + rising price = long buildup · rising OI + falling price = short buildup</span>
+        </div>
+      </div>
+      <div id="oiChart" class="chart"></div>
     </div>
 
     <aside class="composite-bar" aria-label="Composite Signal Dashboard">
@@ -114,6 +156,30 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <span>Operational Note: Composite Flag indicates alignment; it is not an unhedged autonomous order command.</span>
       </div>
     </aside>
+
+    <!-- Analyze · below the composite panel, at the bottom of the page -->
+    <section class="dash-panel analyze-panel" aria-labelledby="analyze-title">
+      <div class="panel-head">
+        <div class="panel-title" id="analyze-title">Analyze — composite bias &amp; entry zones</div>
+        <div class="analyze-controls">
+          <label for="analysisHorizon">Horizon</label>
+          <div class="asset-select-wrap">
+            <select id="analysisHorizon" class="dash-select small" aria-label="Analysis horizon">
+              <option value="1">1 Week</option>
+              <option value="4" selected>1 Month</option>
+              <option value="13">3 Months</option>
+            </select>
+          </div>
+          <button id="analyzeBtn" type="button" class="analyze-btn">Analyze</button>
+        </div>
+      </div>
+      <div class="analyze-intro">
+        Combines commercial/speculative COT positioning, open interest, price-vs-OI state, trend
+        structure and momentum into a directional bias with an entry zone, invalidation and target
+        for every instrument.
+      </div>
+      <div id="analysisResults" class="analysis-results" hidden></div>
+    </section>
   </main>
 
   <script>
@@ -121,7 +187,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     mountDashboard();
   </script>
 
-  <style>
+  <style is:global>
     .dash-status {
       display: inline-flex;
       align-items: center;
@@ -166,12 +232,232 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       -webkit-appearance: none;
       outline: none;
     }
+    .dash-select.small { min-width: 150px; padding: 6px 30px 6px 10px; font-size: 0.76rem; }
     .dash-select:hover, .dash-select:focus { border-color: var(--accent); }
     .dash-select option { background: var(--bg-panel); color: var(--text); }
-    #priceChart { height: 420px; }
+
+    #priceChart { height: 440px; }
+    #cotChart { height: 280px; }
     #oiChart { height: 240px; }
-    #cotChart { height: 260px; }
     .panel-src span b { color: var(--text-dim); }
     .panel-src #priceStat, .panel-src #oiStat, .panel-src #cotStat { color: var(--accent-warm); }
+    .c-red { color: #ef5350; }
+    .c-green { color: #26a69a; }
+    .c-purple { color: #a855f7; }
+
+    /* ---- Per-panel option bars ---- */
+    .chart-opts {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--border-soft);
+      background: rgba(255, 255, 255, 0.012);
+    }
+    .opt-group { display: flex; align-items: center; gap: 8px; }
+    .opt-label {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .opt-seg { display: flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+    .opt-seg button {
+      background: var(--bg-inner);
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 5px 11px;
+      cursor: pointer;
+    }
+    .opt-seg button.active { background: linear-gradient(135deg, var(--cherry-bright), var(--cherry)); color: var(--bone); font-weight: 700; }
+    .opt-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--mono);
+      font-size: 0.73rem;
+      color: var(--text-dim);
+      cursor: pointer;
+      user-select: none;
+    }
+    .opt-check input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+
+    .c-legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .c-legend .lg {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--text-faint);
+    }
+    .c-legend .lg b { color: var(--text-dim); font-weight: 600; }
+    .c-legend .lg i {
+      width: 10px; height: 10px;
+      border-radius: 3px;
+      display: inline-block;
+      flex: 0 0 auto;
+    }
+    .c-legend .lg i.dashed { border-radius: 2px; }
+
+    /* ---- Analyze ---- */
+    .analyze-panel .panel-head { align-items: flex-end; }
+    .analyze-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .analyze-controls > label {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .analyze-btn {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--bone);
+      background: linear-gradient(135deg, var(--cherry-bright), var(--cherry));
+      border: 1px solid rgba(226, 69, 108, 0.6);
+      border-radius: 8px;
+      padding: 9px 22px;
+      cursor: pointer;
+      transition: filter 0.15s, transform 0.1s;
+    }
+    .analyze-btn:hover { filter: brightness(1.08); }
+    .analyze-btn:active { transform: translateY(1px); }
+    .analyze-btn:disabled { opacity: 0.6; cursor: progress; }
+    .analyze-intro {
+      padding: 12px 16px;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      color: var(--text-faint);
+      border-bottom: 1px solid var(--border-soft);
+    }
+    .analysis-results { padding: 16px; }
+    .an-empty {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: var(--text-faint);
+      padding: 18px 4px;
+    }
+    .an-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .an-asset { font-family: var(--mono); font-size: 0.8rem; color: var(--text-dim); }
+    .an-asset span { color: var(--text-faint); margin-left: 8px; font-size: 0.72rem; }
+    .an-bias {
+      font-family: var(--mono);
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      margin: 4px 0 6px;
+    }
+    .bias-bull { color: var(--positive); }
+    .bias-bear { color: var(--negative); }
+    .bias-neutral { color: var(--watch); }
+    .an-meta { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--mono); font-size: 0.7rem; color: var(--text-faint); }
+    .an-meta b { color: var(--text-dim); }
+    .an-conv { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); }
+    .conv-high { color: var(--positive); border-color: rgba(61, 214, 140, 0.45); }
+    .conv-mid { color: var(--watch); border-color: rgba(201, 162, 75, 0.45); }
+    .conv-low { color: var(--text-faint); }
+
+    .an-gauge { position: relative; width: 240px; height: 46px; flex: 0 0 auto; }
+    .an-gauge-axis {
+      position: absolute; left: 0; right: 0; top: 12px; height: 6px; border-radius: 999px;
+      background: linear-gradient(90deg, #ef5350, #c9a24b 50%, #26a69a);
+      opacity: 0.85;
+    }
+    .an-gauge-mid { position: absolute; left: 50%; top: 8px; width: 1px; height: 14px; background: var(--text-faint); }
+    .an-gauge-dot {
+      position: absolute; top: 8px; width: 14px; height: 14px; border-radius: 50%;
+      background: var(--bone); border: 2px solid var(--bg); transform: translateX(-50%);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+    }
+    .an-gauge-labels { position: absolute; left: 0; right: 0; top: 26px; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.58rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+
+    .an-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .an-cell {
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      background: var(--bg-inner);
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .an-cell .k { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-faint); }
+    .an-cell .v { font-family: var(--mono); font-size: 1.05rem; font-weight: 700; color: var(--text); }
+    .an-cell .v.pos { color: var(--positive); }
+    .an-cell .v.neg { color: var(--negative); }
+    .an-cell .s { font-family: var(--mono); font-size: 0.64rem; color: var(--text-faint); }
+
+    .an-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+    @media (max-width: 900px) { .an-cols { grid-template-columns: 1fr; } }
+    .an-panel {
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      padding: 12px 14px;
+      background: var(--bg-inner);
+      margin-bottom: 12px;
+    }
+    .an-cols .an-panel { margin-bottom: 0; }
+    .an-panel-title {
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 10px;
+    }
+    .an-factors { display: flex; flex-direction: column; gap: 7px; }
+    .an-factor { display: grid; grid-template-columns: minmax(0, 1fr) auto 42px; align-items: center; gap: 10px; }
+    .an-f-main { display: flex; flex-direction: column; min-width: 0; }
+    .an-f-label { font-family: var(--mono); font-size: 0.74rem; color: var(--text-dim); }
+    .an-f-detail { font-family: var(--mono); font-size: 0.64rem; color: var(--text-faint); }
+    .an-f-score { font-family: var(--mono); font-size: 0.78rem; font-weight: 700; text-align: right; }
+    .an-f-score.pos { color: var(--positive); }
+    .an-f-score.neg { color: var(--negative); }
+    .an-f-score.flat { color: var(--text-faint); }
+    .an-f-weight { font-family: var(--mono); font-size: 0.62rem; color: var(--text-faint); text-align: right; }
+
+    .an-rationale { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 7px; }
+    .an-rationale li { font-size: 0.78rem; line-height: 1.55; color: var(--text-dim); }
+
+    .an-table-wrap { overflow-x: auto; }
+    .an-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.72rem; }
+    .an-table th {
+      text-align: left;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .an-table td { padding: 8px 10px; color: var(--text-dim); border-bottom: 1px solid var(--border-soft); white-space: nowrap; }
+    .an-table tbody tr { cursor: pointer; }
+    .an-table tbody tr:hover td { background: rgba(255, 255, 255, 0.03); }
+    .an-table tr.an-row-active td { background: rgba(226, 69, 108, 0.08); }
+    .an-table tr:last-child td { border-bottom: none; }
+
+    .an-disclaimer {
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      line-height: 1.6;
+      color: var(--text-faint);
+      border-top: 1px solid var(--border-soft);
+      padding-top: 10px;
+    }
   </style>
 </BaseLayout>

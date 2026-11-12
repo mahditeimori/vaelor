@@ -104,6 +104,8 @@ let activeId = 'gold';
 let cotMode: 'candles' | 'histo' | 'line' = 'candles';
 let chartType = '1';
 let timeframe = '15';
+let tvTimezone = 'Etc/UTC';
+let tvStudyPreset = 'none';
 let tvCotWidget: any = null;
 let tvCotStarted = false;
 let cotLwChart: IChartApi | null = null;
@@ -200,10 +202,63 @@ function tvStyle(): string {
   return chartType === '2' ? '2' : chartType === '0' ? '0' : '1';
 }
 
+/**
+ * Indicator presets for the TradingView embed. Objects (never bare strings)
+ * are required so several studies can be stacked without breaking the embed.
+ */
+function tvStudies(): Array<{ id: string; inputs?: Record<string, number> }> {
+  switch (tvStudyPreset) {
+    case 'ema':
+      return [
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 20 } },
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 50 } },
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 200 } },
+      ];
+    case 'rsi':
+      return [{ id: 'RSI@tv-basicstudies' }];
+    case 'macd':
+      return [{ id: 'MACD@tv-basicstudies' }];
+    case 'bb':
+      return [{ id: 'BB@tv-basicstudies' }];
+    case 'combo':
+      return [
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 20 } },
+        { id: 'MAExp@tv-basicstudies', inputs: { length: 50 } },
+        { id: 'RSI@tv-basicstudies' },
+        { id: 'MACD@tv-basicstudies' },
+      ];
+    default:
+      return [];
+  }
+}
+
 function syncEngineButtons(): void {
   document.querySelectorAll<HTMLButtonElement>('#engineBtns button').forEach((b) => {
     b.classList.toggle('active', b.dataset.engine === chartEngine);
   });
+  syncEngineControls();
+}
+
+/**
+ * The asset/pair pill belongs to the Basic engine only — TradingView carries
+ * its own symbol search. Timezone and indicator selects only affect the
+ * TradingView embed, so they are disabled while Basic is active.
+ */
+function syncEngineControls(): void {
+  const isTv = chartEngine === 'tradingview';
+  const pill = el('tqInstrument');
+  if (pill) pill.hidden = isTv;
+
+  const tz = el('tvTimezone') as HTMLSelectElement | null;
+  if (tz) {
+    tz.disabled = !isTv;
+    tz.value = tvTimezone;
+  }
+  const studies = el('tvStudies') as HTMLSelectElement | null;
+  if (studies) {
+    studies.disabled = !isTv;
+    studies.value = tvStudyPreset;
+  }
 }
 
 /**
@@ -245,7 +300,7 @@ function renderTradingView(): void {
     autosize: true,
     symbol,
     interval: tvInterval(),
-    timezone: 'Etc/UTC',
+    timezone: tvTimezone,
     theme: 'dark',
     style: tvStyle(),
     locale: 'en',
@@ -259,7 +314,7 @@ function renderTradingView(): void {
     save_image: false,
     calendar: false,
     details: false,
-    studies: [],
+    studies: tvStudies(),
     support_host: 'https://www.tradingview.com',
   });
   script.onerror = () => {
@@ -513,7 +568,7 @@ function initCotWidget(): void {
         autosize: true,
         symbol: inst.tvFuturesSymbol,
         interval: '1W',
-        timezone: 'Etc/UTC',
+        timezone: tvTimezone,
         theme: 'dark',
         style: '1',
         locale: 'en',
@@ -539,11 +594,20 @@ function initCotWidget(): void {
     });
 }
 
+/** Rebuild the lazy TradingView COT widget after a timezone change. */
+function rebuildCotWidget(): void {
+  if (!tvCotStarted) return;
+  tvCotStarted = false;
+  tvCotWidget = null;
+  const host = el('tv-cot-chart');
+  if (host) host.innerHTML = '';
+  const panel = el('tab-tvcot');
+  if (panel && !panel.hidden) initCotWidget();
+}
+
 /* ------------------------------------------------------------------ */
 /* Lightweight Charts COT visualizer                                   */
-/* ------------------------------------------------------------------ */
-
-function buildCotChart(inst: InstrumentState): void {
+/* ------------------------------------------------------------------ */function buildCotChart(inst: InstrumentState): void {
   const container = el('cotChart');
   if (!container) return;
 
@@ -563,12 +627,12 @@ function buildCotChart(inst: InstrumentState): void {
 
   if (cotMode === 'candles') {
     const s = chart.addSeries(CandlestickSeries, {
-      upColor: '#3DD68C',
-      downColor: '#E0656B',
-      borderUpColor: '#3DD68C',
-      borderDownColor: '#E0656B',
-      wickUpColor: '#3DD68C',
-      wickDownColor: '#E0656B',
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderUpColor: '#26a69a',
+      borderDownColor: '#ef5350',
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
     });
     s.setData(
       series
@@ -584,7 +648,9 @@ function buildCotChart(inst: InstrumentState): void {
     cotLwSeries = [s];
     if (legend) {
       legend.innerHTML =
-        '<span class="lg"><span class="sw" style="background:#3DD68C"></span>Commercial net weekly candle (open/close = net, range padded by |ΔOI|)</span>';
+        '<span class="lg"><span class="sw" style="background:#26a69a"></span><b>Green candle</b> — commercial net position improved week-on-week (close ≥ open)</span>' +
+        '<span class="lg"><span class="sw" style="background:#ef5350"></span><b>Red candle</b> — commercial net position deteriorated (close &lt; open)</span>' +
+        '<span class="lg"><span class="sw sw-hollow" style="border-color:#8b93a1"></span>Body = commercial net long/short · wick range padded by |Δ open interest|</span>';
     }
   } else if (cotMode === 'histo') {
     const s1 = chart.addSeries(HistogramSeries, { priceFormat: { type: 'volume' } });
@@ -594,7 +660,7 @@ function buildCotChart(inst: InstrumentState): void {
         .map((r) => ({
           time: r.date as any,
           value: r.commNetChange!,
-          color: r.commNetChange! >= 0 ? 'rgba(61,214,140,0.85)' : 'rgba(224,101,107,0.85)',
+          color: r.commNetChange! >= 0 ? 'rgba(239,83,80,0.9)' : 'rgba(239,83,80,0.4)',
         })),
     );
     const s2 = chart.addSeries(HistogramSeries, { priceFormat: { type: 'volume' } });
@@ -604,22 +670,23 @@ function buildCotChart(inst: InstrumentState): void {
         .map((r) => ({
           time: r.date as any,
           value: r.nonCommNetChange!,
-          color: r.nonCommNetChange! >= 0 ? 'rgba(201,162,75,0.8)' : 'rgba(201,162,75,0.35)',
+          color: r.nonCommNetChange! >= 0 ? 'rgba(38,166,154,0.9)' : 'rgba(38,166,154,0.4)',
         })),
     );
     cotLwSeries = [s1, s2];
     if (legend) {
       legend.innerHTML =
-        '<span class="lg"><span class="sw" style="background:rgba(61,214,140,0.85)"></span>Commercial net change (w/w)</span>' +
-        '<span class="lg"><span class="sw" style="background:rgba(201,162,75,0.8)"></span>Large speculator net change (w/w)</span>';
+        '<span class="lg"><span class="sw" style="background:#ef5350"></span><b>Commercials</b> — red bar, weekly net change (solid = added longs, faded = reduced)</span>' +
+        '<span class="lg"><span class="sw" style="background:#26a69a"></span><b>Large speculators</b> — green bar, weekly net change</span>' +
+        '<span class="lg"><span class="sw sw-hollow" style="border-color:#8b93a1"></span>Bar above zero = net-long added · below zero = net-long cut</span>';
     }
   } else {
-    const s1 = chart.addSeries(LineSeries, { color: '#3DD68C', lineWidth: 2, priceLineVisible: false });
+    const s1 = chart.addSeries(LineSeries, { color: '#ef5350', lineWidth: 2, priceLineVisible: false });
     s1.setData(series.map((r) => ({ time: r.date as any, value: r.commNet })));
-    const s2 = chart.addSeries(LineSeries, { color: '#C9A24B', lineWidth: 2, priceLineVisible: false });
+    const s2 = chart.addSeries(LineSeries, { color: '#26a69a', lineWidth: 2, priceLineVisible: false });
     s2.setData(series.map((r) => ({ time: r.date as any, value: r.nonCommNet })));
     const s3 = chart.addSeries(LineSeries, {
-      color: '#5A6270',
+      color: '#a855f7',
       lineWidth: 1,
       priceLineVisible: false,
       priceScaleId: 'right',
@@ -629,9 +696,9 @@ function buildCotChart(inst: InstrumentState): void {
     cotLwSeries = [s1, s2, s3];
     if (legend) {
       legend.innerHTML =
-        '<span class="lg"><span class="sw" style="background:#3DD68C"></span>Commercial net</span>' +
-        '<span class="lg"><span class="sw" style="background:#C9A24B"></span>Large speculator net</span>' +
-        '<span class="lg"><span class="sw" style="background:#5A6270"></span>Open interest (right scale)</span>';
+        '<span class="lg"><span class="sw" style="background:#ef5350"></span><b>Red line</b> — commercial / bank net position (hedging flow)</span>' +
+        '<span class="lg"><span class="sw" style="background:#26a69a"></span><b>Green line</b> — large-speculator net position (trend flow)</span>' +
+        '<span class="lg"><span class="sw" style="background:#a855f7"></span><b>Purple line</b> — total open interest, right scale</span>';
     }
   }
 
@@ -665,7 +732,7 @@ function updateCotChartData(inst: InstrumentState): void {
         .map((r) => ({
           time: r.date as any,
           value: r.commNetChange!,
-          color: r.commNetChange! >= 0 ? 'rgba(61,214,140,0.85)' : 'rgba(224,101,107,0.85)',
+          color: r.commNetChange! >= 0 ? 'rgba(239,83,80,0.9)' : 'rgba(239,83,80,0.4)',
         })),
     );
     (cotLwSeries[1] as ISeriesApi<'Histogram'>).setData(
@@ -674,7 +741,7 @@ function updateCotChartData(inst: InstrumentState): void {
         .map((r) => ({
           time: r.date as any,
           value: r.nonCommNetChange!,
-          color: r.nonCommNetChange! >= 0 ? 'rgba(201,162,75,0.8)' : 'rgba(201,162,75,0.35)',
+          color: r.nonCommNetChange! >= 0 ? 'rgba(38,166,154,0.9)' : 'rgba(38,166,154,0.4)',
         })),
     );
   } else {
@@ -955,6 +1022,21 @@ export function initTerminal(): void {
           renderTradingView();
         }
       });
+    });
+  });
+
+  // TradingView timezone + indicator presets (TradingView engine only).
+  guard('tv-settings', () => {
+    const tz = el('tvTimezone') as HTMLSelectElement | null;
+    tz?.addEventListener('change', () => {
+      tvTimezone = tz.value || 'Etc/UTC';
+      if (chartEngine === 'tradingview') renderTradingView();
+      rebuildCotWidget();
+    });
+    const studies = el('tvStudies') as HTMLSelectElement | null;
+    studies?.addEventListener('change', () => {
+      tvStudyPreset = studies.value || 'none';
+      if (chartEngine === 'tradingview') renderTradingView();
     });
   });
 

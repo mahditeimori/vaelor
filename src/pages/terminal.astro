@@ -18,8 +18,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <a class="tq-link tq-link-ai" href="/ai">AI / MCP</a>
         </nav>
       </div>
-      <div class="tq-instrument">
-        <span class="ctl-label">Asset / Pair</span>
+      <div class="tq-instrument" id="tqInstrument" hidden>
+        <span class="tq-ins-label">Asset / Pair</span>
         <div class="asset-select-wrap">
           <select id="assetSelect" class="asset-select" aria-label="Select asset or pair"></select>
         </div>
@@ -72,6 +72,34 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             </div>
           </div>
           <div class="ctl-block">
+            <div class="ctl-label">Timezone</div>
+            <div class="asset-select-wrap">
+              <select id="tvTimezone" class="tv-select" aria-label="Chart timezone" disabled>
+                <option value="Etc/UTC" selected>UTC</option>
+                <option value="America/New_York">New York</option>
+                <option value="America/Chicago">Chicago</option>
+                <option value="Europe/London">London</option>
+                <option value="Europe/Frankfurt">Frankfurt</option>
+                <option value="Asia/Dubai">Dubai</option>
+                <option value="Asia/Tokyo">Tokyo</option>
+                <option value="Australia/Sydney">Sydney</option>
+              </select>
+            </div>
+          </div>
+          <div class="ctl-block">
+            <div class="ctl-label">Indicators</div>
+            <div class="asset-select-wrap">
+              <select id="tvStudies" class="tv-select" aria-label="Indicator preset" disabled>
+                <option value="none" selected>None</option>
+                <option value="ema">EMA 20 / 50 / 200</option>
+                <option value="rsi">RSI 14</option>
+                <option value="macd">MACD</option>
+                <option value="bb">Bollinger Bands</option>
+                <option value="combo">EMA + RSI + MACD</option>
+              </select>
+            </div>
+          </div>
+          <div class="ctl-block">
             <div class="ctl-label">Chart engine</div>
             <div class="ctl-group" id="engineBtns" role="group" aria-label="Chart engine">
               <button type="button" data-engine="tradingview" class="active">TradingView</button>
@@ -95,7 +123,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
       <div class="panel-foot" id="liveFoot">
         Full <b>TradingView</b> chart with drawing tools, Fibonacci, indicators and symbol search.
-        Switch to <b>Basic</b> if your network blocks TradingView — no manual refresh required.
+        Timezone and indicator presets apply instantly. The asset picker appears in <b>Basic</b> mode
+        only — TradingView carries its own symbol search.
       </div>
     </section>
 
@@ -133,7 +162,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <button type="button" data-mode="line">Line</button>
             </div>
           </div>
-          <div class="cot-legend" id="cotLegend"></div>
+          <div class="cot-legend-wrap">
+            <div class="cot-legend-title">Colour guide</div>
+            <div class="cot-legend" id="cotLegend"></div>
+          </div>
         </div>
         <div class="cot-chart" id="cotChart"></div>
         <div class="cot-breakdown">
@@ -245,8 +277,32 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     }
     .tq-link:hover { color: var(--ttxt); border-color: var(--tacc); text-decoration: none; }
     .tq-link-ai { color: var(--tgold); border-color: rgba(201, 162, 75, 0.4); }
-    .tq-instrument { display: flex; align-items: center; gap: 10px; }
-    .tq-instrument .ctl-label { margin: 0; }
+    .tq-instrument { display: flex; align-items: center; gap: 12px; }
+    .tq-ins-label {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--tfaint);
+      white-space: nowrap;
+    }
+    /* The professional asset pill (Basic engine only). */
+    .tq-instrument .asset-select {
+      background: #0a0d13;
+      border: 1px solid var(--tborder);
+      border-radius: 10px;
+      color: var(--ttxt);
+      font-family: var(--mono);
+      font-size: 0.86rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      padding: 10px 40px 10px 15px;
+      min-width: 250px;
+    }
+    .tq-instrument .asset-select-wrap::after { right: 15px; color: var(--tdim); font-size: 0.7rem; }
+    .tq-instrument .asset-select:hover,
+    .tq-instrument .asset-select:focus { border-color: var(--tacc); }
+    .tq-instrument .asset-select option { background: #0a0d13; color: var(--ttxt); }
 
     /* Deep-link targets clear the sticky header + quick bar. */
     #live-chart, #macro-hub, #cross-asset { scroll-margin-top: calc(var(--header-h) + 86px); }
@@ -410,6 +466,25 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     .asset-select:focus { border-color: var(--tacc); box-shadow: 0 0 0 2px rgba(226, 69, 108, 0.25); }
     .asset-select option { background: #151921; color: var(--ttxt); }
 
+    .tv-select {
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      letter-spacing: 0.02em;
+      color: var(--ttxt);
+      background: var(--tbg);
+      border: 1px solid var(--tborder);
+      border-radius: 8px;
+      padding: 8px 32px 8px 11px;
+      min-width: 150px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+    }
+    .tv-select:hover:enabled, .tv-select:focus:enabled { border-color: var(--tacc); }
+    .tv-select:disabled { opacity: 0.4; cursor: not-allowed; }
+    .tv-select option { background: #151921; color: var(--ttxt); }
+
     /* ---------- TV chart ---------- */
     .tv-wrap { position: relative; height: 560px; border-top: 1px solid var(--tborder-soft); background: var(--tbg); }
     .tv-wrap > div:first-child { height: 100%; }
@@ -480,10 +555,28 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     .kpi-src { font-family: var(--mono); font-size: 0.66rem; color: var(--tfaint); margin-top: 6px; }
 
     /* ---------- COT chart + breakdown ---------- */
-    .cot-controls { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
-    .cot-legend { font-family: var(--mono); font-size: 0.7rem; color: var(--tfaint); display: flex; gap: 16px; flex-wrap: wrap; }
-    .cot-legend .lg { display: inline-flex; align-items: center; gap: 6px; }
-    .cot-legend .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    .cot-controls { display: flex; align-items: flex-start; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+    .cot-legend-wrap {
+      flex: 1 1 520px;
+      min-width: 0;
+      border: 1px solid var(--tborder-soft);
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.015);
+      padding: 9px 12px 10px;
+    }
+    .cot-legend-title {
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--tfaint);
+      margin-bottom: 7px;
+    }
+    .cot-legend { font-family: var(--mono); font-size: 0.7rem; color: var(--tfaint); display: flex; gap: 8px 18px; flex-wrap: wrap; line-height: 1.5; }
+    .cot-legend .lg { display: inline-flex; align-items: center; gap: 7px; }
+    .cot-legend .lg b { color: var(--ttxt); font-weight: 600; }
+    .cot-legend .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: 0 0 auto; }
+    .cot-legend .sw-hollow { background: transparent; border: 1px solid var(--tdim); }
     .cot-chart { height: 360px; border: 1px solid var(--tborder-soft); border-radius: 10px; overflow: hidden; background: var(--tbg); }
     .cot-breakdown { margin-top: 16px; }
     .bd-title { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tfaint); margin-bottom: 8px; }
