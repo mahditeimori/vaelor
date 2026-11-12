@@ -106,8 +106,15 @@ let chartType = '1';
 let timeframe = '15';
 let tvTimezone = 'Etc/UTC';
 let tvStudyPreset = 'none';
-let tvCotWidget: any = null;
-let tvCotStarted = false;
+let hubChart: IChartApi | null = null;
+let hubPrice: ISeriesApi<'Candlestick'> | null = null;
+let hubComm: ISeriesApi<'Line'> | null = null;
+let hubSpec: ISeriesApi<'Line'> | null = null;
+let hubOi: ISeriesApi<'Line'> | null = null;
+let hubStarted = false;
+let hubLoading = false;
+let hubInstrument = '';
+const hubShow = { price: true, cot: true, oi: true };
 let cotLwChart: IChartApi | null = null;
 let cotLwSeries: ISeriesApi<any>[] = [];
 let polling = false;
@@ -151,34 +158,9 @@ function setPulse(kind: 'connecting' | 'live' | 'dead', label: string): void {
   if (labelEl) labelEl.textContent = label;
 }
 
-const TV_OVERRIDES = {
-  'paneProperties.background': '#0B0E14',
-  'paneProperties.vertGridProperties.color': '#1B2230',
-  'paneProperties.horzGridProperties.color': '#1B2230',
-  'mainSeriesProperties.candleStyle.upColor': '#3DD68C',
-  'mainSeriesProperties.candleStyle.downColor': '#E0656B',
-  'mainSeriesProperties.candleStyle.wickUpColor': '#3DD68C',
-  'mainSeriesProperties.candleStyle.wickDownColor': '#E0656B',
-  'mainSeriesProperties.candleStyle.borderUpColor': '#3DD68C',
-  'mainSeriesProperties.candleStyle.borderDownColor': '#E0656B',
-};
-
 /* ------------------------------------------------------------------ */
 /* TradingView Advanced Chart embed (full drawing toolbar)             */
 /* ------------------------------------------------------------------ */
-
-/** tv.js is still used by the optional COT tab; the price chart uses the embed. */
-function loadTradingView(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.TradingView) return resolve();
-    const s = document.createElement('script');
-    s.src = 'https://s3.tradingview.com/tv.js';
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('tv.js CDN failed to load'));
-    document.head.appendChild(s);
-  });
-}
 
 const TV_EMBED_SRC = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
 let tvEmbedWatchdog: number | null = null;
@@ -550,64 +532,126 @@ async function loadLiveFallbackData(): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
-/* TradingView COT & OI widget (tab 2)                                 */
+/* Tab 2 — self-hosted futures COT & OI chart                          */
 /* ------------------------------------------------------------------ */
 
-/** Lazily created the first time tab 2 (TradingView COT & OI) is opened. */
-function initCotWidget(): void {
-  if (tvCotStarted) return;
-  tvCotStarted = true;
-  const inst = current();
-  if (!inst) return;
-  loadTradingView()
-    .then(() => {
-      const host = el('tv-cot-chart');
-      if (!host) return;
-      tvCotWidget = new window.TradingView.widget({
-        container_id: 'tv-cot-chart',
-        autosize: true,
-        symbol: inst.tvFuturesSymbol,
-        interval: '1W',
-        timezone: tvTimezone,
-        theme: 'dark',
-        style: '1',
-        locale: 'en',
-        toolbar_bg: '#151921',
-        enable_publishing: false,
-        allow_symbol_change: true,
-        withdateranges: true,
-        studies: [],
-        overrides: TV_OVERRIDES,
-      });
-      tvCotWidget.onChartReady(() => {
-        try { tvCotWidget.chart().createStudy('COT', false, false); } catch { /* optional study */ }
-        try { tvCotWidget.chart().createStudy('OpenInterest@tv-basicstudies', false, false); } catch { /* optional study */ }
-      });
-    })
-    .catch(() => {
-      const host = el('tv-cot-chart');
-      if (host) {
-        host.innerHTML =
-          '<div class="tv-cot-offline">TradingView is not reachable from this network. ' +
-          'Use tab 1 (CFTC raw data) — it is authoritative and fully automated.</div>';
-      }
-    });
+/**
+ * The futures/COT hub is rendered with Lightweight Charts from our own Worker
+ * data, so it keeps working on networks that block TradingView. Three panes:
+ * price candles, commercial vs large-speculator net, and open interest.
+ */
+function initHubChart(): void {
+  if (hubStarted) return;
+  const container = el('tv-cot-chart');
+  if (!container) return;
+  hubStarted = true;
+
+  const chart = mountChart(container, () => {
+    try { chart.timeScale().fitContent(); } catch { /* ignore */ }
+  });
+  hubChart = chart;
+
+  hubPrice = chart.addSeries(
+    CandlestickSeries,
+    {
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderUpColor: '#26a69a',
+      borderDownColor: '#ef5350',
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
+    },
+    0,
+  );
+  hubComm = chart.addSeries(
+    LineSeries,
+    { color: '#ef5350', lineWidth: 2, priceLineVisible: false },
+    1,
+  );
+  hubSpec = chart.addSeries(
+    LineSeries,
+    { color: '#26a69a', lineWidth: 2, priceLineVisible: false },
+    1,
+  );
+  hubOi = chart.addSeries(
+    LineSeries,
+    { color: '#a855f7', lineWidth: 2, priceLineVisible: false, priceFormat: { type: 'volume' } },
+    2,
+  );
+
+  try {
+    const panes = chart.panes();
+    panes[0]?.setStretchFactor(4);
+    panes[1]?.setStretchFactor(2);
+    panes[2]?.setStretchFactor(1.2);
+  } catch { /* older builds */ }
+
+  // Panes are laid out on resize, so materialise them once the split is set.
+  forceChartSize(chart, container.clientWidth || 640, container.clientHeight || 380);
+  renderHubLegend();
+  void refreshHubChart(true);
 }
 
-/** Rebuild the lazy TradingView COT widget after a timezone change. */
-function rebuildCotWidget(): void {
-  if (!tvCotStarted) return;
-  tvCotStarted = false;
-  tvCotWidget = null;
-  const host = el('tv-cot-chart');
-  if (host) host.innerHTML = '';
-  const panel = el('tab-tvcot');
-  if (panel && !panel.hidden) initCotWidget();
+function renderHubLegend(): void {
+  const legend = el('hubCotLegend');
+  if (!legend) return;
+  legend.innerHTML =
+    '<span class="lg"><span class="sw" style="background:#26a69a"></span><b>Futures price</b> — weekly front-contract candle (green up / red down)</span>' +
+    '<span class="lg"><span class="sw" style="background:#ef5350"></span><b>Commercials</b> — net position, middle pane (hedging flow)</span>' +
+    '<span class="lg"><span class="sw" style="background:#26a69a"></span><b>Large specs</b> — net position, middle pane (trend flow)</span>' +
+    '<span class="lg"><span class="sw" style="background:#a855f7"></span><b>Open interest</b> — total contracts, bottom pane</span>';
+}
+
+function applyHubVisibility(): void {
+  hubPrice?.applyOptions({ visible: hubShow.price });
+  hubComm?.applyOptions({ visible: hubShow.cot });
+  hubSpec?.applyOptions({ visible: hubShow.cot });
+  hubOi?.applyOptions({ visible: hubShow.oi });
+}
+
+/** Load futures price + COT/OI for the active instrument into the hub chart. */
+async function refreshHubChart(force = false): Promise<void> {
+  if (!hubStarted || !hubChart || hubLoading) return;
+  const inst = current();
+  if (!inst) return;
+  hubLoading = true;
+  try {
+    if (force || hubInstrument !== inst.id) {
+      const url =
+        `${API_BASE}/api/chart?id=${encodeURIComponent(inst.id)}` +
+        `&range=2y&interval=1wk&t=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const payload = (await res.json()) as ChartPayload;
+      hubPrice?.setData(
+        (payload.bars ?? []).map((b) => ({
+          time: new Date(b.time * 1000).toISOString().slice(0, 10) as any,
+          open: b.open,
+          high: b.high,
+          low: b.low,
+          close: b.close,
+        })),
+      );
+      hubInstrument = inst.id;
+    }
+    const rows = inst.cot?.series ?? [];
+    hubComm?.setData(rows.map((r) => ({ time: r.date as any, value: r.commNet })));
+    hubSpec?.setData(rows.map((r) => ({ time: r.date as any, value: r.nonCommNet })));
+    hubOi?.setData(rows.map((r) => ({ time: r.date as any, value: r.oi })));
+    applyHubVisibility();
+    hubChart.timeScale().fitContent();
+  } catch {
+    // Keep the previous data; the next poll retries automatically.
+  } finally {
+    hubLoading = false;
+  }
 }
 
 /* ------------------------------------------------------------------ */
 /* Lightweight Charts COT visualizer                                   */
-/* ------------------------------------------------------------------ */function buildCotChart(inst: InstrumentState): void {
+/* ------------------------------------------------------------------ */
+
+function buildCotChart(inst: InstrumentState): void {
   const container = el('cotChart');
   if (!container) return;
 
@@ -868,13 +912,92 @@ function renderHubMeta(inst: InstrumentState): void {
     : 'CFTC: awaiting bootstrap…';
 }
 
-function renderFinviz(inst: InstrumentState, bust: number): void {
-  const main = el('finvizMain') as HTMLImageElement | null;
-  const fallback = el('finvizFallback');
+/**
+ * Inline-SVG COT structure chart. Finviz retired its static futures chart
+ * images, so the same commercial-vs-speculator structure is drawn here from
+ * the live CFTC series — no external image dependency.
+ */
+function cotSvg(rows: CotSeriesRow[], width: number, height: number, main: boolean): string {
+  const pts = rows.filter(
+    (r) => Number.isFinite(r.commNet) && Number.isFinite(r.nonCommNet),
+  );
+  if (pts.length < 2) {
+    return '<div class="cot-svg-empty">Awaiting CFTC history…</div>';
+  }
+  const padL = main ? 62 : 8;
+  const padR = main ? 10 : 8;
+  const padT = main ? 14 : 12;
+  const padB = main ? 24 : 10;
+  const vals = pts.flatMap((r) => [r.commNet, r.nonCommNet]);
+  let min = Math.min(...vals);
+  let max = Math.max(...vals);
+  if (min === max) { min -= 1; max += 1; }
+  const span = max - min;
+  const iw = width - padL - padR;
+  const ih = height - padT - padB;
+  const x = (i: number): number => padL + (i / (pts.length - 1)) * iw;
+  const y = (v: number): number => padT + ((max - v) / span) * ih;
+
+  const stepPath = (get: (r: CotSeriesRow) => number): string => {
+    let d = `M${x(0).toFixed(1)},${y(get(pts[0])).toFixed(1)}`;
+    for (let i = 1; i < pts.length; i++) {
+      const yy = y(get(pts[i])).toFixed(1);
+      d += `L${x(i - 1).toFixed(1)},${yy}L${x(i).toFixed(1)},${yy}`;
+    }
+    return d;
+  };
+
+  const zeroY = min <= 0 && max >= 0 ? y(0) : null;
+  const ticks = [max, (max + min) / 2, min];
+  const labels = main
+    ? ticks
+        .map(
+          (v) =>
+            `<text x="${padL - 8}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" class="fv-axis">` +
+            `${Math.round(v).toLocaleString('en-US')}</text>`,
+        )
+        .join('')
+    : '';
+  const dates = main
+    ? [0, Math.floor((pts.length - 1) / 2), pts.length - 1]
+        .map(
+          (i, k) =>
+            `<text x="${x(i).toFixed(1)}" y="${height - 6}" ` +
+            `text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}" class="fv-axis">${pts[i].date}</text>`,
+        )
+        .join('')
+    : '';
+
+  return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Commercial versus large-speculator net positioning">
+    ${zeroY == null ? '' : `<line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${width - padR}" y2="${zeroY.toFixed(1)}" class="fv-zero" />`}
+    ${labels}
+    <path d="${stepPath((r) => r.nonCommNet)}" fill="none" stroke="#26a69a" stroke-width="${main ? 2 : 1.5}" stroke-linejoin="round" />
+    <path d="${stepPath((r) => r.commNet)}" fill="none" stroke="#ef5350" stroke-width="${main ? 2 : 1.5}" stroke-linejoin="round" />
+    ${dates}
+  </svg>`;
+}
+
+function renderFinviz(inst: InstrumentState): void {
+  const main = el('finvizMain');
+  const rows = inst.cot?.series ?? [];
+  const last = rows.at(-1);
+  const prev = rows.at(-2);
+  const delta = last && prev ? last.commNet - prev.commNet : null;
+
   if (main) {
-    main.src = `${API_BASE}/api/finviz?code=${inst.finvizCode}&p=w1&t=${bust}`;
-    main.onload = () => { main.style.display = ''; if (fallback) fallback.hidden = true; };
-    main.onerror = () => { main.style.display = 'none'; if (fallback) fallback.hidden = false; };
+    main.innerHTML =
+      `<div class="fv-head">
+        <span class="fv-title">${inst.finvizCode} · ${inst.displayName} · weekly COT structure</span>
+        <span class="fv-last">
+          <b style="color:#ef5350">${fmt(last?.commNet)}</b> commercial ·
+          <b style="color:#26a69a">${fmt(last?.nonCommNet)}</b> large specs
+        </span>
+      </div>` +
+      cotSvg(rows, 1000, 300, true) +
+      `<div class="fv-foot">
+        Commercials (red) vs large speculators (green) · CFTC report ${inst.cot?.reportDate ?? '—'} ·
+        Δ commercial w/w ${fmtSigned(delta)} · source: live CFTC feed
+      </div>`;
   }
 
   const compare = el('finvizCompare');
@@ -885,23 +1008,33 @@ function renderFinviz(inst: InstrumentState, bust: number): void {
     if (!seen.has(i.finvizCode)) { seen.add(i.finvizCode); uniq.push(i); }
   }
   compare.innerHTML = uniq
-    .map(
-      (i) => `<div class="finviz-thumb" data-thumb="${i.finvizCode}">
+    .map((i) => {
+      const r = i.cot?.series ?? [];
+      const l = r.at(-1);
+      return `<div class="finviz-thumb" data-thumb="${i.finvizCode}" title="Show ${i.displayName} in the main panel">
         <span class="thumb-label">${i.finvizCode}</span>
-        <img src="${API_BASE}/api/finviz?code=${i.finvizCode}&p=w1&t=${bust}" alt="Finviz COT ${i.finvizCode}" loading="lazy" onerror="this.closest('.finviz-thumb')?.classList.add('failed')" />
-      </div>`,
-    )
+        <span class="thumb-val" style="color:${(l?.commNet ?? 0) >= 0 ? '#26a69a' : '#ef5350'}">${fmt(l?.commNet)}</span>
+        ${cotSvg(r, 320, 120, false)}
+      </div>`;
+    })
     .join('');
+
+  compare.querySelectorAll<HTMLElement>('[data-thumb]').forEach((node) => {
+    node.addEventListener('click', () => {
+      const match = state?.instruments.find((x) => x.finvizCode === node.dataset.thumb);
+      if (match) switchInstrument(match.id);
+    });
+  });
 }
 
-function renderInstrument(inst: InstrumentState, bust: number): void {
+function renderInstrument(inst: InstrumentState): void {
   const label = el('liveSymbolLabel');
   if (label) label.textContent = `${inst.tvLiveSymbol} — ${inst.displayName}`;
   renderKpis(inst);
   buildCotChart(inst);
   renderBreakdown(inst);
   renderHubMeta(inst);
-  renderFinviz(inst, bust);
+  renderFinviz(inst);
 }
 
 function switchInstrument(id: string): void {
@@ -912,12 +1045,10 @@ function switchInstrument(id: string): void {
 
   const inst = current();
   if (!inst) return;
-  renderInstrument(inst, Date.now());
+  renderInstrument(inst);
   if (chartEngine === 'tradingview') renderTradingView();
   else void loadLiveFallbackData();
-  if (tvCotWidget && typeof tvCotWidget.setSymbol === 'function') {
-    try { tvCotWidget.setSymbol(inst.tvFuturesSymbol); } catch { /* ignore */ }
-  }
+  if (hubStarted) void refreshHubChart(true);
 }
 
 /* ------------------------------------------------------------------ */
@@ -935,11 +1066,11 @@ async function poll(): Promise<void> {
     state = next;
     if (first) {
       renderPills();
-      renderInstrument(current() ?? next.instruments[0], Date.now());
+      renderInstrument(current() ?? next.instruments[0]);
       renderSyncBadge();
       if (chartEngine === 'fallback') void loadLiveFallbackData();
     } else {
-      // Silent in-place refresh: KPIs, chart data, badges, images.
+      // Silent in-place refresh: KPIs, chart data, badges, charts.
       renderSyncBadge();
       const inst = current();
       if (inst) {
@@ -947,14 +1078,10 @@ async function poll(): Promise<void> {
         updateCotChartData(inst);
         renderBreakdown(inst);
         renderHubMeta(inst);
+        renderFinviz(inst);
         if (chartEngine === 'fallback') void loadLiveFallbackData();
       }
-      const bust = Date.now();
-      const main = el('finvizMain') as HTMLImageElement | null;
-      if (main && inst) main.src = `${API_BASE}/api/finviz?code=${inst.finvizCode}&p=w1&t=${bust}`;
-      document.querySelectorAll<HTMLImageElement>('#finvizCompare img').forEach((img) => {
-        img.src = `${img.src.split('&t=')[0]}&t=${bust}`;
-      });
+      if (hubStarted) void refreshHubChart();
     }
   } catch {
     // Keep the last known state; the next cycle retries automatically.
@@ -1031,12 +1158,24 @@ export function initTerminal(): void {
     tz?.addEventListener('change', () => {
       tvTimezone = tz.value || 'Etc/UTC';
       if (chartEngine === 'tradingview') renderTradingView();
-      rebuildCotWidget();
     });
     const studies = el('tvStudies') as HTMLSelectElement | null;
     studies?.addEventListener('change', () => {
       tvStudyPreset = studies.value || 'none';
       if (chartEngine === 'tradingview') renderTradingView();
+    });
+  });
+
+  // Tab 2 series toggles (price / COT / open interest).
+  guard('hub-series', () => {
+    $('hubSeriesBtns').querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.addEventListener('click', () => {
+        const key = b.dataset.series as 'price' | 'cot' | 'oi';
+        if (!(key in hubShow)) return;
+        hubShow[key] = !hubShow[key];
+        b.classList.toggle('active', hubShow[key]);
+        applyHubVisibility();
+      });
     });
   });
 
@@ -1095,5 +1234,8 @@ function activateHubTab(tab: string): void {
     const panel = el('tab-' + t);
     if (panel) panel.hidden = t !== tab;
   });
-  if (tab === 'tvcot') initCotWidget();
+  if (tab === 'tvcot') {
+    if (hubStarted) void refreshHubChart();
+    else initHubChart();
+  }
 }

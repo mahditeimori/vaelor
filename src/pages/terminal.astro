@@ -143,10 +143,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           1. US Gov CFTC Raw Data (Banks &amp; Commercials)
         </button>
         <button type="button" role="tab" aria-selected="false" data-tab="tvcot">
-          2. TradingView Interactive COT &amp; OI
+          2. Futures COT &amp; OI (Interactive)
         </button>
         <button type="button" role="tab" aria-selected="false" data-tab="finviz">
-          3. Finviz Macro COT Structure
+          3. Cross-asset COT Structure
         </button>
       </div>
 
@@ -174,25 +174,39 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </div>
       </div>
 
-      <!-- Tab 2 · TradingView COT & OI -->
-      <div class="hub-tab-panel" id="tab-tvcot" role="tabpanel" aria-label="TradingView COT" hidden>
+      <!-- Tab 2 · Futures COT & OI (self-hosted, always available) -->
+      <div class="hub-tab-panel" id="tab-tvcot" role="tabpanel" aria-label="Futures COT and open interest" hidden>
+        <div class="cot-controls">
+          <div class="ctl-block">
+            <div class="ctl-label">Series</div>
+            <div class="ctl-group" id="hubSeriesBtns" role="group" aria-label="COT hub series">
+              <button type="button" data-series="price" class="active">Price</button>
+              <button type="button" data-series="cot" class="active">COT net</button>
+              <button type="button" data-series="oi" class="active">Open interest</button>
+            </div>
+          </div>
+          <div class="cot-legend-wrap">
+            <div class="cot-legend-title">Colour guide</div>
+            <div class="cot-legend" id="hubCotLegend"></div>
+          </div>
+        </div>
         <div class="tv-wrap tv-cot-wrap" id="tvCotWrap">
           <div id="tv-cot-chart"></div>
         </div>
         <div class="panel-foot">
-          Weekly futures contract with CFTC COT &amp; Open Interest studies. Studies auto-load when the
-          TradingView library exposes them; otherwise open the indicator menu (enabled) and add “COT”.
+          Weekly front-contract futures price, CFTC commercial and large-speculator net positioning, and
+          futures open interest in three linked panes. Rendered from the live CFTC/CME feed by this site —
+          no external TradingView library is required, so the tab works on any network.
         </div>
       </div>
 
-      <!-- Tab 3 · Finviz COT structure -->
-      <div class="hub-tab-panel" id="tab-finviz" role="tabpanel" aria-label="Finviz COT" hidden>
-        <div class="finviz-main">
-          <img id="finvizMain" alt="Finviz futures COT chart" loading="lazy" />
-          <div class="finviz-fallback" id="finvizFallback" hidden>
-            Finviz upstream is not reachable from this network — the proxy retries on every automated
-            sync cycle. CFTC raw data (tab 1) remains the authoritative source.
-          </div>
+      <!-- Tab 3 · Cross-asset COT structure -->
+      <div class="hub-tab-panel" id="tab-finviz" role="tabpanel" aria-label="Cross-asset COT structure" hidden>
+        <div class="finviz-main" id="finvizMain"><!-- self-rendered COT structure --></div>
+        <div class="panel-foot">
+          Finviz retired its static futures chart images in 2026, so this panel draws the same
+          commercial-versus-speculator structure from the live CFTC series. Click any thumbnail to load
+          that market in the main chart.
         </div>
         <div class="finviz-compare-title" id="cross-asset">CROSS-ASSET COMPARISON · AUTO-REFRESHED</div>
         <div class="finviz-compare" id="finvizCompare"><!-- thumbs injected --></div>
@@ -496,16 +510,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     }
     .tv-fallback-inner { max-width: 480px; text-align: center; padding: 24px; color: var(--tdim); }
     .tv-cot-wrap { height: 480px; }
-    .tv-cot-offline {
-      display: grid;
-      place-items: center;
-      height: 100%;
-      padding: 24px;
-      text-align: center;
-      color: var(--tfaint);
-      font-family: var(--mono);
-      font-size: 0.82rem;
-    }
 
     /* ---------- Hub tabs ---------- */
     .hub-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--tfaint); text-align: right; }
@@ -598,27 +602,45 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     .bd-table .net-pos { color: var(--tgreen); }
     .bd-table .net-neg { color: var(--tred); }
 
-    /* ---------- Finviz ---------- */
+    /* ---------- Cross-asset COT structure (self-rendered) ---------- */
     .finviz-main {
       position: relative;
-      min-height: 420px;
-      display: grid;
-      place-items: center;
       border: 1px solid var(--tborder-soft);
       border-radius: 10px;
       background: var(--tbg);
       overflow: hidden;
       margin-bottom: 16px;
+      padding: 12px 14px 10px;
     }
-    .finviz-main img { width: 100%; height: auto; display: block; }
-    .finviz-fallback {
-      position: absolute; inset: 0;
-      display: grid; place-items: center;
-      padding: 24px; text-align: center;
+    .finviz-main svg, .finviz-thumb svg { width: 100%; height: auto; display: block; }
+    .fv-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      font-family: var(--mono);
+      font-size: 0.74rem;
+      color: var(--tfaint);
+    }
+    .fv-title { color: var(--ttxt); font-weight: 600; }
+    .fv-last b { font-weight: 700; }
+    .fv-foot {
+      margin-top: 8px;
+      font-family: var(--mono);
+      font-size: 0.64rem;
+      line-height: 1.5;
+      color: var(--tfaint);
+    }
+    .fv-axis { font-family: var(--mono); font-size: 9px; fill: #8b93a1; }
+    .fv-zero { stroke: #3a424f; stroke-dasharray: 3 3; }
+    .cot-svg-empty {
+      padding: 46px 16px;
+      text-align: center;
       color: var(--tfaint);
       font-family: var(--mono);
       font-size: 0.8rem;
-      background: var(--tbg);
     }
     .finviz-compare-title { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.18em; color: var(--tfaint); margin-bottom: 10px; }
     .finviz-compare {
@@ -632,8 +654,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       border-radius: 8px;
       overflow: hidden;
       background: var(--tbg);
+      cursor: pointer;
+      transition: border-color 0.15s, transform 0.1s;
     }
-    .finviz-thumb img { width: 100%; display: block; }
+    .finviz-thumb:hover { border-color: var(--tacc); }
+    .finviz-thumb:active { transform: translateY(1px); }
     .finviz-thumb .thumb-label {
       position: absolute; top: 6px; left: 8px;
       font-family: var(--mono);
@@ -644,7 +669,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       padding: 2px 8px;
       border-radius: 999px;
     }
-    .finviz-thumb.failed { min-height: 120px; display: grid; place-items: center; color: var(--tfaint); font-family: var(--mono); font-size: 0.68rem; }
+    .finviz-thumb .thumb-val {
+      position: absolute; top: 6px; right: 8px;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      background: rgba(11, 14, 20, 0.85);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
 
     /* ---------- Responsive ---------- */
     @media (max-width: 900px) {
