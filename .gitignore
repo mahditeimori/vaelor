@@ -58,6 +58,7 @@ tmp-prod-*
 mt5-bridge/.venv/
 mt5-bridge/data/
 mt5-bridge/.env
+mt5-bridge/token.txt
 mt5-bridge/__pycache__/
 mt5-bridge/**/__pycache__/
 **/__pycache__/

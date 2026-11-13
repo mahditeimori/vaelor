@@ -68,6 +68,9 @@ FIRST RUN
 5. Pick your terminal from the detected list and connect. If the terminal is
    logged in, the account appears immediately.
 
+The token is always saved in token.txt, right next to run.cmd. Double-click
+it, open it with Notepad, copy the line inside - that is your token.
+
 KEEP THE WINDOW OPEN
 --------------------
 The console window IS the bridge. While you trade it must stay open - you can
@@ -109,7 +112,8 @@ IF SOMETHING GOES WRONG
   tick "Add python.exe to PATH", and run run.cmd again.
 * "Dependency installation failed" - check your internet connection and run
   run.cmd again.
-* Wrong token on the site - copy the exact string printed next to "Token".
+* Wrong token on the site - open token.txt next to run.cmd and copy the
+  exact string inside it.
 `;
 
 function crc32(buffer) {

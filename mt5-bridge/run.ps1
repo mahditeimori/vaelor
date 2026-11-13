@@ -32,11 +32,17 @@ function Fail($lines) {
 # traceback the user cannot act on.
 $busy = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
 if ($busy) {
+    # Make the token easy to find even when the bridge is already running:
+    # copy it to token.txt next to run.cmd.
+    $existingToken = Join-Path $PSScriptRoot "data\bridge-token"
+    if (Test-Path $existingToken) {
+        Copy-Item $existingToken (Join-Path $PSScriptRoot "token.txt") -Force
+    }
     Write-Host ""
     Write-Host "  Port $Port is already in use." -ForegroundColor Yellow
     Write-Host "  If the bridge is already running, there is nothing to do: open the"
     Write-Host "  Vaelor Execution page and pair with http://127.0.0.1:$Port - the"
-    Write-Host "  token is in data\bridge-token."
+    Write-Host "  token is in token.txt next to run.cmd."
     Write-Host "  Otherwise start on another port:"
     Write-Host "    powershell -NoProfile -ExecutionPolicy Bypass -File run.ps1 -Port 8900"
     Write-Host ""
@@ -133,6 +139,9 @@ function Read-Setting($expr) {
 $token = Read-Setting "from app.config import SETTINGS; print(SETTINGS.token)"
 $modeLine = Read-Setting "from app.config import SETTINGS; print(SETTINGS.mode)"
 
+# Drop the token in a plain file next to run.cmd so it is easy to find.
+Set-Content -Path (Join-Path $PSScriptRoot "token.txt") -Value $token -Encoding ascii
+
 if ($Setup) {
     Write-Step "Setup complete"
     Write-Host "Bridge URL  : http://127.0.0.1:$Port"
@@ -148,7 +157,7 @@ Write-Host "  URL        : http://127.0.0.1:$Port"
 Write-Host "  Token      : $token"
 Write-Host "  Mode       : $modeLine  (auto falls back to simulation)"
 Write-Host "  Health     : http://127.0.0.1:$Port/health"
-Write-Host "  Token file : $PSScriptRoot\data\bridge-token"
+Write-Host "  Token file : token.txt (next to run.cmd)"
 Write-Host "  ------------------------------------------------"
 Write-Host "  Paste URL + token into the site's Execution page."
 Write-Host "  Keep this window open while you trade. Press Ctrl+C to stop." -ForegroundColor DarkGray
