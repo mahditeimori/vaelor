@@ -30,7 +30,7 @@ from app.models import (  # noqa: E402
 from app.performance import max_drawdown, summarise, trade_stats, wilson_lower  # noqa: E402
 from app.providers import SimProvider, synthetic_bars  # noqa: E402
 from app.store import Store  # noqa: E402
-from app.strategies import validate_strategy  # noqa: E402
+from app.strategies import StrategyError, validate_strategy  # noqa: E402
 
 
 def trend_bars(count: int = 400, start_price: float = 2000.0) -> list[dict]:
@@ -299,6 +299,53 @@ class EngineTests(unittest.TestCase):
         b = synthetic_bars("XAUUSD", "H1", 1_700_000_000, 1_700_200_000)
         self.assertEqual(a, b)
         self.assertTrue(all(bar["low"] <= bar["close"] <= bar["high"] for bar in a))
+
+
+class StrategyValidationTests(unittest.TestCase):
+    """The editor on /execution validates manifests through these helpers."""
+
+    def test_valid_editor_manifest_reports_warmup(self) -> None:
+        from app.strategies import warmup_bars
+
+        manifest = StrategyManifest(
+            id="my-gold-cross",
+            name="My Gold EMA cross",
+            symbols=["XAUUSD"],
+            entryLong=Group(
+                all=[
+                    Condition(type="ema_cross", fast=20, slow=50, direction="up"),
+                    Condition(type="rsi", period=14, op="above", value=50),
+                ]
+            ),
+            stop={"type": "atr", "mult": 2},
+            target={"type": "atr", "mult": 4},
+        )
+        validated = validate_strategy(manifest)
+        self.assertEqual(validated.id, "my-gold-cross")
+        self.assertEqual(warmup_bars(validated), 53)
+
+    def test_editor_manifest_errors_are_explained(self) -> None:
+        with self.assertRaises(StrategyError) as ctx:
+            validate_strategy(
+                StrategyManifest(
+                    id="bad-cross",
+                    name="Bad cross",
+                    symbols=["XAUUSD"],
+                    entry=Group(all=[Condition(type="ema_cross", fast=50, slow=20, direction="up")]),
+                )
+            )
+        self.assertIn("fast must be smaller than slow", str(ctx.exception))
+
+        with self.assertRaises(StrategyError) as ctx:
+            validate_strategy(
+                StrategyManifest(
+                    id="bad-type",
+                    name="Bad type",
+                    symbols=["XAUUSD"],
+                    entry=Group(all=[Condition(type="ichimoku", period=9)]),
+                )
+            )
+        self.assertIn("unknown condition type", str(ctx.exception))
 
 
 if __name__ == "__main__":

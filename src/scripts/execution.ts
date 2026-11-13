@@ -1076,6 +1076,125 @@ async function syncStrategies(): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
+/* Strategy editor (bring your own strategy)                          */
+/* ------------------------------------------------------------------ */
+
+const STRATEGY_TEMPLATE = {
+  id: 'my-gold-cross',
+  name: 'My Gold EMA cross',
+  author: 'your name',
+  description: '20/50 EMA cross on gold with an ATR stop and a 2R target.',
+  symbols: ['XAUUSD'],
+  timeframe: 'H1',
+  direction: 'both',
+  entryLong: {
+    all: [{ type: 'ema_cross', fast: 20, slow: 50, direction: 'up' }],
+  },
+  entryShort: {
+    all: [{ type: 'ema_cross', fast: 20, slow: 50, direction: 'down' }],
+  },
+  exit: {
+    any: [{ type: 'ema_cross', fast: 20, slow: 50, direction: 'down' }],
+  },
+  stop: { type: 'atr', mult: 2 },
+  target: { type: 'atr', mult: 4 },
+  risk: { riskPct: 1, maxPositions: 1 },
+};
+
+function readManifestText(): string {
+  return ((el('stratManifest') as HTMLTextAreaElement | null)?.value ?? '').trim();
+}
+
+function parseManifest(): Json | null {
+  const raw = readManifestText();
+  if (!raw) {
+    toast('Paste a JSON manifest first (or press "Insert example").', 'bad');
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Json;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error('the manifest must be a JSON object');
+    }
+    return parsed;
+  } catch (err) {
+    toast(`Invalid JSON: ${err instanceof Error ? err.message : String(err)}`, 'bad');
+    return null;
+  }
+}
+
+async function validateManifest(): Promise<void> {
+  if (!pairing.token) {
+    toast('Pair the bridge first — the editor validates against it.', 'bad');
+    return;
+  }
+  const manifest = parseManifest();
+  if (!manifest) return;
+  try {
+    const result = await api<{ ok: boolean; id: string; warmupBars: number }>('/api/strategies/validate', {
+      method: 'POST',
+      body: { strategy: manifest },
+    });
+    toast(`Manifest is valid · ${result.id} · needs ${result.warmupBars} warm-up bars.`, 'ok');
+  } catch (err) {
+    // Surface the bridge's own explanation (e.g. "unknown condition type: …").
+    toast(`Manifest rejected: ${err instanceof Error ? err.message : String(err)}`, 'bad');
+  }
+}
+
+async function registerManifest(): Promise<void> {
+  if (!pairing.token) {
+    toast('Pair the bridge first, then register the strategy.', 'bad');
+    return;
+  }
+  const manifest = parseManifest();
+  if (!manifest) return;
+  // Always register disabled so the strategy can be backtested before it can trade.
+  manifest.enabled = false;
+  manifest.autoExecute = false;
+  try {
+    const result = await api<{ ok: boolean; strategy: Json }>('/api/strategies', {
+      method: 'POST',
+      body: { strategy: manifest },
+    });
+    toast(`Strategy registered: ${result.strategy?.name ?? manifest.id}. It is disabled — backtest it, then enable it.`, 'ok');
+    await refreshStrategies(true);
+    const panel = el('stratAddPanel');
+    if (panel) panel.hidden = true;
+    (el('stratAddToggle') as HTMLButtonElement).textContent = 'Show editor';
+  } catch (err) {
+    showError(err);
+  }
+}
+
+function loadTemplateManifest(): void {
+  const area = el('stratManifest') as HTMLTextAreaElement | null;
+  if (!area) return;
+  area.value = JSON.stringify(STRATEGY_TEMPLATE, null, 2);
+  area.focus();
+}
+
+function loadManifestFile(file: File | undefined): void {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const area = el('stratManifest') as HTMLTextAreaElement | null;
+    if (area) area.value = String(reader.result ?? '');
+    void validateManifest();
+  };
+  reader.readAsText(file);
+}
+
+function toggleStrategyEditor(): void {
+  const panel = el('stratAddPanel');
+  if (!panel) return;
+  const button = el('stratAddToggle') as HTMLButtonElement;
+  panel.hidden = !panel.hidden;
+  button.textContent = panel.hidden ? 'Show editor' : 'Hide editor';
+  if (!panel.hidden && !readManifestText()) loadTemplateManifest();
+}
+
+/* ------------------------------------------------------------------ */
 /* Backtest                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -1395,7 +1514,18 @@ async function pairBridge(): Promise<void> {
     await api<Json>('/api/status');
   } catch (err) {
     showError(err);
-    renderOffline('Bridge did not accept the pairing. Check the URL and token.');
+    const code = err instanceof ApiError ? err.status : 0;
+    if (code === 0) {
+      renderOffline(
+        `No bridge answered at ${url}. It is not running on this computer yet — unzip the package, ` +
+          'double-click run.cmd on the machine where MetaTrader 5 is installed, keep its window ' +
+          'open, then connect again.',
+      );
+    } else if (code === 401 || code === 403) {
+      renderOffline('Token rejected by the bridge. Copy the exact token printed in the bridge console.');
+    } else {
+      renderOffline(err instanceof Error ? err.message : 'Bridge did not accept the pairing.');
+    }
     return;
   }
 
@@ -1537,6 +1667,17 @@ function wire(): void {
       .catch(showError);
   });
   $('syncStrategiesBtn').addEventListener('click', () => void syncStrategies());
+
+  // Strategy editor
+  $('stratAddToggle').addEventListener('click', toggleStrategyEditor);
+  $('stratTemplateBtn').addEventListener('click', loadTemplateManifest);
+  $('stratValidateBtn').addEventListener('click', () => void validateManifest());
+  $('stratRegisterBtn').addEventListener('click', () => void registerManifest());
+  $('stratFile').addEventListener('change', (event) => {
+    const input = event.target as HTMLInputElement;
+    loadManifestFile(input.files?.[0]);
+    input.value = '';
+  });
 
   // Terminal connect (delegated: rows are re-rendered)
   $('terminalList').addEventListener('click', (event) => {

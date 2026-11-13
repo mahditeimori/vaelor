@@ -73,10 +73,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </article>
         <article class="ex-step">
           <span class="ex-step-num">2</span>
-          <h3>Run it once</h3>
+          <h3>Run it on this computer</h3>
           <p>
-            Unzip, then double-click <code>run.cmd</code>. The first run creates a private Python
-            environment and installs dependencies. The console prints a URL and a token.
+            Unzip, then double-click <code>run.cmd</code> — on the machine where MetaTrader 5 is
+            installed. The first run creates a private Python environment and installs
+            dependencies, then the console prints a URL and a token. <b>Keep that window open</b>
+            while you use this page; closing it takes the bridge offline.
           </p>
           <pre class="ex-code">URL   : http://127.0.0.1:8899
 Token : &lt;random string&gt;</pre>
@@ -101,6 +103,14 @@ Token : &lt;random string&gt;</pre>
             <button type="button" class="ex-btn ghost" id="testBtn">Test connection</button>
           </div>
         </article>
+      </div>
+
+      <div class="ex-note">
+        <b>Why is the URL local? That is correct and safe.</b> The bridge runs on your own PC, so
+        its address is always <code>http://127.0.0.1:8899</code> — "this computer". This website
+        talks to the bridge directly from your browser; your account, token and orders never touch
+        our servers. Until step 2 has been run on your machine, the status above will read
+        <b>BRIDGE OFFLINE</b> — that is expected, and it is the signal to run <code>run.cmd</code>.
       </div>
 
       <div class="ex-note">
@@ -409,6 +419,44 @@ Token : &lt;random string&gt;</pre>
         it trigger, or enable auto-execute to let it route fresh signals unattended. The kill switch
         always overrides.
       </p>
+
+      <div class="ex-strat-add">
+        <div class="ex-strat-add-head">
+          <div>
+            <div class="ex-kicker">Bring your own</div>
+            <b>Add your own strategy</b>
+            <p class="ex-hint">
+              Write the rules as a JSON manifest — the format this desk executes. Validate it
+              against your bridge, then register it: it lands in the table below <b>disabled</b> so
+              you can backtest it on your broker's history before switching it on. Python, MQL5 and
+              other script files are not accepted: the bridge runs the strategy itself, so rules
+              must be declarative JSON and no arbitrary code is ever executed on your machine.
+            </p>
+          </div>
+          <button type="button" class="ex-btn ghost" id="stratAddToggle">Show editor</button>
+        </div>
+        <div id="stratAddPanel" hidden>
+          <div class="ex-btn-row ex-strat-add-actions">
+            <label class="ex-btn ghost ex-file-btn">Load .json file<input id="stratFile" type="file" accept=".json,application/json" /></label>
+            <button type="button" class="ex-btn ghost" id="stratTemplateBtn">Insert example</button>
+            <button type="button" class="ex-btn ghost" id="stratValidateBtn">Validate</button>
+            <button type="button" class="ex-btn primary" id="stratRegisterBtn">Register strategy</button>
+          </div>
+          <textarea
+            id="stratManifest"
+            class="ex-code ex-manifest"
+            rows="14"
+            spellcheck="false"
+            placeholder='{"id": "my-strategy", "name": "My strategy", "symbols": ["XAUUSD"], ... }'
+          ></textarea>
+          <p class="ex-hint" id="stratAddStatus">
+            Condition types: ema_cross, sma_cross, price_vs_ema, price_vs_sma, rsi, macd, breakout,
+            bollinger, atr_filter · exits: atr / pips / percent · full reference in the
+            <a href="/docs/09-mt5-execution/">execution manual</a>.
+          </p>
+        </div>
+      </div>
+
       <div class="ex-table-wrap">
         <table class="ex-table">
           <thead>
@@ -804,6 +852,24 @@ Token : &lt;random string&gt;</pre>
     .ex-check input { margin-top: 3px; accent-color: var(--ex-gold); }
     .ex-hint { font-size: 0.78rem; color: var(--ex-faint); line-height: 1.55; }
     .ex-hint code { color: var(--ex-dim); }
+    .ex-strat-add {
+      border: 1px solid var(--ex-border-soft); border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 16px; background: rgba(8, 5, 6, 0.5);
+    }
+    .ex-strat-add-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .ex-strat-add-head b { font-size: 0.95rem; letter-spacing: 0.02em; }
+    .ex-strat-add-head .ex-hint { margin-top: 4px; max-width: 72ch; }
+    .ex-strat-add-actions { margin-top: 0; margin-bottom: 10px; }
+    .ex-manifest {
+      width: 100%; box-sizing: border-box; resize: vertical; white-space: pre;
+      font-family: var(--mono); font-size: 0.74rem; line-height: 1.5;
+      color: var(--ex-dim); tab-size: 2;
+    }
+    .ex-manifest:focus { outline: none; border-color: var(--ex-gold); color: var(--ex-text); }
+    .ex-file-btn { position: relative; overflow: hidden; }
+    .ex-file-btn input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
     .ex-rule { border: none; border-top: 1px solid var(--ex-border-soft); margin: 16px 0; }
     .ex-details { margin-top: 14px; border: 1px solid var(--ex-border-soft); border-radius: 8px; padding: 10px 14px; }
     .ex-details summary { cursor: pointer; font-family: var(--mono); font-size: 0.74rem; color: var(--ex-dim); }

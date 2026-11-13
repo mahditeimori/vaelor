@@ -29,6 +29,7 @@ from .models import (
 from .mt5_provider import BrokerError
 from .seed import seed
 from .store import Store
+from .strategies import validate_strategy, warmup_bars
 
 
 class StrategyToggle(BaseModel):
@@ -359,6 +360,16 @@ def register_strategy(request: Request, payload: StrategyRegistration) -> dict:
     try:
         saved = engine_of(request).sync_strategy(payload.strategy)
         return {"ok": True, "strategy": saved}
+    except Exception as exc:
+        raise _fail(exc) from exc
+
+
+@app.post("/api/strategies/validate", dependencies=[Depends(require_token)])
+def validate_strategy_manifest(request: Request, payload: StrategyRegistration) -> dict:
+    """Validate a manifest without registering it (used by the strategy editor)."""
+    try:
+        manifest = validate_strategy(payload.strategy)
+        return {"ok": True, "id": manifest.id, "warmupBars": warmup_bars(manifest)}
     except Exception as exc:
         raise _fail(exc) from exc
 

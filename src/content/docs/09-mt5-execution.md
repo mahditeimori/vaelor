@@ -179,6 +179,63 @@ targets accept `atr`, `pips` and `percent` rules. Manifests are validated twice:
 by the registry at publish time (so the author gets an actionable error) and by
 the execution engine before anything runs.
 
+### 5.9.1 Bring your own strategy (the editor)
+
+The **Strategy registry** panel on `/execution` has an *Add your own strategy*
+editor. Strategies are **JSON manifests**, not script files. This is
+deliberate: the bridge evaluates and executes the rules itself, so it can
+backtest them on your broker's history and enforce the risk gates uniformly —
+and no arbitrary code (Python, MQL5, EX5) is ever executed on your machine.
+If you built your strategy in Python or MQL5, translate its entry/exit logic
+into the condition types below; the logic that cannot be expressed as rules
+belongs in your own tooling, which can then submit **signals** through the
+registry instead.
+
+A complete example:
+
+```json
+{
+  "id": "my-gold-cross",
+  "name": "My Gold EMA cross",
+  "author": "your name",
+  "description": "20/50 EMA cross on gold with an ATR stop and a 2R target.",
+  "symbols": ["XAUUSD"],
+  "timeframe": "H1",
+  "direction": "both",
+  "entryLong":  { "all": [{ "type": "ema_cross", "fast": 20, "slow": 50, "direction": "up" }] },
+  "entryShort": { "all": [{ "type": "ema_cross", "fast": 20, "slow": 50, "direction": "down" }] },
+  "exit":       { "any": [{ "type": "ema_cross", "fast": 20, "slow": 50, "direction": "down" }] },
+  "stop":   { "type": "atr", "mult": 2 },
+  "target": { "type": "atr", "mult": 4 },
+  "risk":   { "riskPct": 1, "maxPositions": 1 }
+}
+```
+
+Field reference:
+
+| Field | Values |
+|---|---|
+| `symbols` | Up to 8 broker symbols, e.g. `XAUUSD`, `EURUSD` |
+| `timeframe` | `M1` `M5` `M15` `M30` `H1` `H4` `D1` `W1` |
+| `direction` | `long`, `short` or `both` |
+| `entry` / `entryLong` / `entryShort` | `{ "all": [...], "any": [...] }` condition groups |
+| `exit` | Optional exit condition group |
+| `stop` / `target` / `trail` | `{ "type": "atr", "mult": n }`, `{ "type": "pips", "pips": n }` or `{ "type": "percent", "pct": n }` |
+| `risk` | `riskPct` (0.05–10 % of equity per trade), `maxPositions`, optional `maxLots` |
+
+Condition fields by type: cross types take `fast`, `slow`, `direction`;
+`price_vs_ema`/`price_vs_sma` take `period`, `op`; `rsi` takes `period`, `op`,
+`value`; `macd` takes `fast`, `slow`, `period`, `direction`; `breakout` takes
+`lookback`, `side` (`high`/`low`); `bollinger` takes `period`, `mult`, `side`
+(`upper`/`lower`) and optional `mode` (`touch`/`close_outside`); `atr_filter`
+takes `period`, `min`; `always` takes nothing.
+
+Workflow: **Insert example → edit → Validate** (the bridge checks the manifest
+and reports the warm-up bar requirement without saving it) → **Register
+strategy**. The registered strategy arrives **disabled**: run a backtest on your
+broker's history first, then enable it from the table when the numbers justify
+it. The bridge can also load a saved manifest file with *Load .json file*.
+
 ## 5.10 Measuring success
 
 Results come from two evidence sources, never from a number supplied by the
@@ -224,7 +281,7 @@ reach a loopback service.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Page says bridge offline | Bridge not running or wrong port | Start `run.cmd`; confirm the URL |
+| Page says bridge offline | Bridge not running or wrong port | Start `run.cmd` **on the PC where MetaTrader 5 is installed**; keep its window open; confirm the URL. `http://127.0.0.1:8899` is correct — it means "this computer" |
 | `Token rejected` | Token belongs to another bridge data folder | Copy the token printed at startup |
 | `Authorization failed` | No account logged in | Sign in inside MetaTrader 5 |
 | `retcode 10027` | AutoTrading off | Enable the toolbar button and Expert Advisors option |
