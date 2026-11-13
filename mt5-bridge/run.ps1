@@ -17,8 +17,37 @@ param(
 Set-Location -Path $PSScriptRoot
 
 $python = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
+$prevTokenFile = Join-Path $PSScriptRoot "data\bridge-token"
 
 function Write-Step($text) { Write-Host "==> $text" -ForegroundColor Cyan }
+
+# Make the token easy to find from the very first seconds of any run: if a
+# previous run already generated one, surface it as token.txt right away.
+if (Test-Path $prevTokenFile) {
+    Copy-Item $prevTokenFile (Join-Path $PSScriptRoot "token.txt") -Force
+}
+
+# The two files the user copies into the site: token.txt (just the token) and
+# connect.txt (URL and token together).
+function Write-ConnectFiles($connectPort, $connectToken) {
+    Set-Content -Path (Join-Path $PSScriptRoot "token.txt") -Value $connectToken -Encoding ascii
+    Set-Content -Path (Join-Path $PSScriptRoot "connect.txt") -Encoding ascii -Value @(
+        "URL   : http://127.0.0.1:$connectPort"
+        "Token : $connectToken"
+    )
+}
+
+# Ask a port whether a Vaelor bridge is already answering there (no Python
+# needed, so this also works when dependencies have not been installed yet).
+function Probe-Bridge($probePort) {
+    try {
+        $wc = New-Object System.Net.WebClient
+        $wc.Proxy = $null
+        return ($wc.DownloadString("http://127.0.0.1:$probePort/health") | ConvertFrom-Json)
+    } catch {
+        return $null
+    }
+}
 
 function Fail($lines) {
     Write-Host ""
@@ -28,25 +57,39 @@ function Fail($lines) {
 }
 
 # ---------------------------------------------------------------- port check
-# Fail fast with an explanation instead of letting uvicorn die with a raw
-# traceback the user cannot act on.
+# Never leave the user stuck on a busy port:
+#   * if a Vaelor bridge is already running there, tell them and hand over
+#     the URL + token (that instance keeps serving; nothing to start),
+#   * if another program owns the port, continue on the next free one.
 $busy = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
 if ($busy) {
-    # Make the token easy to find even when the bridge is already running:
-    # copy it to token.txt next to run.cmd.
-    $existingToken = Join-Path $PSScriptRoot "data\bridge-token"
-    if (Test-Path $existingToken) {
-        Copy-Item $existingToken (Join-Path $PSScriptRoot "token.txt") -Force
+    $health = Probe-Bridge $Port
+    $runningToken = ""
+    if (Test-Path $prevTokenFile) { $runningToken = (Get-Content $prevTokenFile -Raw).Trim() }
+
+    if ($health -and $health.service -eq "vaelor-mt5-bridge" -and $runningToken) {
+        Write-ConnectFiles $Port $runningToken
+        Write-Host ""
+        Write-Host "  The bridge is ALREADY RUNNING on port $Port - nothing to start." -ForegroundColor Green
+        Write-Host "  Your connection details were saved next to run.cmd:"
+        Write-Host "    connect.txt   <- open this: URL and token, ready to paste"
+        Write-Host "    token.txt     <- just the token"
+        Write-Host "  Paste them into the Vaelor Execution page and click Connect."
+        Write-Host ""
+        exit 0
+    }
+
+    $newPort = $null
+    foreach ($p in 8899..8925) {
+        $taken = Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue
+        if (-not $taken) { $newPort = $p; break }
+    }
+    if (-not $newPort) {
+        Fail @("Every port from 8899 to 8925 is in use. Close one of those programs and run again.")
     }
     Write-Host ""
-    Write-Host "  Port $Port is already in use." -ForegroundColor Yellow
-    Write-Host "  If the bridge is already running, there is nothing to do: open the"
-    Write-Host "  Vaelor Execution page and pair with http://127.0.0.1:$Port - the"
-    Write-Host "  token is in token.txt next to run.cmd."
-    Write-Host "  Otherwise start on another port:"
-    Write-Host "    powershell -NoProfile -ExecutionPolicy Bypass -File run.ps1 -Port 8900"
-    Write-Host ""
-    exit 1
+    Write-Host "  Port $Port is used by another program - starting on port $newPort instead." -ForegroundColor Yellow
+    $Port = $newPort
 }
 
 # ------------------------------------------------------------------- venv
@@ -139,8 +182,8 @@ function Read-Setting($expr) {
 $token = Read-Setting "from app.config import SETTINGS; print(SETTINGS.token)"
 $modeLine = Read-Setting "from app.config import SETTINGS; print(SETTINGS.mode)"
 
-# Drop the token in a plain file next to run.cmd so it is easy to find.
-Set-Content -Path (Join-Path $PSScriptRoot "token.txt") -Value $token -Encoding ascii
+# Save the connection details where the user can always find them.
+Write-ConnectFiles $Port $token
 
 if ($Setup) {
     Write-Step "Setup complete"
@@ -157,7 +200,7 @@ Write-Host "  URL        : http://127.0.0.1:$Port"
 Write-Host "  Token      : $token"
 Write-Host "  Mode       : $modeLine  (auto falls back to simulation)"
 Write-Host "  Health     : http://127.0.0.1:$Port/health"
-Write-Host "  Token file : token.txt (next to run.cmd)"
+Write-Host "  Saved to   : token.txt and connect.txt (next to run.cmd)"
 Write-Host "  ------------------------------------------------"
 Write-Host "  Paste URL + token into the site's Execution page."
 Write-Host "  Keep this window open while you trade. Press Ctrl+C to stop." -ForegroundColor DarkGray

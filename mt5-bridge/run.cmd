@@ -11,7 +11,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0run.ps1" %*
 set "RC=%ERRORLEVEL%"
 echo.
 if "%RC%"=="0" (
-  echo The bridge stopped. Double-click run.cmd to start it again.
+  echo Finished. If the bridge is running, keep its window open while you trade.
+  echo Your URL and token are saved in connect.txt next to run.cmd.
 ) else (
   echo The bridge could not start or stopped unexpectedly ^(exit code %RC%^).
   echo Read the message above. Most common causes:
@@ -19,9 +20,9 @@ if "%RC%"=="0" (
   echo     tick "Add python.exe to PATH"^)
   echo   - the first-run dependency install failed ^(check your internet
   echo     connection, run run.cmd again^)
-  echo   - port 8899 is already used - if the bridge is already running, just
-  echo     pair the site with it; otherwise start on another port:
-  echo     powershell -NoProfile -ExecutionPolicy Bypass -File run.ps1 -Port 8900
+  echo Port conflicts are handled automatically: if the bridge is already
+  echo running you get its URL and token in connect.txt; if another program
+  echo owns the port the bridge starts on the next free one.
 )
 echo.
 echo Press any key to close this window...

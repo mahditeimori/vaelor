@@ -288,7 +288,7 @@ reach a loopback service.
 | `retcode 10016` | Stop too close | Move the stop outside the broker's minimum distance |
 | `retcode 10030` | Unsupported filling mode | The bridge retries automatically; check symbol settings if it persists |
 | No terminals detected | MT5 installed for another Windows user | Run the bridge as the user who installed it |
-| Port 8899 busy | Another process owns it | Start with `run.ps1 -Port 8900` and pair that URL |
+| Port 8899 busy | Another process owns it | Automatic: the launcher reuses a running bridge (URL + token saved to `connect.txt`) or picks the next free port 8899–8925 |
 
 ## 5.13 Security model
 

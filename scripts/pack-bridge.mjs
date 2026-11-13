@@ -58,18 +58,23 @@ FIRST RUN
 1. Double-click run.cmd.
 2. The first run creates a private Python environment and installs the bridge
    dependencies. This can take a few minutes and needs internet access once.
-3. The console prints three lines you need:
+3. The console prints the URL and token you need, and saves them to two
+   files next to run.cmd:
 
-     URL        : http://127.0.0.1:8899
-     Token      : <a long random string>
-     Mode       : auto (falls back to simulation)
+     connect.txt   <- open this: URL and token, ready to paste
+     token.txt     <- just the token
+
+     URL   : http://127.0.0.1:8899
+     Token : <a long random string>
+     Mode  : auto (falls back to simulation)
+
+   If port 8899 is already used the launcher sorts it out by itself: it
+   either finds the bridge already running there (and gives you its URL and
+   token in connect.txt) or starts on the next free port (8899-8925).
 
 4. Open the Vaelor Execution page, paste the URL and Token, then click Connect.
 5. Pick your terminal from the detected list and connect. If the terminal is
    logged in, the account appears immediately.
-
-The token is always saved in token.txt, right next to run.cmd. Double-click
-it, open it with Notepad, copy the line inside - that is your token.
 
 KEEP THE WINDOW OPEN
 --------------------
@@ -103,17 +108,18 @@ Close the console window or press Ctrl+C. Nothing is left running.
 
 IF SOMETHING GOES WRONG
 -----------------------
-* "Port 8899 is already in use" - the bridge is probably already running:
-  just pair the site with it (the token is in data\bridge-token). If another
-  program owns the port, start on another port:
-    powershell -NoProfile -ExecutionPolicy Bypass -File run.ps1 -Port 8900
-  then pair with http://127.0.0.1:8900 instead.
+* "The bridge is ALREADY RUNNING" - nothing is wrong: your URL and token
+  were just saved to connect.txt next to run.cmd. Open it, paste the two
+  lines into the site, and click Connect.
+* Port conflict - handled automatically: the launcher probes the port and
+  either reuses the running bridge or starts on the next free one. The URL
+  it chose is always in connect.txt.
 * "No suitable Python was found" - install Python 3.11+ from python.org,
   tick "Add python.exe to PATH", and run run.cmd again.
 * "Dependency installation failed" - check your internet connection and run
   run.cmd again.
-* Wrong token on the site - open token.txt next to run.cmd and copy the
-  exact string inside it.
+* Wrong token on the site - open connect.txt next to run.cmd and copy the
+  exact lines inside it.
 `;
 
 function crc32(buffer) {

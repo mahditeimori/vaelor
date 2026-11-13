@@ -77,8 +77,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <p>
             Unzip, then double-click <code>run.cmd</code> — on the machine where MetaTrader 5 is
             installed. The first run creates a private Python environment and installs
-            dependencies, then the console prints a URL and a token. <b>Keep that window open</b>
-            while you use this page; closing it takes the bridge offline.
+            dependencies, then the console prints a URL and a token — and saves them to
+            <code>connect.txt</code> next to <code>run.cmd</code> so you can copy them any time.
+            <b>Keep that window open</b> while you use this page; closing it takes the bridge
+            offline. If port 8899 is busy, the launcher picks a free port by itself.
           </p>
           <pre class="ex-code">URL   : http://127.0.0.1:8899
 Token : &lt;random string&gt;</pre>
