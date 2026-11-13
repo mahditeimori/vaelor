@@ -49,8 +49,9 @@ WHAT YOU NEED
 -------------
 1. Windows 10 or 11 (MetaTrader5's Python package is Windows-only).
 2. MetaTrader 5 installed and logged in to a demo or live account.
-3. Python 3.11 - install from https://www.python.org/downloads/ (tick
-   "Add python.exe to PATH"), or install uv from https://docs.astral.sh/uv/.
+3. Python 3.11 or newer - install from https://www.python.org/downloads/
+   (tick "Add python.exe to PATH"), or install uv from
+   https://docs.astral.sh/uv/. The launcher finds either one.
 
 FIRST RUN
 ---------
@@ -66,6 +67,14 @@ FIRST RUN
 4. Open the Vaelor Execution page, paste the URL and Token, then click Connect.
 5. Pick your terminal from the detected list and connect. If the terminal is
    logged in, the account appears immediately.
+
+KEEP THE WINDOW OPEN
+--------------------
+The console window IS the bridge. While you trade it must stay open - you can
+minimise it, but closing it stops the bridge and the page goes offline. The
+window never closes by itself: if anything goes wrong (missing Python, failed
+install, port already used, a crashed server) it stops, prints the reason in
+plain English, and waits for you to press a key, so you can read the message.
 
 ABOUT AUTOTRADING
 -----------------
@@ -88,6 +97,19 @@ Default is simulation, which is safe: no broker order is ever sent.
 STOPPING
 --------
 Close the console window or press Ctrl+C. Nothing is left running.
+
+IF SOMETHING GOES WRONG
+-----------------------
+* "Port 8899 is already in use" - the bridge is probably already running:
+  just pair the site with it (the token is in data\bridge-token). If another
+  program owns the port, start on another port:
+    powershell -NoProfile -ExecutionPolicy Bypass -File run.ps1 -Port 8900
+  then pair with http://127.0.0.1:8900 instead.
+* "No suitable Python was found" - install Python 3.11+ from python.org,
+  tick "Add python.exe to PATH", and run run.cmd again.
+* "Dependency installation failed" - check your internet connection and run
+  run.cmd again.
+* Wrong token on the site - copy the exact string printed next to "Token".
 `;
 
 function crc32(buffer) {
