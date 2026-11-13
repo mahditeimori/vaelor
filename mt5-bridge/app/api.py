@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from .cloud import CloudSync
@@ -147,6 +148,75 @@ def _fail(exc: Exception) -> HTTPException:
 # --------------------------------------------------------------------------
 # Health & status
 # --------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------
+# Pairing page
+# --------------------------------------------------------------------------
+
+# Served by the bridge itself on loopback only. The page embeds the token so
+# the browser can hand it to the site automatically; other websites cannot
+# read it because CORS only allows the Vaelor site and localhost dev origins.
+_PAIR_TEMPLATE = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vaelor MT5 bridge - Connect</title>
+<style>
+  body {{ margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+         background: #0a0d13; color: #e7e2df; font-family: Consolas, 'Courier New', monospace; }}
+  .card {{ max-width: 560px; padding: 40px 36px; border: 1px solid #2a2230; border-radius: 14px;
+           background: #120d11; text-align: center; }}
+  h1 {{ font-size: 1.15rem; letter-spacing: 0.08em; margin: 0 0 6px; }}
+  .ok {{ color: #7bd88f; font-size: 0.8rem; margin-bottom: 18px; }}
+  a.btn {{ display: inline-block; margin: 6px 0 14px; padding: 13px 26px; border-radius: 10px;
+           background: linear-gradient(135deg, #e2456c, #7c0f2e); color: #fff; font-weight: 700;
+           text-decoration: none; letter-spacing: 0.04em; }}
+  a.btn:hover {{ filter: brightness(1.12); }}
+  pre {{ text-align: left; background: #080506; border: 1px solid #2a2230; border-radius: 8px;
+         padding: 12px 14px; font-size: 0.8rem; color: #c9a24b; overflow-x: auto; }}
+  p {{ font-size: 0.78rem; color: #8f8a90; line-height: 1.6; }}
+  .note {{ margin-top: 14px; font-size: 0.7rem; color: #5c5052; }}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>VAELOR MT5 BRIDGE IS RUNNING</h1>
+  <div class="ok">Connected and ready on this computer.</div>
+  <a class="btn" id="auto" href="{target}">Connect the website automatically</a>
+  <p>Redirecting in <span id="count">3</span> seconds… <a href="#" id="cancel" style="color:#c9a24b">cancel</a></p>
+  <p>Manual fallback — paste these two lines into the Execution page:</p>
+  <pre>URL   : http://127.0.0.1:{port}
+Token : {token}</pre>
+  <div class="note">This page is served by the bridge on your own machine.
+  Nothing is sent to the internet except the connection details you paste.</div>
+</div>
+<script>
+  var timer = setTimeout(function () {{ location.replace(document.getElementById('auto').href); }}, 3000);
+  document.getElementById('cancel').addEventListener('click', function (e) {{
+    e.preventDefault(); clearTimeout(timer);
+    document.getElementById('count').textContent = '0';
+  }});
+  var n = 3;
+  setInterval(function () {{ if (n > 0) document.getElementById('count').textContent = String(--n); }}, 1000);
+</script>
+</body>
+</html>"""
+
+
+@app.get("/pair", response_class=HTMLResponse)
+def pair_page() -> str:
+    """One-click pairing page: redirects to the site with the token in the
+    URL fragment (fragments are never sent to any server)."""
+    import base64
+    import json as _json
+
+    payload = base64.b64encode(
+        _json.dumps({"url": f"http://127.0.0.1:{SETTINGS.port}", "token": SETTINGS.token}).encode()
+    ).decode()
+    target = f"{SETTINGS.site_url}/execution#connect={payload}"
+    return _PAIR_TEMPLATE.format(target=target, port=SETTINGS.port, token=SETTINGS.token)
+
 
 @app.get("/health")
 def health(request: Request) -> dict:

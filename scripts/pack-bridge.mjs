@@ -58,8 +58,11 @@ FIRST RUN
 1. Double-click run.cmd.
 2. The first run creates a private Python environment and installs the bridge
    dependencies. This can take a few minutes and needs internet access once.
-3. The console prints the URL and token you need, and saves them to two
-   files next to run.cmd:
+3. When the bridge is up, a "Connect" page opens in your browser by itself.
+   Click "Connect the website automatically" there and the site pairs with
+   zero typing - no copying the URL or token by hand.
+4. If you prefer to do it by hand, or the page did not open, the URL and the
+   token are always saved next to run.cmd:
 
      connect.txt   <- open this: URL and token, ready to paste
      token.txt     <- just the token
@@ -69,12 +72,11 @@ FIRST RUN
      Mode  : auto (falls back to simulation)
 
    If port 8899 is already used the launcher sorts it out by itself: it
-   either finds the bridge already running there (and gives you its URL and
-   token in connect.txt) or starts on the next free port (8899-8925).
+   either finds the bridge already running there (opens the Connect page
+   with its URL and token) or starts on the next free port (8899-8925).
 
-4. Open the Vaelor Execution page, paste the URL and Token, then click Connect.
-5. Pick your terminal from the detected list and connect. If the terminal is
-   logged in, the account appears immediately.
+5. On the site, pick your terminal from the detected list and connect. If
+   the terminal is logged in, the account appears immediately.
 
 KEEP THE WINDOW OPEN
 --------------------

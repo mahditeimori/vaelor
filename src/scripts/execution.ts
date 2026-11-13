@@ -1763,8 +1763,35 @@ function wire(): void {
   });
 }
 
+/**
+ * One-click pairing from the bridge's /pair page: the bridge redirects here
+ * with the connection details in the URL fragment (fragments are local; they
+ * are never sent to any server). Overrides the saved pairing when present.
+ */
+function applyConnectHash(): boolean {
+  const match = window.location.hash.match(/#connect=([^&]+)/);
+  if (!match) return false;
+  try {
+    const data = JSON.parse(atob(decodeURIComponent(match[1]))) as {
+      url?: unknown;
+      token?: unknown;
+    };
+    const url = typeof data.url === 'string' ? data.url.trim().replace(/\/+$/, '') : '';
+    const token = typeof data.token === 'string' ? data.token.trim() : '';
+    if (!/^https?:\/\//i.test(url) || !token) return false;
+    pairing = { url, token };
+    savePairing();
+    // Remove the fragment so a refresh or share does not carry it along.
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function init(): void {
   loadPairing();
+  const autoPaired = applyConnectHash();
   (el('bridgeUrl') as HTMLInputElement).value = pairing.url || DEFAULT_URL;
   if (pairing.token) (el('bridgeToken') as HTMLInputElement).value = pairing.token;
   wire();
@@ -1774,6 +1801,7 @@ function init(): void {
     void (async () => {
       try {
         await api<Json>('/api/status');
+        if (autoPaired) toast('Bridge paired automatically from the connect page.', 'ok');
         await Promise.allSettled([loadSymbols(), poll(), refreshDiagnostics(true)]);
         startPolling();
       } catch (err) {

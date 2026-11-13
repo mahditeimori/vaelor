@@ -71,10 +71,11 @@ if ($busy) {
         Write-ConnectFiles $Port $runningToken
         Write-Host ""
         Write-Host "  The bridge is ALREADY RUNNING on port $Port - nothing to start." -ForegroundColor Green
-        Write-Host "  Your connection details were saved next to run.cmd:"
+        Write-Host "  Opening the Connect page in your browser..."
+        Start-Process "http://127.0.0.1:$Port/pair"
+        Write-Host "  Your connection details were also saved next to run.cmd:"
         Write-Host "    connect.txt   <- open this: URL and token, ready to paste"
         Write-Host "    token.txt     <- just the token"
-        Write-Host "  Paste them into the Vaelor Execution page and click Connect."
         Write-Host ""
         exit 0
     }
@@ -205,6 +206,22 @@ Write-Host "  ------------------------------------------------"
 Write-Host "  Paste URL + token into the site's Execution page."
 Write-Host "  Keep this window open while you trade. Press Ctrl+C to stop." -ForegroundColor DarkGray
 Write-Host ""
+
+# As soon as the server answers, open the Connect page in the default
+# browser: one click there pairs the site automatically (no copy/paste).
+Start-Job -ScriptBlock {
+    param($healthUrl, $openUrl)
+    $deadline = (Get-Date).AddSeconds(90)
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $wc = New-Object System.Net.WebClient
+            $wc.Proxy = $null
+            $null = $wc.DownloadString($healthUrl)
+            Start-Process $openUrl
+            return
+        } catch { Start-Sleep -Milliseconds 700 }
+    }
+} -ArgumentList "http://127.0.0.1:$Port/health", "http://127.0.0.1:$Port/pair" | Out-Null
 
 # ------------------------------------------------------------------- server
 & $python -m uvicorn app.api:app --host 127.0.0.1 --port $Port --log-level info

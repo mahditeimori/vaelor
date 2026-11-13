@@ -51,16 +51,15 @@ Windows user, including broker-branded folders and portable copies.
 1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip).
 2. Unzip it to a folder you control, for example `C:\Vaelor\mt5-bridge`.
 3. Double-click `run.cmd`. The first run creates `.venv`, installs dependencies
-   and writes `.env`.
-4. The console prints a URL and a token:
+   and writes `.env`; the console prints a URL and a token and saves both to
+   `connect.txt` and `token.txt` next to `run.cmd`.
+4. A **Connect page** opens in your browser automatically (the bridge serves it
+   at `http://127.0.0.1:8899/pair`). Press **Connect the website
+   automatically** — the Execution page pairs itself with zero typing.
+5. Pick your terminal from the detected list and press **Connect** on that row.
 
-   ```
-   URL   : http://127.0.0.1:8899
-   Token : 5rT...redacted...
-   ```
-
-5. Open the Execution page, paste both values and press **Connect**.
-6. Pick your terminal from the detected list and press **Connect** on that row.
+Manual fallback: paste the URL and token from `connect.txt` into the
+Execution page and press **Connect**.
 
 The page then polls the bridge automatically. There is no refresh button by
 design — the account, book, strategies, signals and audit log all update in
@@ -293,6 +292,9 @@ reach a loopback service.
 ## 5.13 Security model
 
 * The bridge binds to loopback and refuses non-token requests.
+* The pairing token is handed to the browser only through the bridge's own
+  `/pair` page on loopback (one click, no copy/paste); cross-origin access to
+  that page is limited to the Vaelor site, so other websites cannot read it.
 * Passwords are never persisted; the audit log stores login and server only.
 * The token is stored in your browser's local storage, not on our servers.
 * Cloud sync sends strategy manifests, signal decisions and measured metrics —

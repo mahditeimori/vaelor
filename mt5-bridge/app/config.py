@@ -57,6 +57,7 @@ def _token() -> str:
 class Settings:
     host: str = os.environ.get("BRIDGE_HOST", "127.0.0.1")
     port: int = int(os.environ.get("BRIDGE_PORT", "8899"))
+    site_url: str = os.environ.get("VAELOR_SITE", "https://vaelor.pages.dev").rstrip("/")
     token: str = field(default_factory=_token)
 
     # auto | simulation | live
