@@ -32,6 +32,19 @@ import {
   syncCOT,
   syncVolumeOi,
 } from "./lib/pipeline.js";
+import {
+  formatSignal,
+  formatStrategy,
+  getStrategy,
+  listSignals,
+  listStrategies,
+  readPerformance,
+  recordPerformance,
+  retireStrategy,
+  setSignalStatus,
+  submitSignal,
+  upsertStrategy,
+} from "./lib/trading.js";
 
 const FINVIZ_PERIODS = new Set(["d1", "w1", "m1"]);
 
@@ -190,6 +203,138 @@ export default {
                 description: "Read the most recent analysis published to the site.",
                 inputSchema: {},
               },
+              {
+                name: "register_strategy",
+                title: "Register a strategy",
+                description:
+                  "Publish a strategy manifest to the execution desk. The strategy is stored disabled: the account " +
+                  "owner must enable it (and optionally auto-execution) in the site's Execution page before it can trade. " +
+                  "Conditions (each needs its fields): ema_cross/sma_cross {fast,slow,direction}, price_vs_ema/price_vs_sma " +
+                  "{period,op}, rsi {period,op,value}, macd {fast,slow,period,direction}, breakout {lookback,side}, " +
+                  "bollinger {period,mult,side}, atr_filter {period,min}, always. direction is up|down, op is " +
+                  "above|below|cross_up|cross_down. Stops/targets: atr {mult}, pips {pips}, percent {pct}. " +
+                  "direction=both needs entryLong+entryShort.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    strategy: {
+                      type: "object",
+                      description: "Strategy manifest (id, name, symbols, timeframe, entry/entryLong/entryShort, stop, target, risk).",
+                    },
+                    source: { type: "string", description: "Author label, e.g. claude-4" },
+                  },
+                  required: ["strategy"],
+                },
+              },
+              {
+                name: "list_strategies",
+                title: "List strategies",
+                description:
+                  "List every published strategy with its measured success rate, profit factor, sample size and confidence.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    includeRetired: { type: "boolean", description: "Include retired strategies." },
+                  },
+                },
+              },
+              {
+                name: "get_strategy",
+                title: "Get one strategy",
+                description: "Read a strategy manifest and its measured performance by id.",
+                inputSchema: {
+                  type: "object",
+                  properties: { id: { type: "string", description: 'Strategy id, e.g. "gold-ema-trend"' } },
+                  required: ["id"],
+                },
+              },
+              {
+                name: "retire_strategy",
+                title: "Retire a strategy",
+                description: "Stop recommending a strategy. It stays readable but is marked retired and disabled.",
+                inputSchema: {
+                  type: "object",
+                  properties: { id: { type: "string" } },
+                  required: ["id"],
+                },
+              },
+              {
+                name: "submit_signal",
+                title: "Submit a trade signal",
+                description:
+                  "Queue a trade signal for the owner's MT5 desk. It appears in the signal queue and never executes " +
+                  "unless the owner approves it, or the strategy is enabled with auto-execution and the kill switch is off.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    strategyId: { type: "string", description: "Id of a registered strategy." },
+                    symbol: { type: "string", description: "Broker symbol, e.g. XAUUSD" },
+                    side: { type: "string", enum: ["buy", "sell"] },
+                    entry: { type: "number", description: "Optional limit price; omit for market." },
+                    sl: { type: "number", description: "Stop loss price." },
+                    tp: { type: "number", description: "Take profit price." },
+                    confidence: { type: "number", minimum: 0, maximum: 1 },
+                    note: { type: "string", description: "Why this signal exists (max 400 chars)." },
+                  },
+                  required: ["strategyId", "symbol", "side"],
+                },
+              },
+              {
+                name: "list_signals",
+                title: "List signals",
+                description: "Read the signal queue, optionally filtered by status (pending, executed, rejected).",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    status: {
+                      type: "string",
+                      enum: ["pending", "approved", "executed", "rejected", "expired", "cancelled"],
+                    },
+                    limit: { type: "integer", minimum: 1, maximum: 200 },
+                  },
+                },
+              },
+              {
+                name: "get_performance",
+                title: "Get measured performance",
+                description:
+                  "Read the success-rate table measured by the execution bridge (backtest or live evidence).",
+                inputSchema: {
+                  type: "object",
+                  properties: { id: { type: "string", description: "Optional strategy id." } },
+                },
+              },
+              {
+                name: "record_performance",
+                title: "Record measured performance",
+                description:
+                  "Publish measured results for strategies. Intended for the execution bridge; numbers must be measured, never invented.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    generatedAt: { type: "string" },
+                    mode: { type: "string", description: "live | simulation" },
+                    strategies: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string" },
+                          successRate: { type: "number" },
+                          profitFactor: { type: "number" },
+                          score: { type: "number" },
+                          trades: { type: "integer" },
+                          confidence: { type: "string" },
+                          evidence: { type: "string" },
+                        },
+                        required: ["id", "successRate", "trades"],
+                      },
+                    },
+                    overall: { type: "object" },
+                  },
+                  required: ["strategies"],
+                },
+              },
             ],
           },
         });
@@ -219,6 +364,86 @@ export default {
             case "get_latest_analysis":
               resultText = await getLatestAnalysis(env);
               break;
+            case "register_strategy": {
+              const registered = await upsertStrategy(env, args.strategy ?? args, {
+                source: args.source ?? "ai",
+              });
+              resultText = registered.ok
+                ? `Registered ${registered.strategy.id} (${registered.created ? 'new' : 'updated'}).\n` +
+                  formatStrategy(registered.strategy) +
+                  "\nIt is disabled until the account owner enables it in the Execution page."
+                : `Strategy rejected:\n- ${registered.errors.join('\n- ')}`;
+              break;
+            }
+            case "list_strategies": {
+              const strategies = await listStrategies(env, {
+                includeRetired: args.includeRetired === true,
+              });
+              resultText = strategies.length
+                ? strategies.map(formatStrategy).join("\n\n")
+                : "No strategies published yet. Use register_strategy.";
+              break;
+            }
+            case "get_strategy": {
+              const strategy = await getStrategy(env, args.id);
+              resultText = strategy
+                ? formatStrategy(strategy)
+                : `No strategy with id "${args.id}".`;
+              break;
+            }
+            case "retire_strategy": {
+              const retired = await retireStrategy(env, args.id);
+              resultText = retired.ok
+                ? `Retired ${retired.strategy.id}. It is disabled and hidden from the default list.`
+                : retired.error;
+              break;
+            }
+            case "submit_signal": {
+              const queued = await submitSignal(env, args);
+              resultText = queued.ok
+                ? `Signal queued for the owner's desk:\n${formatSignal(queued.signal)}`
+                : `Signal rejected: ${queued.error}`;
+              break;
+            }
+            case "list_signals": {
+              const signals = await listSignals(env, {
+                status: args.status ?? null,
+                limit: Math.min(Number(args.limit) || 25, 200),
+              });
+              resultText = signals.length
+                ? signals.map(formatSignal).join("\n\n")
+                : "No signals in the queue.";
+              break;
+            }
+            case "get_performance": {
+              const snapshot = await readPerformance(env);
+              if (args.id) {
+                const row = snapshot.byId?.[args.id];
+                resultText = row
+                  ? JSON.stringify(row, null, 2)
+                  : `No measured performance for "${args.id}" yet.`;
+              } else {
+                resultText = snapshot.generatedAt
+                  ? "Measured performance (from the execution bridge):\n" +
+                    Object.values(snapshot.byId ?? {})
+                      .map(
+                        (row) =>
+                          `${row.id}: success ${row.successRate}% · PF ${row.profitFactor ?? 'n/a'} · ` +
+                          `${row.trades} trades · score ${row.score} · ${row.confidence} (${row.evidence})`,
+                      )
+                      .join("\n") +
+                    `\nmode=${snapshot.mode} generatedAt=${snapshot.generatedAt}`
+                  : "No performance reported yet. Connect the MT5 bridge and run a backtest.";
+              }
+              break;
+            }
+            case "record_performance": {
+              const stored = await recordPerformance(env, args);
+              resultText = stored.ok
+                ? `Stored performance for ${Object.keys(stored.performance.byId).length} strategies.`
+                : `Rejected: ${stored.error}`;
+              break;
+            }
             default:
               return jsonRpcError(id, -32601, `Unknown tool: ${name}`);
           }
@@ -254,6 +479,120 @@ export default {
         }
         const message = await publishAnalysis(env, args);
         return jsonResponse({ ok: true, message });
+      }
+      return new Response(null, { status: 405, headers: corsHeaders() });
+    }
+
+    /* ================= STRATEGY REGISTRY / SIGNALS / PERFORMANCE ================= */
+    if (path === "/api/strategies") {
+      if (request.method === "GET") {
+        const includeRetired = url.searchParams.get("includeRetired") === "1";
+        return jsonResponse({
+          strategies: await listStrategies(env, { includeRetired }),
+        });
+      }
+      if (request.method === "POST") {
+        let body;
+        try {
+          body = await request.json();
+        } catch {
+          return jsonResponse({ error: "Invalid JSON body" }, 400);
+        }
+        const raw = body.strategy ?? body;
+        const result = await upsertStrategy(env, raw, { source: body.source ?? "ai" });
+        if (!result.ok) return jsonResponse({ error: "invalid strategy", errors: result.errors }, 400);
+        return jsonResponse(
+          { ok: true, created: result.created, strategy: result.strategy },
+          result.created ? 201 : 200,
+        );
+      }
+      return new Response(null, { status: 405, headers: corsHeaders() });
+    }
+
+    const strategyMatch = path.match(/^\/api\/strategies\/([A-Za-z0-9._-]{2,64})$/);
+    if (strategyMatch) {
+      const id = strategyMatch[1];
+      if (request.method === "GET") {
+        const strategy = await getStrategy(env, id);
+        return strategy
+          ? jsonResponse({ strategy })
+          : jsonResponse({ error: "strategy not found" }, 404);
+      }
+      if (request.method === "DELETE") {
+        const result = await retireStrategy(env, id);
+        return result.ok
+          ? jsonResponse({ ok: true, strategy: result.strategy })
+          : jsonResponse({ error: result.error }, 404);
+      }
+      return new Response(null, { status: 405, headers: corsHeaders() });
+    }
+
+    if (path === "/api/signals") {
+      if (request.method === "GET") {
+        const status = url.searchParams.get("status");
+        const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 50, 1), 200);
+        const signals = await listSignals(env, { status, limit });
+        return jsonResponse({ signals, count: signals.length, status: status ?? "all" });
+      }
+      if (request.method === "POST") {
+        let body;
+        try {
+          body = await request.json();
+        } catch {
+          return jsonResponse({ error: "Invalid JSON body" }, 400);
+        }
+        const result = await submitSignal(env, body.signal ?? body);
+        if (!result.ok) return jsonResponse({ error: result.error }, 400);
+        return jsonResponse({ ok: true, signal: result.signal }, 201);
+      }
+      return new Response(null, { status: 405, headers: corsHeaders() });
+    }
+
+    const signalMatch = path.match(/^\/api\/signals\/([A-Za-z0-9._-]{2,64})\/status$/);
+    if (signalMatch) {
+      if (request.method !== "POST") return new Response(null, { status: 405, headers: corsHeaders() });
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return jsonResponse({ error: "Invalid JSON body" }, 400);
+      }
+      const result = await setSignalStatus(env, signalMatch[1], body.status, {
+        note: body.note,
+        ticket: body.ticket,
+        actor: body.actor,
+      });
+      return result.ok
+        ? jsonResponse({ ok: true, signal: result.signal })
+        : jsonResponse({ error: result.error }, 400);
+    }
+
+    const signalGet = path.match(/^\/api\/signals\/([A-Za-z0-9._-]{2,64})$/);
+    if (signalGet && request.method === "GET") {
+      const signal = (await listSignals(env, { limit: 500 })).find((s) => s.id === signalGet[1]);
+      return signal ? jsonResponse({ signal }) : jsonResponse({ error: "signal not found" }, 404);
+    }
+
+    if (path === "/api/performance") {
+      if (request.method === "GET") {
+        const snapshot = await readPerformance(env);
+        if (url.searchParams.get("id")) {
+          const row = snapshot.byId?.[url.searchParams.get("id")];
+          return row ? jsonResponse({ performance: row }) : jsonResponse({ error: "no data" }, 404);
+        }
+        return jsonResponse(snapshot);
+      }
+      if (request.method === "POST") {
+        let body;
+        try {
+          body = await request.json();
+        } catch {
+          return jsonResponse({ error: "Invalid JSON body" }, 400);
+        }
+        const result = await recordPerformance(env, body);
+        return result.ok
+          ? jsonResponse({ ok: true, count: Object.keys(result.performance.byId).length })
+          : jsonResponse({ error: result.error }, 400);
       }
       return new Response(null, { status: 405, headers: corsHeaders() });
     }

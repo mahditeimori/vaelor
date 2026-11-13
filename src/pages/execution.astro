@@ -1,0 +1,902 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Execution Desk · MetaTrader 5"
+  description="Connect your own MetaTrader 5 terminal, backtest AI-authored strategies, measure their success rate and route orders from one desk."
+>
+  <main class="shell ex" data-api="https://trading-llc-mcp.mahdi-t8256.workers.dev">
+    <section class="ex-hero">
+      <div class="ex-kicker">Execution / MT5 · Section 5.0</div>
+      <h1>Execution Desk</h1>
+      <p class="lede">
+        Bridge this website to <b>your own MetaTrader 5 terminal</b>. Backtest a strategy on your
+        broker's real history, measure its success rate, then open, manage and close positions from
+        here. The bridge runs on your machine and never custodies funds.
+      </p>
+      <div class="ex-badges">
+        <span class="badge ex-badge" id="modeBadge">MODE —</span>
+        <span class="badge ex-badge" id="tradeBadge">TRADING —</span>
+        <span class="badge ex-badge" id="cloudBadge">CLOUD —</span>
+        <a class="badge ex-badge warm" href="/downloads/vaelor-mt5-bridge.zip" download>Download bridge .zip</a>
+        <a class="badge ex-badge warm" href="/docs/09-mt5-execution">Setup manual</a>
+      </div>
+
+      <div class="ex-quickbar">
+        <a href="#connect">Connect</a>
+        <a href="#order-ticket">Order ticket</a>
+        <a href="#positions">Positions</a>
+        <a href="#strategies">Strategies</a>
+        <a href="#backtest">Backtest</a>
+        <a href="#signals">Signals</a>
+        <a href="#audit">Audit</a>
+      </div>
+    </section>
+
+    <!-- ---------------------------------------------------------------- status -->
+    <section class="ex-statusbar" aria-live="polite">
+      <div class="ex-status-left">
+        <span class="ex-pulse ex-pulse-off" id="connDot" aria-hidden="true"></span>
+        <div>
+          <div class="ex-status-title" id="connLabel">BRIDGE OFFLINE</div>
+          <div class="ex-status-sub" id="connSub">No local bridge paired yet — follow the three steps below.</div>
+        </div>
+      </div>
+      <div class="ex-status-right">
+        <span class="ex-mono" id="lastPoll">poll: —</span>
+        <button type="button" class="ex-btn ghost" id="forgetBtn" hidden>Forget pairing</button>
+      </div>
+    </section>
+
+    <!-- ---------------------------------------------------------------- setup -->
+    <section class="ex-panel" id="connect" aria-labelledby="connect-title">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">Section 01 · Connect your MetaTrader</div>
+          <h2 class="ex-title" id="connect-title">CONNECT WIZARD</h2>
+        </div>
+        <span class="ex-chip" id="setupChip">not paired</span>
+      </div>
+
+      <div class="ex-steps">
+        <article class="ex-step">
+          <span class="ex-step-num">1</span>
+          <h3>Download the bridge</h3>
+          <p>
+            A small package that runs on your PC. It connects to the MetaTrader 5 already installed
+            on your machine — no broker API keys, no cloud custody.
+          </p>
+          <a class="ex-btn primary" href="/downloads/vaelor-mt5-bridge.zip" download>
+            Download vaelor-mt5-bridge.zip
+          </a>
+        </article>
+        <article class="ex-step">
+          <span class="ex-step-num">2</span>
+          <h3>Run it once</h3>
+          <p>
+            Unzip, then double-click <code>run.cmd</code>. The first run creates a private Python
+            environment and installs dependencies. The console prints a URL and a token.
+          </p>
+          <pre class="ex-code">URL   : http://127.0.0.1:8899
+Token : &lt;random string&gt;</pre>
+        </article>
+        <article class="ex-step">
+          <span class="ex-step-num">3</span>
+          <h3>Paste URL + token</h3>
+          <p>
+            Pair the site with your bridge. The token stays in this browser only; it is never sent
+            to our servers.
+          </p>
+          <div class="ex-field">
+            <label for="bridgeUrl">Bridge URL</label>
+            <input id="bridgeUrl" type="url" inputmode="url" spellcheck="false" placeholder="http://127.0.0.1:8899" />
+          </div>
+          <div class="ex-field">
+            <label for="bridgeToken">Bridge token</label>
+            <input id="bridgeToken" type="password" spellcheck="false" autocomplete="off" placeholder="paste the token printed by the bridge" />
+          </div>
+          <div class="ex-btn-row">
+            <button type="button" class="ex-btn primary" id="connectBtn">Connect</button>
+            <button type="button" class="ex-btn ghost" id="testBtn">Test connection</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="ex-note">
+        <b>Any Windows PC works.</b> The bridge auto-detects every MetaTrader 5 terminal installed
+        for your user, including broker-branded and portable copies. If none is logged in yet, open
+        MetaTrader 5, sign in to a demo or live account, then connect again.
+      </div>
+
+      <div class="ex-diag" id="diagWrap" hidden>
+        <div class="ex-diag-head">
+          <div>
+            <div class="ex-kicker">Detected on this machine</div>
+            <div class="ex-diag-title" id="diagSummary">Scanning terminals…</div>
+          </div>
+          <div class="ex-head-actions">
+            <button type="button" class="ex-btn ghost" id="disconnectBtn" hidden>Disconnect terminal</button>
+            <button type="button" class="ex-btn ghost" id="rescanBtn">Rescan</button>
+          </div>
+        </div>
+
+        <div class="ex-table-wrap">
+          <table class="ex-table">
+            <thead>
+              <tr>
+                <th>Terminal</th>
+                <th>Status</th>
+                <th>Account path</th>
+                <th class="right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="terminalList">
+              <tr><td colspan="4" class="ex-empty">No bridge paired yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="ex-details">
+          <summary>Terminal is installed but not logged in? Optional sign-in</summary>
+          <p class="ex-hint">
+            These values are used for a single <code>mt5.initialize</code> call and immediately
+            discarded. They are never written to disk, the audit log or the cloud. Prefer logging in
+            inside MetaTrader 5 itself.
+          </p>
+          <div class="ex-grid-3">
+            <div class="ex-field">
+              <label for="loginLogin">Login</label>
+              <input id="loginLogin" type="number" inputmode="numeric" placeholder="600143124" />
+            </div>
+            <div class="ex-field">
+              <label for="loginServer">Server</label>
+              <input id="loginServer" type="text" placeholder="Opogroup-Server1" spellcheck="false" />
+            </div>
+            <div class="ex-field">
+              <label for="loginPassword">Password</label>
+              <input id="loginPassword" type="password" autocomplete="off" placeholder="not stored" />
+            </div>
+          </div>
+          <div class="ex-btn-row">
+            <button type="button" class="ex-btn" id="manualConnectBtn">Sign in &amp; connect</button>
+          </div>
+        </details>
+
+        <div class="ex-callout warn" id="autotradingNote" hidden>
+          <b>AutoTrading is off in the terminal.</b>
+          Reading prices, positions and history still works. To send real orders, press the
+          <b>AutoTrading</b> button in MetaTrader 5 and enable
+          <b>Tools &gt; Options &gt; Expert Advisors &gt; Allow algorithmic trading</b>.
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------------------------------------------------------------- account -->
+    <section class="ex-panel" id="accountPanel" hidden aria-labelledby="account-title">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">Section 02 · Connected account</div>
+          <h2 class="ex-title" id="account-title">ACCOUNT &amp; RISK STRIP</h2>
+        </div>
+        <span class="ex-chip" id="acctMode">—</span>
+      </div>
+      <div class="ex-acct-grid">
+        <div class="ex-acct-cell"><span>Login</span><b id="acctLogin">—</b></div>
+        <div class="ex-acct-cell"><span>Server</span><b id="acctServer">—</b></div>
+        <div class="ex-acct-cell"><span>Company</span><b id="acctCompany">—</b></div>
+        <div class="ex-acct-cell"><span>Owner</span><b id="acctName">—</b></div>
+        <div class="ex-acct-cell"><span>Balance</span><b id="acctBalance">—</b></div>
+        <div class="ex-acct-cell"><span>Equity</span><b id="acctEquity">—</b></div>
+        <div class="ex-acct-cell"><span>Free margin</span><b id="acctFree">—</b></div>
+        <div class="ex-acct-cell"><span>Floating P/L</span><b id="acctProfit">—</b></div>
+        <div class="ex-acct-cell"><span>Leverage</span><b id="acctLeverage">—</b></div>
+        <div class="ex-acct-cell"><span>AutoTrading</span><b id="acctAutotrading">—</b></div>
+      </div>
+      <p class="ex-hint" id="accountNote"></p>
+    </section>
+
+    <!-- ---------------------------------------------------------------- order + risk -->
+    <div class="ex-grid-2" id="order-ticket">
+      <section class="ex-panel" aria-labelledby="ticket-title">
+        <div class="ex-panel-head">
+          <div>
+            <div class="ex-kicker">Section 03 · Manual routing</div>
+            <h2 class="ex-title" id="ticket-title">ORDER TICKET</h2>
+          </div>
+          <span class="ex-chip" id="ticketChip">simulation</span>
+        </div>
+
+        <div class="ex-quote" id="orderQuote">
+          <span><i>bid</i><b id="qBid">—</b></span>
+          <span><i>ask</i><b id="qAsk">—</b></span>
+          <span><i>spread</i><b id="qSpread">—</b></span>
+          <span><i>day</i><b id="qChange">—</b></span>
+        </div>
+
+        <div class="ex-field">
+          <label for="orderSymbol">Symbol</label>
+          <select id="orderSymbol"></select>
+        </div>
+
+        <div class="ex-side" role="group" aria-label="Order side">
+          <button type="button" class="ex-side-btn buy active" id="sideBuy" data-side="buy">BUY</button>
+          <button type="button" class="ex-side-btn sell" id="sideSell" data-side="sell">SELL</button>
+        </div>
+
+        <div class="ex-grid-3">
+          <div class="ex-field">
+            <label for="orderVolume">Volume (lots)</label>
+            <input id="orderVolume" type="number" min="0.01" step="0.01" value="0.01" />
+          </div>
+          <div class="ex-field">
+            <label for="orderSl">Stop loss</label>
+            <input id="orderSl" type="number" step="any" placeholder="optional" />
+          </div>
+          <div class="ex-field">
+            <label for="orderTp">Take profit</label>
+            <input id="orderTp" type="number" step="any" placeholder="optional" />
+          </div>
+        </div>
+
+        <div class="ex-grid-2-tight">
+          <div class="ex-field">
+            <label for="orderStrategy">Attach to strategy (optional)</label>
+            <select id="orderStrategy"><option value="">manual trade</option></select>
+          </div>
+          <div class="ex-field">
+            <label for="orderComment">Comment</label>
+            <input id="orderComment" type="text" maxlength="64" placeholder="execution desk" />
+          </div>
+        </div>
+
+        <label class="ex-check">
+          <input type="checkbox" id="orderConfirm" />
+          <span>I confirm this order goes to <b>my broker account</b>.</span>
+        </label>
+
+        <div class="ex-btn-row">
+          <button type="button" class="ex-btn primary" id="placeOrderBtn">Place order</button>
+          <button type="button" class="ex-btn ghost" id="beModeBtn" hidden>Live interlock</button>
+        </div>
+        <p class="ex-hint" id="orderHint">
+          Simulation fills are labelled. Real orders require a connected terminal,
+          <code>ALLOW_LIVE_TRADES=1</code> and a typed confirmation.
+        </p>
+      </section>
+
+      <section class="ex-panel" aria-labelledby="risk-title">
+        <div class="ex-panel-head">
+          <div>
+            <div class="ex-kicker">Section 04 · Safety</div>
+            <h2 class="ex-title" id="risk-title">RISK GATES &amp; KILL SWITCH</h2>
+          </div>
+          <span class="ex-chip" id="killChip">armed</span>
+        </div>
+
+        <div class="ex-grid-3">
+          <div class="ex-field">
+            <label for="riskPerTrade">Risk per trade %</label>
+            <input id="riskPerTrade" type="number" min="0.05" max="5" step="0.05" />
+          </div>
+          <div class="ex-field">
+            <label for="riskMaxLot">Max lots / trade</label>
+            <input id="riskMaxLot" type="number" min="0.01" max="100" step="0.01" />
+          </div>
+          <div class="ex-field">
+            <label for="riskMaxPositions">Max open positions</label>
+            <input id="riskMaxPositions" type="number" min="1" max="50" step="1" />
+          </div>
+          <div class="ex-field">
+            <label for="riskMaxDailyLoss">Max daily loss %</label>
+            <input id="riskMaxDailyLoss" type="number" min="0.5" max="50" step="0.5" />
+          </div>
+          <div class="ex-field">
+            <label for="riskMaxDD">Max drawdown %</label>
+            <input id="riskMaxDD" type="number" min="1" max="100" step="1" />
+          </div>
+          <div class="ex-field">
+            <label for="riskWhitelist">Symbol whitelist</label>
+            <input id="riskWhitelist" type="text" placeholder="empty = all symbols" spellcheck="false" />
+          </div>
+        </div>
+
+        <label class="ex-check">
+          <input type="checkbox" id="riskAllowMarket" />
+          <span>Allow market orders (uncheck to limit the desk to limit orders)</span>
+        </label>
+
+        <div class="ex-btn-row">
+          <button type="button" class="ex-btn" id="saveRiskBtn">Save risk gates</button>
+        </div>
+
+        <hr class="ex-rule" />
+
+        <p class="ex-hint">
+          The kill switch blocks every new order immediately. It can also flatten the book.
+          Turning it off is deliberately a separate, explicit action.
+        </p>
+        <label class="ex-check">
+          <input type="checkbox" id="killClose" />
+          <span>Also close every open position</span>
+        </label>
+        <div class="ex-btn-row">
+          <button type="button" class="ex-btn danger" id="killBtn">Engage kill switch</button>
+          <button type="button" class="ex-btn ghost" id="releaseKillBtn" hidden>Release kill switch</button>
+        </div>
+        <p class="ex-hint" id="killState">Kill switch is off.</p>
+      </section>
+    </div>
+
+    <!-- ---------------------------------------------------------------- positions -->
+    <section class="ex-panel" id="positions" aria-labelledby="pos-title">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">Section 05 · Live book</div>
+          <h2 class="ex-title" id="pos-title">POSITIONS &amp; PENDING ORDERS</h2>
+        </div>
+        <div class="ex-head-actions">
+          <span class="ex-chip" id="posCount">0 positions</span>
+          <label class="ex-inline">
+            <span>Trail pips</span>
+            <input id="trailPips" type="number" min="1" step="1" value="30" />
+          </label>
+          <button type="button" class="ex-btn danger ghost" id="closeAllBtn">Close all</button>
+        </div>
+      </div>
+
+      <div class="ex-table-wrap">
+        <table class="ex-table">
+          <thead>
+            <tr>
+              <th>Ticket</th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th class="right">Volume</th>
+              <th class="right">Open</th>
+              <th class="right">Current</th>
+              <th class="right">SL</th>
+              <th class="right">TP</th>
+              <th class="right">P/L</th>
+              <th>Strategy</th>
+              <th class="right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="positionsBody">
+            <tr><td colspan="11" class="ex-empty">No positions. Connect a terminal to see your live book.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <details class="ex-details" id="ordersWrap">
+        <summary>Pending orders (<span id="ordersCount">0</span>)</summary>
+        <div class="ex-table-wrap">
+          <table class="ex-table">
+            <thead>
+              <tr>
+                <th>Ticket</th>
+                <th>Symbol</th>
+                <th>Side</th>
+                <th>Type</th>
+                <th class="right">Volume</th>
+                <th class="right">Price</th>
+                <th class="right">SL</th>
+                <th class="right">TP</th>
+                <th>Strategy</th>
+              </tr>
+            </thead>
+            <tbody id="ordersBody">
+              <tr><td colspan="9" class="ex-empty">No pending orders.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <!-- ---------------------------------------------------------------- strategies -->
+    <section class="ex-panel" id="strategies" aria-labelledby="strat-title">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">Section 06 · Human and AI strategies</div>
+          <h2 class="ex-title" id="strat-title">STRATEGY REGISTRY</h2>
+        </div>
+        <div class="ex-head-actions">
+          <span class="ex-chip" id="cloudState">cloud —</span>
+          <button type="button" class="ex-btn ghost" id="syncStrategiesBtn">Sync from cloud</button>
+        </div>
+      </div>
+      <p class="ex-hint">
+        Strategies published through the AI/MCP bridge arrive <b>disabled</b>. Enable one here to let
+        it trigger, or enable auto-execute to let it route fresh signals unattended. The kill switch
+        always overrides.
+      </p>
+      <div class="ex-table-wrap">
+        <table class="ex-table">
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Source</th>
+              <th>Evidence</th>
+              <th class="right">Trades</th>
+              <th class="right">Success</th>
+              <th class="right">Score</th>
+              <th class="center">Enabled</th>
+              <th class="center">Auto-exec</th>
+              <th class="right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="strategiesBody">
+            <tr><td colspan="9" class="ex-empty">No strategies registered yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------------------------------------------------------------- backtest + performance -->
+    <section class="ex-panel" id="backtest" aria-labelledby="bt-title">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">Section 07 · Evidence</div>
+          <h2 class="ex-title" id="bt-title">BACKTEST ON BROKER HISTORY</h2>
+        </div>
+        <span class="ex-chip" id="btChip">event-driven</span>
+      </div>
+
+      <div class="ex-grid-4">
+        <div class="ex-field">
+          <label for="btStrategy">Strategy</label>
+          <select id="btStrategy"></select>
+        </div>
+        <div class="ex-field">
+          <label for="btSymbol">Symbol</label>
+          <input id="btSymbol" type="text" value="XAUUSD" spellcheck="false" />
+        </div>
+        <div class="ex-field">
+          <label for="btTimeframe">Timeframe</label>
+          <select id="btTimeframe">
+            <option>M5</option><option>M15</option><option>M30</option>
+            <option selected>H1</option><option>H4</option><option>D1</option>
+          </select>
+        </div>
+        <div class="ex-field">
+          <label for="btBalance">Initial balance</label>
+          <input id="btBalance" type="number" min="101" step="100" value="10000" />
+        </div>
+        <div class="ex-field">
+          <label for="btRisk">Risk %</label>
+          <input id="btRisk" type="number" min="0.05" max="10" step="0.05" placeholder="strategy default" />
+        </div>
+        <div class="ex-field">
+          <label for="btSpread">Spread (pips)</label>
+          <input id="btSpread" type="number" min="0" step="0.1" value="2" />
+        </div>
+        <div class="ex-field">
+          <label for="btCommission">Commission / lot</label>
+          <input id="btCommission" type="number" min="0" step="0.5" value="0" />
+        </div>
+        <div class="ex-field">
+          <label for="btLeverage">Leverage cap</label>
+          <input id="btLeverage" type="number" min="1" max="1000" step="1" value="100" />
+        </div>
+      </div>
+
+      <div class="ex-btn-row">
+        <button type="button" class="ex-btn primary" id="runBacktestBtn">Run backtest</button>
+        <span class="ex-mono" id="btStatus">pick a strategy and run it on your broker's history</span>
+      </div>
+
+      <div id="btResult" hidden>
+        <div class="ex-stat-grid" id="btStats"></div>
+        <div class="ex-chart-wrap">
+          <div class="ex-chart-head">
+            <span>Equity curve</span>
+            <span class="ex-mono" id="btMeta"></span>
+          </div>
+          <canvas id="btCanvas" height="240" aria-label="Backtest equity curve"></canvas>
+        </div>
+        <div class="ex-table-wrap">
+          <table class="ex-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Opened</th>
+                <th>Side</th>
+                <th class="right">Entry</th>
+                <th class="right">Exit</th>
+                <th class="right">P/L</th>
+                <th class="right">R</th>
+                <th class="right">Bars</th>
+                <th>Exit reason</th>
+              </tr>
+            </thead>
+            <tbody id="btTradesBody"></tbody>
+          </table>
+        </div>
+        <p class="ex-hint">
+          Results are evidence, not a promise. A high win rate on a small sample is marked
+          <b>insufficient</b> or <b>low</b> confidence on purpose.
+        </p>
+      </div>
+    </section>
+
+    <section class="ex-panel" aria-labelledby="perf-title">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">Section 08 · Measured results</div>
+          <h2 class="ex-title" id="perf-title">SUCCESS RATE</h2>
+        </div>
+        <span class="ex-chip" id="perfChip">—</span>
+      </div>
+      <div class="ex-table-wrap">
+        <table class="ex-table">
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Evidence</th>
+              <th class="right">Trades</th>
+              <th class="right">Win rate</th>
+              <th class="right">Profit factor</th>
+              <th class="right">Expectancy R</th>
+              <th class="right">Max DD</th>
+              <th class="right">Score</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody id="perfBody">
+            <tr><td colspan="9" class="ex-empty">No measured results yet — run a backtest.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="ex-hint" id="perfNote"></p>
+    </section>
+
+    <!-- ---------------------------------------------------------------- signals -->
+    <section class="ex-panel" id="signals" aria-labelledby="sig-title">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">Section 09 · AI signal queue</div>
+          <h2 class="ex-title" id="sig-title">SIGNAL QUEUE</h2>
+        </div>
+        <span class="ex-chip" id="signalCount">0 pending</span>
+      </div>
+      <p class="ex-hint">
+        Signals created by people or AI through MCP land here as <b>pending</b>. Approving sends a
+        market order through the risk gates; rejecting records the decision back to the cloud so the
+        author sees the outcome.
+      </p>
+      <div class="ex-table-wrap">
+        <table class="ex-table">
+          <thead>
+            <tr>
+              <th>Received</th>
+              <th>Strategy</th>
+              <th>Symbol</th>
+              <th>Side</th>
+              <th class="right">Entry</th>
+              <th class="right">SL</th>
+              <th class="right">TP</th>
+              <th class="right">Conf.</th>
+              <th>Note</th>
+              <th class="right">Decision</th>
+            </tr>
+          </thead>
+          <tbody id="signalsBody">
+            <tr><td colspan="10" class="ex-empty">No pending signals.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------------------------------------------------------------- audit -->
+    <section class="ex-panel" id="audit" aria-labelledby="audit-title">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">Section 10 · Traceability</div>
+          <h2 class="ex-title" id="audit-title">AUDIT LOG</h2>
+        </div>
+        <span class="ex-chip" id="auditCount">—</span>
+      </div>
+      <div class="ex-table-wrap ex-audit-wrap">
+        <table class="ex-table">
+          <thead>
+            <tr><th>Time</th><th>Actor</th><th>Action</th><th>Detail</th><th>Status</th></tr>
+          </thead>
+          <tbody id="auditBody">
+            <tr><td colspan="5" class="ex-empty">Nothing logged yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="ex-panel ex-about">
+      <div class="ex-panel-head">
+        <div>
+          <div class="ex-kicker">How this works</div>
+          <h2 class="ex-title">YOUR TERMINAL, YOUR MONEY</h2>
+        </div>
+      </div>
+      <div class="ex-about-grid">
+        <div>
+          <h3>The bridge is local</h3>
+          <p>
+            It binds to <code>127.0.0.1</code> only. The browser talks to it from your machine; our
+            servers never receive your credentials, account number or positions.
+          </p>
+        </div>
+        <div>
+          <h3>Nothing is faked</h3>
+          <p>
+            A rejected order is reported with the broker's own retcode and a plain-English hint. A
+            simulated fill is always labelled <b>simulation</b> and never shown as a real trade.
+          </p>
+        </div>
+        <div>
+          <h3>Live needs two keys</h3>
+          <p>
+            <code>ALLOW_LIVE_TRADES=1</code> in the bridge environment <i>and</i> a typed
+            <code>LIVE</code> confirmation. AutoTrading must also be enabled in MetaTrader 5.
+          </p>
+        </div>
+        <div>
+          <h3>AI cannot self-approve</h3>
+          <p>
+            Strategies published through MCP arrive disabled. Only the account owner can enable one,
+            and the kill switch overrides every strategy at once.
+          </p>
+        </div>
+      </div>
+      <p class="ex-hint">
+        Need the full setup, firewall notes and troubleshooting? Read the
+        <a href="/docs/09-mt5-execution">MetaTrader 5 execution manual</a>.
+      </p>
+    </section>
+
+    <div class="ex-toast" id="toast" role="status" aria-live="assertive" hidden></div>
+  </main>
+
+  <script>
+    import '../scripts/execution.ts';
+  </script>
+
+  <style is:global>
+    .ex {
+      --ex-bg: #0b0709;
+      --ex-panel: #150f13;
+      --ex-inner: #0e0a0d;
+      --ex-border: #33222c;
+      --ex-border-soft: #21141c;
+      --ex-text: #efe8dd;
+      --ex-dim: #b6a99f;
+      --ex-faint: #7c6e6f;
+      --ex-green: #5bd4a0;
+      --ex-red: #e0656b;
+      --ex-gold: #c9a24b;
+      max-width: 1240px;
+      padding-bottom: 64px;
+    }
+    .ex-hero { padding: 46px 0 18px; }
+    .ex-kicker {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ex-gold);
+      margin-bottom: 8px;
+    }
+    .ex-hero h1 { font-size: 2.4rem; margin-bottom: 12px; }
+    .ex-hero .lede { max-width: 780px; color: var(--ex-dim); }
+    .ex-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 14px; }
+    .ex-badge { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.08em; }
+    .ex-badge.live { color: var(--ex-red); border-color: rgba(224, 101, 107, 0.5); }
+    .ex-badge.sim { color: var(--ex-gold); border-color: rgba(201, 162, 75, 0.45); }
+    .ex-badge.off { color: var(--ex-faint); }
+    .ex-quickbar {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      border-top: 1px solid var(--ex-border-soft);
+      border-bottom: 1px solid var(--ex-border-soft);
+      padding: 8px 0; margin-bottom: 20px;
+    }
+    .ex-quickbar a {
+      font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em;
+      color: var(--ex-dim); padding: 5px 10px; border-radius: 999px;
+      border: 1px solid transparent;
+    }
+    .ex-quickbar a:hover { color: var(--ex-text); border-color: var(--ex-border); text-decoration: none; }
+
+    .ex-statusbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      flex-wrap: wrap; background: var(--ex-panel); border: 1px solid var(--ex-border);
+      border-radius: 12px; padding: 14px 18px; margin-bottom: 18px;
+    }
+    .ex-status-left { display: flex; align-items: center; gap: 12px; }
+    .ex-status-title { font-family: var(--mono); font-size: 0.82rem; font-weight: 700; letter-spacing: 0.1em; }
+    .ex-status-sub { font-size: 0.82rem; color: var(--ex-dim); }
+    .ex-status-right { display: flex; align-items: center; gap: 12px; }
+    .ex-pulse { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+    .ex-pulse-on { background: var(--ex-green); box-shadow: 0 0 12px rgba(91, 212, 160, 0.9); animation: exPulse 2s ease-in-out infinite; }
+    .ex-pulse-live { background: var(--ex-red); box-shadow: 0 0 12px rgba(224, 101, 107, 0.9); animation: exPulse 1.4s ease-in-out infinite; }
+    .ex-pulse-warn { background: var(--ex-gold); box-shadow: 0 0 10px rgba(201, 162, 75, 0.8); }
+    .ex-pulse-off { background: var(--ex-faint); }
+    @keyframes exPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.55; transform: scale(1.4); } }
+
+    .ex-panel {
+      background: var(--ex-panel); border: 1px solid var(--ex-border);
+      border-radius: 12px; padding: 18px 20px; margin-bottom: 18px;
+    }
+    .ex-panel-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .ex-title { font-family: var(--mono); font-size: 0.92rem; letter-spacing: 0.12em; margin: 0; }
+    .ex-chip {
+      font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em;
+      color: var(--ex-dim); background: var(--ex-inner); border: 1px solid var(--ex-border);
+      border-radius: 999px; padding: 4px 10px; white-space: nowrap;
+    }
+    .ex-chip.ok { color: var(--ex-green); border-color: rgba(91, 212, 160, 0.4); }
+    .ex-chip.warn { color: var(--ex-gold); border-color: rgba(201, 162, 75, 0.4); }
+    .ex-chip.bad { color: var(--ex-red); border-color: rgba(224, 101, 107, 0.4); }
+    .ex-head-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .ex-inline { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.7rem; color: var(--ex-faint); }
+    .ex-inline input { width: 68px; padding: 5px 8px; }
+    .ex-mono { font-family: var(--mono); font-size: 0.74rem; color: var(--ex-faint); }
+
+    .ex-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    .ex-step {
+      background: var(--ex-inner); border: 1px solid var(--ex-border-soft);
+      border-radius: 10px; padding: 16px; position: relative;
+    }
+    .ex-step h3 { font-size: 1rem; margin: 0 0 6px; }
+    .ex-step p { font-size: 0.86rem; color: var(--ex-dim); margin-bottom: 10px; }
+    .ex-step-num {
+      position: absolute; top: 12px; right: 14px;
+      font-family: var(--mono); font-size: 1.5rem; color: rgba(201, 162, 75, 0.25); font-weight: 700;
+    }
+    .ex-code {
+      background: #080506; border: 1px solid var(--ex-border-soft); border-radius: 8px;
+      padding: 10px 12px; font-size: 0.74rem; color: var(--ex-dim); overflow-x: auto; margin: 0;
+    }
+    .ex-note {
+      margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--ex-gold);
+      background: rgba(201, 162, 75, 0.06); border-radius: 0 8px 8px 0;
+      font-size: 0.86rem; color: var(--ex-dim);
+    }
+    .ex-callout {
+      margin-top: 14px; padding: 12px 14px; border-radius: 8px;
+      font-size: 0.86rem; color: var(--ex-text);
+    }
+    .ex-callout.warn { border: 1px solid rgba(201, 162, 75, 0.4); background: rgba(201, 162, 75, 0.08); }
+    .ex-callout.bad { border: 1px solid rgba(224, 101, 107, 0.4); background: rgba(224, 101, 107, 0.08); }
+
+    .ex-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+    .ex-field label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ex-faint); }
+    .ex-field input, .ex-field select {
+      width: 100%; background: #080506; color: var(--ex-text);
+      border: 1px solid var(--ex-border); border-radius: 8px;
+      padding: 9px 11px; font-family: var(--mono); font-size: 0.82rem;
+    }
+    .ex-field input:focus, .ex-field select:focus { outline: none; border-color: var(--ex-gold); }
+    .ex-field input::placeholder { color: #5c5052; }
+    .ex-field select option { background: #0a0d13; }
+    .ex-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.05em;
+      color: var(--ex-text); background: var(--ex-inner);
+      border: 1px solid var(--ex-border); border-radius: 8px;
+      padding: 9px 16px; cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .ex-btn:hover { border-color: var(--ex-gold); transform: translateY(-1px); }
+    .ex-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .ex-btn.primary { background: linear-gradient(135deg, #e2456c, #7c0f2e); border-color: transparent; font-weight: 700; }
+    .ex-btn.primary:hover { box-shadow: 0 8px 24px rgba(178, 23, 63, 0.45); }
+    .ex-btn.danger { border-color: rgba(224, 101, 107, 0.5); color: #ffb3b6; }
+    .ex-btn.danger:hover { background: rgba(224, 101, 107, 0.12); }
+    .ex-btn.ghost { background: transparent; }
+    .ex-btn.small { padding: 4px 9px; font-size: 0.68rem; }
+    .ex-btn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+    .ex-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; margin-bottom: 18px; }
+    .ex-grid-2-tight { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    .ex-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .ex-grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .ex-check {
+      display: flex; align-items: flex-start; gap: 8px; margin: 8px 0;
+      font-size: 0.82rem; color: var(--ex-dim); cursor: pointer;
+    }
+    .ex-check input { margin-top: 3px; accent-color: var(--ex-gold); }
+    .ex-hint { font-size: 0.78rem; color: var(--ex-faint); line-height: 1.55; }
+    .ex-hint code { color: var(--ex-dim); }
+    .ex-rule { border: none; border-top: 1px solid var(--ex-border-soft); margin: 16px 0; }
+    .ex-details { margin-top: 14px; border: 1px solid var(--ex-border-soft); border-radius: 8px; padding: 10px 14px; }
+    .ex-details summary { cursor: pointer; font-family: var(--mono); font-size: 0.74rem; color: var(--ex-dim); }
+    .ex-details summary:hover { color: var(--ex-text); }
+
+    .ex-quote {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+      background: var(--ex-border-soft); border: 1px solid var(--ex-border-soft);
+      border-radius: 8px; overflow: hidden; margin-bottom: 12px;
+    }
+    .ex-quote span { background: var(--ex-inner); padding: 8px 10px; display: flex; flex-direction: column; }
+    .ex-quote i { font-style: normal; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ex-faint); }
+    .ex-quote b { font-family: var(--mono); font-size: 0.9rem; color: var(--ex-text); }
+    .ex-side { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .ex-side-btn {
+      font-family: var(--mono); font-weight: 700; font-size: 0.86rem; letter-spacing: 0.1em;
+      padding: 11px; border-radius: 8px; cursor: pointer;
+      background: var(--ex-inner); color: var(--ex-dim); border: 1px solid var(--ex-border);
+    }
+    .ex-side-btn.buy.active { background: rgba(91, 212, 160, 0.15); color: var(--ex-green); border-color: rgba(91, 212, 160, 0.6); }
+    .ex-side-btn.sell.active { background: rgba(224, 101, 107, 0.15); color: var(--ex-red); border-color: rgba(224, 101, 107, 0.6); }
+
+    .ex-acct-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--ex-border-soft); border: 1px solid var(--ex-border-soft); border-radius: 8px; overflow: hidden; }
+    .ex-acct-cell { background: var(--ex-inner); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+    .ex-acct-cell span { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ex-faint); }
+    .ex-acct-cell b { font-family: var(--mono); font-size: 0.9rem; font-weight: 600; color: var(--ex-text); overflow: hidden; text-overflow: ellipsis; }
+    .pos { color: var(--ex-green); }
+    .neg { color: var(--ex-red); }
+    .flat { color: var(--ex-dim); }
+
+    .ex-diag { margin-top: 16px; border-top: 1px solid var(--ex-border-soft); padding-top: 14px; }
+    .ex-diag-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .ex-diag-title { font-family: var(--mono); font-size: 0.8rem; color: var(--ex-dim); }
+
+    .ex-table-wrap { overflow-x: auto; border: 1px solid var(--ex-border-soft); border-radius: 8px; }
+    .ex-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 640px; }
+    .ex-table th {
+      text-align: left; font-family: var(--mono); font-size: 0.62rem;
+      letter-spacing: 0.1em; text-transform: uppercase; color: var(--ex-faint);
+      background: var(--ex-inner); padding: 9px 10px; border-bottom: 1px solid var(--ex-border);
+      white-space: nowrap;
+    }
+    .ex-table td { padding: 9px 10px; border-bottom: 1px solid var(--ex-border-soft); color: var(--ex-dim); vertical-align: middle; }
+    .ex-table tr:last-child td { border-bottom: none; }
+    .ex-table tbody tr:hover td { background: rgba(255, 255, 255, 0.02); }
+    .ex-table .right { text-align: right; }
+    .ex-table .center { text-align: center; }
+    .ex-table td b { color: var(--ex-text); font-weight: 600; }
+    .ex-table .sym { font-family: var(--mono); color: var(--ex-text); white-space: nowrap; }
+    .ex-table .sub { display: block; font-family: var(--mono); font-size: 0.66rem; color: var(--ex-faint); }
+    .ex-empty { text-align: center; color: var(--ex-faint); font-family: var(--mono); font-size: 0.76rem; padding: 22px 10px !important; }
+    .ex-mono-cell { font-family: var(--mono); white-space: nowrap; }
+    .ex-tag {
+      display: inline-block; font-family: var(--mono); font-size: 0.62rem;
+      letter-spacing: 0.06em; padding: 2px 7px; border-radius: 999px;
+      border: 1px solid var(--ex-border); color: var(--ex-dim); white-space: nowrap;
+    }
+    .ex-tag.ok { color: var(--ex-green); border-color: rgba(91, 212, 160, 0.4); }
+    .ex-tag.warn { color: var(--ex-gold); border-color: rgba(201, 162, 75, 0.4); }
+    .ex-tag.bad { color: var(--ex-red); border-color: rgba(224, 101, 107, 0.4); }
+    .ex-edit-row td { background: rgba(201, 162, 75, 0.04); }
+    .ex-edit-grid { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .ex-edit-grid .ex-field { margin: 0; min-width: 90px; }
+    .ex-toggle { display: inline-flex; align-items: center; justify-content: center; }
+    .ex-toggle input { width: 16px; height: 16px; accent-color: var(--ex-gold); }
+
+    .ex-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--ex-border-soft); border: 1px solid var(--ex-border-soft); border-radius: 8px; overflow: hidden; margin: 14px 0; }
+    .ex-stat { background: var(--ex-inner); padding: 10px 12px; }
+    .ex-stat .k { display: block; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ex-faint); }
+    .ex-stat .v { font-family: var(--mono); font-size: 1.02rem; font-weight: 700; color: var(--ex-text); }
+    .ex-chart-wrap { background: var(--ex-inner); border: 1px solid var(--ex-border-soft); border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; }
+    .ex-chart-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-family: var(--mono); font-size: 0.7rem; color: var(--ex-faint); margin-bottom: 6px; }
+    .ex-chart-wrap canvas { width: 100%; height: 240px; display: block; }
+    .ex-audit-wrap { max-height: 420px; overflow-y: auto; }
+    .ex-audit-wrap thead th { position: sticky; top: 0; z-index: 1; }
+    .ex-about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .ex-about-grid h3 { font-size: 0.95rem; margin-bottom: 4px; }
+    .ex-about-grid p { font-size: 0.84rem; color: var(--ex-dim); margin: 0; }
+
+    .ex-toast {
+      position: fixed; right: 20px; bottom: 20px; z-index: 80;
+      max-width: 380px; padding: 12px 16px; border-radius: 10px;
+      background: #1b1218; border: 1px solid var(--ex-border);
+      color: var(--ex-text); font-size: 0.84rem; box-shadow: 0 16px 50px rgba(0, 0, 0, 0.55);
+    }
+    .ex-toast.ok { border-color: rgba(91, 212, 160, 0.5); }
+    .ex-toast.bad { border-color: rgba(224, 101, 107, 0.55); }
+
+    @media (max-width: 720px) {
+      .ex-hero h1 { font-size: 1.9rem; }
+      .ex-quote { grid-template-columns: repeat(2, 1fr); }
+      .ex-panel { padding: 14px; }
+    }
+  </style>
+</BaseLayout>

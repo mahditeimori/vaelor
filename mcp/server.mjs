@@ -10,6 +10,12 @@
  * Tools (same on both transports):
  *   get_manual_index · read_manual · search_manual · get_company_code
  *   publish_analysis · get_latest_analysis
+ *   register_strategy · list_strategies · get_strategy · retire_strategy
+ *   submit_signal · list_signals · get_performance · record_performance
+ *
+ * Trading tools talk to the Vaelor Worker (strategy registry + signal queue),
+ * which the local MT5 bridge then pulls from. Set VAELOR_API to override the
+ * Worker URL, and VAELOR_TOKEN if the deployment ever requires a bearer token.
  *
  * In HTTP mode every request is handled statelessly (no session storage),
  * which is what URL-based MCP clients (Claude custom connectors, ChatGPT,
@@ -31,6 +37,42 @@ const STATE_FILE = path.join(ROOT, 'src', 'data', 'ai-state.json');
 const COMPANY_CODE = path.join(ROOT, 'src', 'data', 'company_code.json');
 
 const SERVER_INFO = { name: 'trading-llc-site', version: '1.1.0' };
+
+/* ================= trading registry (Worker-backed) ================= */
+
+const VAELOR_API = (process.env.VAELOR_API || 'https://trading-llc-mcp.mahdi-t8256.workers.dev').replace(/\/+$/, '');
+
+async function api(pathname, { method = 'GET', body } = {}) {
+  const headers = { accept: 'application/json' };
+  if (body !== undefined) headers['content-type'] = 'application/json';
+  if (process.env.VAELOR_TOKEN) headers.authorization = `Bearer ${process.env.VAELOR_TOKEN}`;
+  let response;
+  try {
+    response = await fetch(`${VAELOR_API}${pathname}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch (err) {
+    throw new Error(
+      `Cannot reach the Vaelor registry at ${VAELOR_API} (${err?.message ?? err}). ` +
+        'Check the network or set VAELOR_API.',
+    );
+  }
+  const text = await response.text();
+  let payload;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch {
+    payload = { raw: text };
+  }
+  if (!response.ok) {
+    const detail = payload?.errors?.join('; ') || payload?.error || payload?.detail || response.statusText;
+    throw new Error(`${response.status} ${detail}`);
+  }
+  return payload;
+}
 
 /* ================= helpers ================= */
 
@@ -169,6 +211,169 @@ function createServer() {
   }, async () => {
     const s = readJson(STATE_FILE);
     return s.generatedAt ? text(JSON.stringify(s, null, 2)) : text('No analysis published yet. Use publish_analysis.');
+  });
+
+  /* ---- strategy registry ---- */
+
+  server.registerTool('register_strategy', {
+    title: 'Register a strategy',
+    description:
+      'Publish a strategy manifest to the execution desk. It is stored disabled: the account owner must enable it ' +
+      '(and optionally auto-execution) in the Execution page before it can trade. Conditions (each needs its fields): ' +
+      'ema_cross/sma_cross {fast,slow,direction}, price_vs_ema/price_vs_sma {period,op}, rsi {period,op,value}, ' +
+      'macd {fast,slow,period,direction}, breakout {lookback,side}, bollinger {period,mult,side}, atr_filter {period,min}, ' +
+      'always. direction is up|down, op is above|below|cross_up|cross_down. Stops/targets: atr {mult}, pips {pips}, ' +
+      'percent {pct}. direction=both needs entryLong+entryShort.',
+    inputSchema: {
+      strategy: z.any().describe('Strategy manifest object'),
+      source: z.string().optional().describe('Author label, e.g. claude-4'),
+    },
+  }, async ({ strategy, source }) => {
+    const result = await api('/api/strategies', { method: 'POST', body: { strategy, source } });
+    return text(
+      `Registered ${result.strategy.id} (${result.created ? 'new' : 'updated'}).\n` +
+        `state: disabled until the owner enables it in the Execution page\n` +
+        `symbols: ${result.strategy.symbols.join(', ')} · ${result.strategy.timeframe} · ${result.strategy.direction}`,
+    );
+  });
+
+  server.registerTool('list_strategies', {
+    title: 'List strategies',
+    description: 'List published strategies with their measured success rate, profit factor, sample size and confidence.',
+    inputSchema: {
+      includeRetired: z.boolean().optional().describe('Include retired strategies'),
+    },
+  }, async ({ includeRetired }) => {
+    const { strategies } = await api(`/api/strategies${includeRetired ? '?includeRetired=1' : ''}`);
+    if (!strategies.length) return text('No strategies published yet. Use register_strategy.');
+    return text(
+      strategies
+        .map((s) => {
+          const p = s.performance;
+          return (
+            `${s.id} — ${s.name}\n` +
+            `  author ${s.author} · ${s.symbols.join(', ')} · ${s.timeframe} · ${s.direction}` +
+            `${s.retired ? ' · RETIRED' : ''}\n` +
+            `  trigger locally: ${s.enabled ? 'enabled' : 'disabled'} · autoExecute: ${s.autoExecute ? 'on' : 'off'}\n` +
+            `  performance: ` +
+            (p
+              ? `success ${p.successRate}% · PF ${p.profitFactor ?? 'n/a'} · ${p.trades} trades · ${p.confidence} (${p.evidence})`
+              : 'not measured yet')
+          );
+        })
+        .join('\n\n'),
+    );
+  });
+
+  server.registerTool('get_strategy', {
+    title: 'Get one strategy',
+    description: 'Read a strategy manifest and its measured performance by id.',
+    inputSchema: { id: z.string().describe('Strategy id, e.g. gold-ema-trend') },
+  }, async ({ id }) => {
+    const { strategy } = await api(`/api/strategies/${encodeURIComponent(id)}`);
+    return text(JSON.stringify(strategy, null, 2));
+  });
+
+  server.registerTool('retire_strategy', {
+    title: 'Retire a strategy',
+    description: 'Stop recommending a strategy. It stays readable, is marked retired and cannot trade.',
+    inputSchema: { id: z.string() },
+  }, async ({ id }) => {
+    const { strategy } = await api(`/api/strategies/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    return text(`Retired ${strategy.id}. It is disabled and hidden from the default list.`);
+  });
+
+  /* ---- signals ---- */
+
+  server.registerTool('submit_signal', {
+    title: 'Submit a trade signal',
+    description:
+      "Queue a trade signal for the owner's MT5 desk. Nothing executes unless the owner approves it, or the strategy " +
+      'is enabled with auto-execution and the kill switch is off.',
+    inputSchema: {
+      strategyId: z.string(),
+      symbol: z.string().describe('Broker symbol, e.g. XAUUSD'),
+      side: z.enum(['buy', 'sell']),
+      entry: z.number().optional().describe('Limit price; omit for market'),
+      sl: z.number().optional(),
+      tp: z.number().optional(),
+      confidence: z.number().min(0).max(1).optional(),
+      note: z.string().optional(),
+    },
+  }, async (args) => {
+    const { signal } = await api('/api/signals', { method: 'POST', body: args });
+    return text(
+      `Signal queued: ${signal.id}\n` +
+        `  ${signal.side.toUpperCase()} ${signal.symbol} · ${signal.strategyId} · entry ${signal.entry ?? 'market'}\n` +
+        `  sl ${signal.sl ?? '—'} · tp ${signal.tp ?? '—'} · confidence ${signal.confidence ?? '—'}`,
+    );
+  });
+
+  server.registerTool('list_signals', {
+    title: 'List signals',
+    description: 'Read the signal queue, optionally filtered by status.',
+    inputSchema: {
+      status: z.enum(['pending', 'approved', 'executed', 'rejected', 'expired', 'cancelled']).optional(),
+      limit: z.number().min(1).max(200).optional(),
+    },
+  }, async ({ status, limit }) => {
+    const query = new URLSearchParams();
+    if (status) query.set('status', status);
+    if (limit) query.set('limit', String(limit));
+    const { signals } = await api(`/api/signals${query.size ? `?${query}` : ''}`);
+    if (!signals.length) return text('No signals in the queue.');
+    return text(
+      signals
+        .map(
+          (s) =>
+            `${s.id} [${s.status}] ${s.side.toUpperCase()} ${s.symbol} · ${s.strategyId}\n` +
+            `  entry ${s.entry ?? 'market'} · sl ${s.sl ?? '—'} · tp ${s.tp ?? '—'} · ${s.createdAt}` +
+            (s.decisionNote ? `\n  decision: ${s.decisionNote}` : ''),
+        )
+        .join('\n\n'),
+    );
+  });
+
+  /* ---- performance ---- */
+
+  server.registerTool('get_performance', {
+    title: 'Get measured performance',
+    description: 'Read the success-rate table measured by the execution bridge (backtest or live evidence).',
+    inputSchema: { id: z.string().optional() },
+  }, async ({ id }) => {
+    const snapshot = await api('/api/performance');
+    if (id) {
+      const row = snapshot.byId?.[id];
+      return text(row ? JSON.stringify(row, null, 2) : `No measured performance for "${id}" yet.`);
+    }
+    const rows = Object.values(snapshot.byId ?? {});
+    if (!rows.length) return text('No performance reported yet. Connect the MT5 bridge and run a backtest.');
+    return text(
+      'Measured performance (from the execution bridge):\n' +
+        rows
+          .map(
+            (r) =>
+              `${r.id}: success ${r.successRate}% · PF ${r.profitFactor ?? 'n/a'} · ${r.trades} trades · ` +
+              `score ${r.score} · ${r.confidence} (${r.evidence})`,
+          )
+          .join('\n') +
+        `\nmode=${snapshot.mode} generatedAt=${snapshot.generatedAt}`,
+    );
+  });
+
+  server.registerTool('record_performance', {
+    title: 'Record measured performance',
+    description:
+      'Publish measured results. Intended for the execution bridge: numbers must be measured, never invented.',
+    inputSchema: {
+      generatedAt: z.string().optional(),
+      mode: z.string().optional(),
+      strategies: z.array(z.any()).describe('Rows: {id, successRate, profitFactor, score, trades, confidence, evidence}'),
+      overall: z.any().optional(),
+    },
+  }, async (args) => {
+    const result = await api('/api/performance', { method: 'POST', body: args });
+    return text(`Stored performance for ${result.count} strategies.`);
   });
 
   return server;

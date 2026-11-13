@@ -21,7 +21,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
         <span class="ai-badge">JSON-RPC 2.0</span>
         <span class="ai-badge">Stateless · no session</span>
         <span class="ai-badge">CORS *</span>
-        <span class="ai-badge">6 tools</span>
+        <span class="ai-badge">14 tools</span>
       </div>
     </section>
 
@@ -92,6 +92,14 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
             <tr><td>get_company_code</td><td>Return the company code package</td><td>—</td></tr>
             <tr><td>publish_analysis</td><td>Publish a regime call to the site</td><td>analysis payload</td></tr>
             <tr><td>get_latest_analysis</td><td>Read the latest published call</td><td>—</td></tr>
+            <tr><td>register_strategy</td><td>Publish a strategy manifest, created disabled</td><td>strategy manifest</td></tr>
+            <tr><td>list_strategies</td><td>Registry with measured success rates</td><td>includeRetired</td></tr>
+            <tr><td>get_strategy</td><td>Read one manifest and its performance</td><td>id</td></tr>
+            <tr><td>retire_strategy</td><td>Retire a strategy so it cannot trade</td><td>id</td></tr>
+            <tr><td>submit_signal</td><td>Queue a trade signal for the owner's desk</td><td>strategyId, symbol, side, entry, sl, tp</td></tr>
+            <tr><td>list_signals</td><td>Read the signal queue by status</td><td>status, limit</td></tr>
+            <tr><td>get_performance</td><td>Read measured success rates</td><td>id</td></tr>
+            <tr><td>record_performance</td><td>Publish measured results (bridge only)</td><td>strategies[]</td></tr>
           </tbody>
         </table>
       </div>
@@ -128,6 +136,37 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
                  "capabilities":&#123;&#125;,
                  "clientInfo":&#123;"name":"my-ai","version":"1.0"&#125;&#125;&#125;'</code></pre>
         </div>
+      </div>
+    </section>
+
+    <section class="ai-section" aria-labelledby="execution-title">
+      <div class="ai-section-head">
+        <div>
+          <div class="panel-kicker">04 · EXECUTION</div>
+          <h2 id="execution-title">From analysis to a real order</h2>
+        </div>
+      </div>
+      <p class="lede" style="max-width:820px">
+        A published strategy or queued signal is inert by default. It lands in the
+        <a href="/execution">Execution desk</a> as <b>disabled</b> until the account owner enables it, and
+        the local MT5 bridge decides whether it can trade. An AI cannot publish its way into a live order.
+      </p>
+      <div class="ai-grid" style="margin-top:18px">
+        <article class="ai-card">
+          <div class="ai-label">1 · Author</div>
+          <code>register_strategy</code>
+          <span class="ai-hint">Manifest stored disabled, with validation errors returned to the agent.</span>
+        </article>
+        <article class="ai-card">
+          <div class="ai-label">2 · Signal</div>
+          <code>submit_signal</code>
+          <span class="ai-hint">Queued as pending; the owner approves or rejects it in the desk.</span>
+        </article>
+        <article class="ai-card">
+          <div class="ai-label">3 · Measure</div>
+          <code>get_performance</code>
+          <span class="ai-hint">Backtest and live evidence measured by the bridge, never self-reported.</span>
+        </article>
       </div>
     </section>
 

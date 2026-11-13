@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "prebuild": "node scripts/pack-bridge.mjs",
+    "pack:bridge": "node scripts/pack-bridge.mjs",
     "preview": "astro preview",
     "mcp": "node mcp/server.mjs",
     "mcp:http": "node mcp/server.mjs --http",
