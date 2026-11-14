@@ -57,7 +57,33 @@ Hard guards, enforced server-side:
   publishing a manifest;
 - every order, rejection, stop-out and strategy toggle is written to the audit
   log (`GET /api/audit`);
-- `idempotencyKey` on orders makes retries safe.
+- `idempotencyKey` on orders makes retries safe;
+- **prop-firm signal-only lock** (`POST /api/prop`): refuses every opening
+  order — manual, approved or auto — while closes and stop moves still work.
+
+## Live signals and prop-firm mode
+
+Enabled rule strategies are evaluated by the bridge on the **last closed bar**
+using the same DSL code as the backtester, so the chart, the signal and the
+measured result agree. Each pending ticket carries entry, stop, target,
+suggested lots, R multiple and a management plan (breakeven at 1R, optional
+trail after 1R, never widen the stop). Tickets expire after two bars and are
+deduplicated per closed bar; the scan runs every 15 seconds and on demand via
+`POST /api/signals/scan`.
+
+For prop firms, turn on **Signal-only** in the Safety section. The bridge then
+refuses every opening order while signals, alerts and the indicator keep
+working, so the trader executes manually.
+
+### Signal-only MT5 indicator
+
+`GET /api/strategies/{id}/indicator.mq5` returns a MetaTrader 5 indicator
+generated from that strategy's conditions, stop, target and trail rules. It is
+an indicator, **not** an EA: no `OrderSend`, no `CTrade`, no trade include. It
+draws arrows, entry/stop/target lines, a panel with lots and the management
+plan, and raises alerts. Install it under `MQL5/Indicators`, compile in
+MetaEditor (F7) and attach it to the matching symbol and timeframe. Python and
+external strategies cannot be translated and are rejected with an explanation.
 
 ## Enabling the real terminal
 
@@ -198,12 +224,15 @@ POST /api/positions/close-all      flatten (optional strategyId)
 GET/PUT /api/risk                  risk configuration
 POST /api/kill                     kill switch
 POST /api/mode                     simulation/live switch
+POST /api/prop                     prop-firm signal-only lock
 GET  /api/strategies               registry + measured performance
 POST /api/strategies               register a manifest
 POST /api/strategies/python        register a .py strategy or converter bundle
 POST /api/strategies/{id}/toggle   enable/pause + autoExecute
+GET  /api/strategies/{id}/indicator.mq5  signal-only MT5 indicator
 POST /api/strategies/sync          pull the cloud registry now
 GET  /api/signals                  signal queue
+POST /api/signals/scan             evaluate enabled strategies now
 POST /api/signals/{id}/approve     execute at market
 POST /api/signals/{id}/reject      discard
 GET  /api/performance              success-rate table

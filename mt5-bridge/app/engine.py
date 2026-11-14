@@ -24,6 +24,7 @@ from .models import (
 from .performance import summarise, trade_stats, wilson_lower
 from .providers import Provider, SimProvider, build_provider, spec_for, strategy_magic
 from .python_backtest import run_python_backtest
+from .signal_feed import SignalFeed
 from .store import Store
 from .strategies import StrategyError, validate_strategy
 
@@ -52,6 +53,8 @@ class TradingEngine:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._tick_lock = threading.Lock()
+        self._last_signal_scan = 0.0
+        self.prop_safe = bool(self.store.get_json("prop_safe") or False)
         self._load_risk()
 
     # ------------------------------------------------------ MetaTrader link
@@ -209,6 +212,7 @@ class TradingEngine:
                 except Exception as exc:
                     self.store.audit("position.auto_close_failed", str(exc), ok=False)
             self._auto_execute_signals()
+            self._scan_live_signals()
             self.last_tick = _now()
         finally:
             self._tick_lock.release()
@@ -261,6 +265,7 @@ class TradingEngine:
                 "allowLiveTrades": self.live_allowed(),
                 "liveReady": self.provider.mode == "live" and self.live_allowed(),
                 "killSwitch": self.risk.killSwitch,
+                "propSafe": self.prop_safe,
                 "maxLotPerTrade": self.risk.maxLotPerTrade,
                 "maxOpenPositions": self.risk.maxOpenPositions,
                 "maxDailyLossPct": self.risk.maxDailyLossPct,
@@ -348,6 +353,12 @@ class TradingEngine:
         return magic
 
     def place_order(self, request: OrderRequest) -> dict:
+        if self.prop_safe:
+            raise RiskError(
+                "Prop-firm signal-only mode is on. The bridge will not send opening orders: "
+                "use the signal ticket and place it manually in MetaTrader 5, or turn the lock "
+                "off in Safety if this is not a prop account."
+            )
         if request.idempotencyKey:
             cached = self.store.get_idempotent(request.idempotencyKey)
             if cached:
@@ -614,8 +625,70 @@ class TradingEngine:
         self.store.audit("signal.rejected", {"id": sid})
         return {"ok": True, "signal": updated}
 
+    # ---------------------------------------------------------- signal feed
+    def set_prop_safe(self, enabled: bool) -> dict:
+        """Signal-only lock for prop-firm accounts.
+
+        When on, the bridge refuses every opening order (manual, approved or
+        auto-executed) and keeps only the signal/indicator workflow. Closes and
+        stop changes stay available because reducing risk is always allowed.
+        """
+        self.prop_safe = bool(enabled)
+        self.store.set_json("prop_safe", self.prop_safe)
+        self.store.audit("safety.prop_safe", {"enabled": self.prop_safe})
+        return {"ok": True, "propSafe": self.prop_safe}
+
+    def scan_signals(self) -> list[dict]:
+        """Evaluate enabled rule strategies now and queue any fresh signal."""
+        rows = [row for row in self.store.list_strategies() if row.get("enabled")]
+        generated = SignalFeed(self.provider).scan(rows)
+        created: list[dict] = []
+        for signal in generated:
+            sid = _signal_id(signal["strategyId"], signal["symbol"], signal["barTime"])
+            if self.store.get_signal(sid):
+                # Same closed bar: the ticket already exists, so nothing is new.
+                continue
+            row = self.store.add_signal({**signal, "id": sid})
+            if row.get("id") == sid and row.get("status") == "pending" and not row.get("decided"):
+                created.append(row)
+                self.store.audit(
+                    "signal.generated",
+                    {
+                        "id": row["id"],
+                        "strategy": signal["strategyId"],
+                        "symbol": signal["symbol"],
+                        "side": signal["side"],
+                        "barTime": signal["barTime"],
+                    },
+                )
+        self._expire_signals()
+        return created
+
+    def _scan_live_signals(self) -> None:
+        now = time.time()
+        if now - self._last_signal_scan < 15:
+            return
+        self._last_signal_scan = now
+        try:
+            self.scan_signals()
+        except Exception as exc:
+            self.store.audit("signal.scan_failed", str(exc), ok=False)
+
+    def _expire_signals(self) -> None:
+        """Pending strategy signals stop being actionable after two bars."""
+        now = int(time.time())
+        for signal in self.store.list_signals("pending", 200):
+            if signal.get("source") != "strategy":
+                continue
+            bar_time = int(signal.get("barTime") or 0)
+            step = TF_MINUTES.get(str(signal.get("timeframe") or "H1"), 60) * 60
+            if bar_time and now > bar_time + max(3600, 2 * step):
+                self.store.decide_signal(
+                    signal["id"], "expired", "expired: older than two bars"
+                )
+
     def _auto_execute_signals(self) -> None:
-        if self.risk.killSwitch:
+        if self.risk.killSwitch or self.prop_safe:
             return
         for signal in self.store.list_signals("pending", 50):
             strategy = self.store.get_strategy(signal["strategyId"])
@@ -814,6 +887,13 @@ def _now() -> str:
 
 def _iso(ts: float) -> str:
     return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat(timespec="seconds")
+
+
+def _signal_id(strategy_id: str, symbol: str, bar_time: int) -> str:
+    import hashlib
+
+    digest = hashlib.sha1(f"{strategy_id}|{symbol}|{bar_time}".encode()).hexdigest()[:12]
+    return f"sig_gen_{digest}"
 
 
 def _parse_time(value: str) -> int:

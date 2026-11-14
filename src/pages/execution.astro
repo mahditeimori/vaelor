@@ -19,7 +19,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <span class="badge ex-badge" id="modeBadge">MODE —</span>
         <span class="badge ex-badge" id="tradeBadge">TRADING —</span>
         <span class="badge ex-badge" id="cloudBadge">CLOUD —</span>
-        <a class="badge ex-badge warm" href="/downloads/vaelor-mt5-bridge.zip?v=1.1.0" download>Download bridge .zip</a>
+        <a class="badge ex-badge warm" href="/downloads/vaelor-mt5-bridge.zip?v=1.2.0" download>Download bridge .zip</a>
         <a class="badge ex-badge warm" href="/docs/09-mt5-execution">Setup manual</a>
       </div>
 
@@ -70,7 +70,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             A small package that runs on your PC. It connects to the MetaTrader 5 already installed
             on your machine — no broker API keys, no cloud custody.
           </p>
-          <a class="ex-btn primary" href="/downloads/vaelor-mt5-bridge.zip?v=1.1.0" download>
+          <a class="ex-btn primary" href="/downloads/vaelor-mt5-bridge.zip?v=1.2.0" download>
             Download vaelor-mt5-bridge.zip
           </a>
         </article>
@@ -356,6 +356,21 @@ Token : &lt;random string&gt;</pre>
           <button type="button" class="ex-btn ghost" id="lockLiveBtn" hidden>Lock live trading</button>
         </div>
         <p class="ex-hint" id="liveState">Live trading is locked.</p>
+
+        <hr class="ex-rule" />
+
+        <p class="ex-hint"><b>PROP-FIRM SIGNAL-ONLY LOCK</b></p>
+        <p class="ex-hint">
+          Prop firms usually forbid account-managing robots. Turn this on and the bridge refuses
+          <b>every opening order</b> — manual, approved or auto-executed. Signals, alerts and the
+          MT5 indicator keep working, so you place and manage the trade yourself. Closing a
+          position and moving a stop stay available because they reduce risk.
+        </p>
+        <label class="ex-check">
+          <input type="checkbox" id="propSafe" />
+          <span>Signal-only: never send opening orders from this bridge</span>
+        </label>
+        <p class="ex-hint" id="propSafeState">Signal-only lock is off.</p>
       </section>
     </div>
 
@@ -509,11 +524,12 @@ def on_bar(ctx):
               <th class="right">Score</th>
               <th class="center">Enabled</th>
               <th class="center">Auto-exec</th>
-              <th class="right">Action</th>
+              <th class="right">Backtest</th>
+              <th class="right">MT5</th>
             </tr>
           </thead>
           <tbody id="strategiesBody">
-            <tr><td colspan="9" class="ex-empty">Waiting for the bridge…</td></tr>
+            <tr><td colspan="10" class="ex-empty">Waiting for the bridge…</td></tr>
           </tbody>
         </table>
       </div>
@@ -720,12 +736,17 @@ def on_bar(ctx):
           <div class="ex-kicker">Section 09 · AI signal queue</div>
           <h2 class="ex-title" id="sig-title">SIGNAL QUEUE</h2>
         </div>
-        <span class="ex-chip" id="signalCount">0 pending</span>
+        <div class="ex-head-actions">
+          <span class="ex-chip" id="signalModeChip">signal-only</span>
+          <span class="ex-chip" id="signalCount">0 pending</span>
+          <button type="button" class="ex-btn ghost" id="scanSignalsBtn">Scan now</button>
+        </div>
       </div>
       <p class="ex-hint">
-        Signals created by people or AI through MCP land here as <b>pending</b>. Approving sends a
-        market order through the risk gates; rejecting records the decision back to the cloud so the
-        author sees the outcome.
+        Enabled strategies publish an actionable ticket here on each closed bar: entry, stop,
+        target, suggested lots and the management plan. Nothing is sent to the broker — on a
+        prop-firm account turn on the <b>signal-only lock</b> in Safety so even approval cannot
+        place an order. Copy the ticket into MetaTrader 5, or use the strategy's MT5 indicator.
       </p>
       <div class="ex-table-wrap">
         <table class="ex-table">
@@ -738,7 +759,7 @@ def on_bar(ctx):
               <th class="right">Entry</th>
               <th class="right">SL</th>
               <th class="right">TP</th>
-              <th class="right">Conf.</th>
+              <th>Management</th>
               <th>Note</th>
               <th class="right">Decision</th>
             </tr>

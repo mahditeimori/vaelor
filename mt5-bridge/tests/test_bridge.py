@@ -29,6 +29,7 @@ from app.models import (  # noqa: E402
     StrategyManifest,
 )
 from app.performance import max_drawdown, summarise, trade_stats, wilson_lower  # noqa: E402
+from app.mql5_export import generate_indicator  # noqa: E402
 from app.providers import SimProvider, spec_for, synthetic_bars  # noqa: E402
 from app.python_backtest import run_python_backtest  # noqa: E402
 from app.python_strategies import AnalysisError, analyze_python, extract_python  # noqa: E402
@@ -513,5 +514,131 @@ class StrategyValidationTests(unittest.TestCase):
         self.assertIn("unknown condition type", str(ctx.exception))
 
 
+class SignalFeedTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.store = Store(Path(self.tmp.name) / "test.db")
+        self.engine = TradingEngine(self.store)
+        self.engine.provider = SimProvider(self.store)
+        self.engine.risk = RiskConfig(maxLotPerTrade=5, maxOpenPositions=5)
+
+    def tearDown(self) -> None:
+        self.store.close()
+        self.tmp.cleanup()
+
+    def _manifest(self) -> StrategyManifest:
+        return StrategyManifest(
+            id="signal-always",
+            name="Signal always long",
+            symbols=["XAUUSD"],
+            timeframe="H1",
+            direction="long",
+            entry=Group(all=[Condition(type="always")]),
+            stop={"type": "atr", "mult": 2},
+            target={"type": "atr", "mult": 4},
+        )
+
+    def test_enabled_strategy_publishes_ticket_with_plan(self) -> None:
+        self.engine.sync_strategy(self._manifest())
+        self.engine.set_strategy_enabled("signal-always", True)
+        created = self.engine.scan_signals()
+        self.assertEqual(len(created), 1)
+        signal = created[0]
+        self.assertEqual(signal["side"], "buy")
+        self.assertGreater(signal["entry"], 0)
+        self.assertGreater(signal["sl"], 0)
+        self.assertGreater(signal["tp"], 0)
+        self.assertGreater(signal["lots"], 0)
+        self.assertEqual(signal["source"], "strategy")
+        self.assertTrue(signal["signalOnly"])
+        self.assertEqual(signal["management"]["breakevenAtR"], 1.0)
+        self.assertIn("breakeven", " ".join(signal["management"]["steps"]).lower())
+        self.assertEqual(signal["status"], "pending")
+        # Same closed bar twice must not duplicate the ticket.
+        self.assertEqual(self.engine.scan_signals(), [])
+
+    def test_disabled_strategy_does_not_publish(self) -> None:
+        self.engine.sync_strategy(self._manifest())
+        self.assertEqual(self.engine.scan_signals(), [])
+
+
+class PropSafeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.store = Store(Path(self.tmp.name) / "test.db")
+        self.engine = TradingEngine(self.store)
+        self.engine.provider = SimProvider(self.store)
+        self.engine.risk = RiskConfig(maxLotPerTrade=5, maxOpenPositions=5)
+
+    def tearDown(self) -> None:
+        self.store.close()
+        self.tmp.cleanup()
+
+    def test_signal_only_lock_refuses_orders_and_survives_restart(self) -> None:
+        self.engine.set_prop_safe(True)
+        self.assertTrue(self.engine.prop_safe)
+        with self.assertRaises(RiskError) as ctx:
+            self.engine.place_order(
+                OrderRequest(symbol="XAUUSD", side="buy", volume=0.1, confirm=True)
+            )
+        self.assertIn("signal-only", str(ctx.exception).lower())
+
+        # A fresh engine over the same database still refuses orders.
+        engine2 = TradingEngine(self.store)
+        engine2.provider = SimProvider(self.store)
+        self.assertTrue(engine2.prop_safe)
+        with self.assertRaises(RiskError):
+            engine2.place_order(
+                OrderRequest(symbol="XAUUSD", side="buy", volume=0.1, confirm=True)
+            )
+
+        # Unlocking restores normal (interlock-respecting) routing.
+        engine2.set_prop_safe(False)
+        order = engine2.place_order(
+            OrderRequest(symbol="XAUUSD", side="buy", volume=0.1, confirm=True)
+        )
+        self.assertTrue(order["ok"])
+
+
+class Mql5ExportTests(unittest.TestCase):
+    def _manifest(self) -> StrategyManifest:
+        return StrategyManifest(
+            id="export-test",
+            name="Export test",
+            symbols=["XAUUSD"],
+            timeframe="H1",
+            entryLong=Group(
+                all=[Condition(type="ema_cross", fast=20, slow=50, direction="up")]
+            ),
+            entryShort=Group(
+                all=[Condition(type="rsi", period=14, op="above", value=70)]
+            ),
+            stop={"type": "atr", "mult": 2},
+            target={"type": "pips", "pips": 500},
+            trail={"type": "atr", "mult": 1.5},
+        )
+
+    def test_indicator_is_signal_only_and_contains_rules(self) -> None:
+        source = generate_indicator(self._manifest())
+        self.assertIn("#property indicator_chart_window", source)
+        self.assertIn("C_EMA_CROSS", source)
+        self.assertIn("C_RSI", source)
+        self.assertIn("STRAT_RISK", source)
+        self.assertIn("breakeven", source.lower())
+        # Prop-firm safe: no trading calls in the generated file.
+        for forbidden in ("OrderSend(", "#include <Trade\\\\Trade.mqh>", "PositionOpen("):
+            self.assertNotIn(forbidden, source)
+
+    def test_python_and_external_cannot_be_exported(self) -> None:
+        manifest = self._manifest()
+        manifest.runtime = "python"
+        with self.assertRaises(ValueError):
+            generate_indicator(manifest)
+        manifest.runtime = "external"
+        with self.assertRaises(ValueError):
+            generate_indicator(manifest)
+
+
 if __name__ == "__main__":
     unittest.main()
+

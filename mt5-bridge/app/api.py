@@ -8,7 +8,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field
 
 from .cloud import CloudSync
@@ -28,6 +28,7 @@ from .models import (
     TrailRequest,
 )
 from .mt5_provider import BrokerError
+from .mql5_export import generate_indicator
 from .python_strategies import AnalysisError, analyze_python
 from .seed import seed
 from .store import Store
@@ -48,6 +49,12 @@ class LiveToggle(BaseModel):
 
     enabled: bool = True
     confirm: str = ""
+
+
+class PropToggle(BaseModel):
+    """Signal-only lock for prop-firm accounts."""
+
+    enabled: bool = True
 
 
 class StrategyRegistration(BaseModel):
@@ -455,6 +462,15 @@ def set_mode(request: Request, payload: ModeRequest) -> dict:
         raise _fail(exc) from exc
 
 
+@app.post("/api/prop", dependencies=[Depends(require_token)])
+def prop_safe(request: Request, payload: PropToggle) -> dict:
+    """Signal-only lock: refuses every opening order for prop-firm accounts."""
+    try:
+        return engine_of(request).set_prop_safe(payload.enabled)
+    except Exception as exc:
+        raise _fail(exc) from exc
+
+
 # --------------------------------------------------------------------------
 # Strategies, signals, performance, backtests
 # --------------------------------------------------------------------------
@@ -543,6 +559,43 @@ def sync_strategies(request: Request) -> dict:
 def toggle_strategy(request: Request, sid: str, payload: StrategyToggle) -> dict:
     try:
         return {"ok": True, "strategy": engine_of(request).set_strategy_enabled(sid, payload.enabled, payload.autoExecute)}
+    except Exception as exc:
+        raise _fail(exc) from exc
+
+
+@app.get("/api/strategies/{sid}/indicator.mq5", dependencies=[Depends(require_token)])
+def strategy_indicator(request: Request, sid: str) -> Response:
+    """Download a signal-only MetaTrader 5 indicator generated from the rules.
+
+    Prop firms generally forbid account-managing robots. The generated file
+    contains no OrderSend/CTrade call: it draws the entry, stop, target and
+    management plan and alerts, and the trader executes manually.
+    """
+    row = request.app.state.store.get_strategy(sid)
+    if not row:
+        raise HTTPException(status_code=404, detail=f"unknown strategy: {sid}")
+    payload = {k: v for k, v in row.items() if k not in {"source", "createdAt", "updatedAt"}}
+    try:
+        manifest = validate_strategy(StrategyManifest(**payload))
+        source = generate_indicator(manifest)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(
+        content=source,
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{sid}-vaelor-signal.mq5"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@app.post("/api/signals/scan", dependencies=[Depends(require_token)])
+def scan_signals(request: Request) -> dict:
+    """Evaluate enabled strategies now instead of waiting for the next tick."""
+    try:
+        created = engine_of(request).scan_signals()
+        return {"ok": True, "created": len(created), "signals": created}
     except Exception as exc:
         raise _fail(exc) from exc
 

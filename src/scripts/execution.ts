@@ -129,6 +129,17 @@ interface SignalRow {
   note: string;
   status: string;
   createdAt: string;
+  lots?: number | null;
+  rr?: number | null;
+  timeframe?: string;
+  barTime?: number;
+  source?: string;
+  signalOnly?: boolean;
+  management?: {
+    breakevenAtR?: number;
+    trail?: { type?: string; mult?: number; pips?: number; pct?: number; afterR?: number } | null;
+    steps?: string[];
+  } | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -531,6 +542,17 @@ function renderStatus(): void {
       ? 'Live trading is UNLOCKED — real orders can be routed after typed confirmation.'
       : 'Live trading is locked. Real orders are refused by the bridge.';
     $('liveState').style.color = allowLive ? '#7bd88f' : '';
+  }
+
+  const propSafe = Boolean(status.safety?.propSafe);
+  if (el('propSafe')) {
+    ($('propSafe') as HTMLInputElement).checked = propSafe;
+  }
+  if (el('propSafeState')) {
+    $('propSafeState').textContent = propSafe
+      ? 'Signal-only lock is ON: every opening order is refused. Signals, alerts and indicators still work.'
+      : 'Signal-only lock is off. Enable it on a prop-firm account so no robot can trade the account.';
+    $('propSafeState').style.color = propSafe ? '#7bd88f' : '';
   }
 }
 
@@ -989,7 +1011,7 @@ function renderStrategies(): void {
   if (!body) return;
   if (!strategies.length) {
     body.innerHTML =
-      '<tr><td colspan="9" class="ex-empty">No strategies yet. Publish one through the AI/MCP bridge or register a manifest.</td></tr>';
+      '<tr><td colspan="10" class="ex-empty">No strategies yet. Publish one through the AI/MCP bridge or register a manifest.</td></tr>';
     return;
   }
   body.innerHTML = strategies
@@ -1018,6 +1040,15 @@ function renderStrategies(): void {
           strategy.runtime === 'external'
             ? '<button type="button" class="ex-btn small" disabled title="External MetaTrader 5 driver: the bridge cannot replay it on bar history.">Not backtestable</button>'
             : `<button type="button" class="ex-btn small" data-backtest="${escapeHtml(strategy.id)}">Backtest</button>`
+        }</td>
+        <td class="right">${
+          strategy.runtime === 'dsl' || strategy.runtime == null
+            ? `<button type="button" class="ex-btn small ghost" data-indicator="${escapeHtml(strategy.id)}" title="Signal-only MT5 indicator generated from these rules: entry, stop, target, management and alerts. No orders are sent.">Indicator</button>`
+            : `<button type="button" class="ex-btn small" disabled title="${
+                strategy.runtime === 'python'
+                  ? 'Python on_bar strategies cannot be translated to MQL5 automatically.'
+                  : 'External EAs place their own orders; export an indicator from a rule manifest.'
+              }">No indicator</button>`
         }</td>
       </tr>`;
     })
@@ -1976,18 +2007,59 @@ function drawEquity(points: Json[]): void {
 /* Signals                                                            */
 /* ------------------------------------------------------------------ */
 
+function signalPlan(signal: SignalRow): string {
+  const plan = signal.management;
+  if (!plan) return signal.rr ? `${num(signal.rr, 2)}R` : '—';
+  const parts: string[] = [];
+  if (plan.breakevenAtR) parts.push(`BE @ ${num(plan.breakevenAtR, 1)}R`);
+  const trail = plan.trail;
+  if (trail) {
+    const size =
+      trail.type === 'atr'
+        ? `${num(trail.mult ?? 0, 1)}×ATR`
+        : trail.type === 'pips'
+          ? `${num(trail.pips ?? 0, 0)}p`
+          : `${num(trail.pct ?? 0, 1)}%`;
+    parts.push(`trail ${size} after ${num(trail.afterR ?? 1, 1)}R`);
+  }
+  if (signal.rr) parts.push(`${num(signal.rr, 2)}R`);
+  return parts.join(' · ') || '—';
+}
+
+function signalTicket(signal: SignalRow): string {
+  const digits = signal.entry != null && Math.abs(signal.entry) < 20 ? 5 : 2;
+  const lines = [
+    `${signal.side.toUpperCase()} ${signal.symbol}`,
+    `Entry: ${signal.entry != null ? signal.entry.toFixed(digits) : 'market'}`,
+    `Stop loss: ${signal.sl != null ? signal.sl.toFixed(digits) : '—'}`,
+    `Take profit: ${signal.tp != null ? signal.tp.toFixed(digits) : 'exit rule'}`,
+    `Lots (suggested): ${signal.lots ?? '—'}`,
+    `Plan: ${signalPlan(signal)}`,
+    `Strategy: ${signal.strategyName ?? signal.strategyId}`,
+    signal.note ? `Note: ${signal.note}` : '',
+    'Signal-only: place and manage this manually in MetaTrader 5.',
+  ];
+  return lines.filter(Boolean).join('\n');
+}
+
 function renderSignals(): void {
   const body = el('signalsBody');
   if (!body) return;
   $('signalCount').textContent = `${signals.length} pending`;
+  const propSafe = Boolean(status?.safety?.propSafe);
+  if (el('signalModeChip')) {
+    $('signalModeChip').textContent = propSafe ? 'signal-only lock' : 'signals · orders allowed';
+  }
   if (!signals.length) {
-    body.innerHTML = '<tr><td colspan="10" class="ex-empty">No pending signals. AI-authored signals will appear here.</td></tr>';
+    body.innerHTML = '<tr><td colspan="10" class="ex-empty">No pending signals. Enable a rule strategy and a ticket appears here on the next closed bar.</td></tr>';
     return;
   }
   body.innerHTML = signals
     .map(
       (signal) => `<tr>
-        <td class="ex-mono-cell">${stamp(signal.createdAt)}</td>
+        <td class="ex-mono-cell">${stamp(signal.createdAt)}${
+          signal.timeframe ? `<span class="sub">${escapeHtml(signal.timeframe)}</span>` : ''
+        }</td>
         <td><b>${escapeHtml(signal.strategyName ?? signal.strategyId)}</b><span class="sub">${escapeHtml(
           signal.strategyId,
         )}</span></td>
@@ -1995,15 +2067,20 @@ function renderSignals(): void {
         <td><span class="ex-tag ${signal.side === 'buy' ? 'ok' : 'bad'}">${escapeHtml(
           signal.side.toUpperCase(),
         )}</span></td>
-        <td class="right ex-mono-cell">${signal.entry ? num(signal.entry, 5) : 'market'}</td>
+        <td class="right ex-mono-cell">${signal.entry ? num(signal.entry, 5) : 'market'}${
+          signal.lots ? `<span class="sub">${num(signal.lots, 2)} lots</span>` : ''
+        }</td>
         <td class="right ex-mono-cell">${signal.sl ? num(signal.sl, 5) : '—'}</td>
-        <td class="right ex-mono-cell">${signal.tp ? num(signal.tp, 5) : '—'}</td>
-        <td class="right ex-mono-cell">${signal.confidence == null ? '—' : `${num(signal.confidence * 100, 0)}%`}</td>
+        <td class="right ex-mono-cell">${signal.tp ? num(signal.tp, 5) : 'exit rule'}</td>
+        <td title="${escapeHtml(signalPlan(signal))}">${escapeHtml(truncate(signalPlan(signal), 36))}</td>
         <td title="${escapeHtml(signal.note)}">${escapeHtml(truncate(signal.note, 40))}</td>
         <td class="right">
+          <button type="button" class="ex-btn small ghost" data-signal="copy" data-id="${escapeHtml(
+            signal.id,
+          )}" title="Copy the ticket (entry, stop, target, lots, plan) for MetaTrader 5.">Copy</button>
           <button type="button" class="ex-btn small primary" data-signal="approve" data-id="${escapeHtml(
             signal.id,
-          )}">Approve</button>
+          )}" ${propSafe ? 'disabled title="Signal-only lock is on: the bridge refuses opening orders."' : ''}>Approve</button>
           <button type="button" class="ex-btn small danger" data-signal="reject" data-id="${escapeHtml(
             signal.id,
           )}">Reject</button>
@@ -2013,8 +2090,15 @@ function renderSignals(): void {
     .join('');
 }
 
-async function signalAction(id: string, action: 'approve' | 'reject'): Promise<void> {
+async function signalAction(id: string, action: 'approve' | 'reject' | 'copy'): Promise<void> {
   try {
+    if (action === 'copy') {
+      const signal = signals.find((row) => row.id === id);
+      if (!signal) return;
+      await navigator.clipboard.writeText(signalTicket(signal));
+      toast('Signal ticket copied — paste it into your MT5 order window.', 'ok');
+      return;
+    }
     if (action === 'approve') {
       const result = await api<Json>(`/api/signals/${encodeURIComponent(id)}/approve`, {
         method: 'POST',
@@ -2029,6 +2113,70 @@ async function signalAction(id: string, action: 'approve' | 'reject'): Promise<v
       toast('Signal rejected; the decision is queued back to the cloud.', 'ok');
     }
     await poll();
+  } catch (err) {
+    showError(err);
+  }
+}
+
+async function scanSignalsNow(): Promise<void> {
+  try {
+    const result = await api<Json>('/api/signals/scan', { method: 'POST' });
+    toast(
+      result.created
+        ? `${result.created} new signal${result.created === 1 ? '' : 's'} from enabled strategies.`
+        : 'No new closed-bar signal right now. Enabled strategies are checked every 15 seconds.',
+      result.created ? 'ok' : 'bad',
+    );
+    await poll();
+  } catch (err) {
+    showError(err);
+  }
+}
+
+async function togglePropSafe(): Promise<void> {
+  const input = el('propSafe') as HTMLInputElement | null;
+  if (!input) return;
+  try {
+    await api('/api/prop', { method: 'POST', body: { enabled: input.checked } });
+    toast(
+      input.checked
+        ? 'Signal-only lock on. Every opening order is refused; signals and indicators still work.'
+        : 'Signal-only lock off. Orders can be routed again through the risk gates.',
+      input.checked ? 'ok' : 'bad',
+    );
+    await poll();
+  } catch (err) {
+    input.checked = !input.checked;
+    showError(err);
+  }
+}
+
+async function downloadIndicator(id: string): Promise<void> {
+  try {
+    const response = await fetch(
+      `${pairing.url.replace(/\/+$/, '')}/api/strategies/${encodeURIComponent(id)}/indicator.mq5`,
+      { headers: { 'x-bridge-token': pairing.token } },
+    );
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+      try {
+        const body = await response.json();
+        message = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail ?? body);
+      } catch {
+        /* plain text */
+      }
+      throw new Error(message);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${id}-vaelor-signal.mq5`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    toast(`${id}: signal-only MT5 indicator downloaded. Attach it to the chart; it never sends orders.`, 'ok');
   } catch (err) {
     showError(err);
   }
@@ -2171,7 +2319,7 @@ function forgetBridge(): void {
   $('positionsBody').innerHTML =
     '<tr><td colspan="11" class="ex-empty">No positions. Connect a terminal to see your live book.</td></tr>';
   $('signalsBody').innerHTML = '<tr><td colspan="10" class="ex-empty">No pending signals.</td></tr>';
-  $('strategiesBody').innerHTML = '<tr><td colspan="9" class="ex-empty">No strategies registered yet.</td></tr>';
+  $('strategiesBody').innerHTML = '<tr><td colspan="10" class="ex-empty">No strategies registered yet.</td></tr>';
   $('perfBody').innerHTML = '<tr><td colspan="9" class="ex-empty">No measured results yet — run a backtest.</td></tr>';
   $('auditBody').innerHTML = '<tr><td colspan="5" class="ex-empty">Nothing logged yet.</td></tr>';
   if (el('bridgeToken')) (el('bridgeToken') as HTMLInputElement).value = '';
@@ -2381,6 +2529,12 @@ function wire(): void {
     if (Number.isFinite(ticket) && row) void positionAction(ticket, action, row);
   });
   $('strategiesBody').addEventListener('click', (event) => {
+    const indicator = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-indicator]');
+    if (indicator) {
+      const sid = indicator.getAttribute('data-indicator');
+      if (sid) void downloadIndicator(sid);
+      return;
+    }
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-backtest]');
     if (!button) return;
     const id = button.getAttribute('data-backtest');
@@ -2405,9 +2559,15 @@ function wire(): void {
     const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-signal]');
     if (!button) return;
     const id = button.getAttribute('data-id');
-    const action = button.getAttribute('data-signal') as 'approve' | 'reject' | null;
+    const action = button.getAttribute('data-signal') as 'approve' | 'reject' | 'copy' | null;
     if (id && action) void signalAction(id, action);
   });
+  if (el('scanSignalsBtn')) {
+    $('scanSignalsBtn').addEventListener('click', () => void scanSignalsNow());
+  }
+  if (el('propSafe')) {
+    $('propSafe').addEventListener('change', () => void togglePropSafe());
+  }
 
   // Backtest
   $('runBacktestBtn').addEventListener('click', () => void runBacktest());

@@ -109,6 +109,33 @@ installs, ALLOW_LIVE_TRADES=1 in mt5-bridge/.env still works as well.
 
 Default is simulation, which is safe: no broker order is ever sent.
 
+PROP-FIRM ACCOUNTS (SIGNAL-ONLY)
+--------------------------------
+Most prop firms forbid robots that manage the account. Turn on
+"Signal-only" in the Safety section and the bridge refuses EVERY opening
+order - manual, approved or auto-executed. Closing a position and moving a
+stop still work because they reduce risk.
+
+The Execution page keeps working in signal-only mode:
+  * Signals: every enabled rule strategy publishes a ticket on each closed
+    bar with entry, stop, target, suggested lots and the management plan
+    (move to breakeven at 1R, trail after 1R, never widen the stop). Press
+    "Scan now" to evaluate immediately; otherwise it refreshes every 15s.
+  * Copy: copies the ticket so you can paste it into the MT5 order window.
+  * Indicator: in the strategy table, "Indicator" downloads a signal-only
+    MetaTrader 5 indicator (.mq5) generated from that strategy's rules.
+
+USING THE MT5 INDICATOR
+-----------------------
+1. In MetaTrader 5: File > Open Data Folder > MQL5 > Indicators.
+2. Copy the downloaded .mq5 file there.
+3. In MetaTrader 5 press F4 (MetaEditor), open the file, press F7 to compile.
+4. Back in the terminal, refresh the Navigator and drag the indicator onto
+   the matching symbol and timeframe chart.
+It draws buy/sell arrows at the closed bar, horizontal entry/stop/target
+lines, and a panel with the suggested lots and management plan. It also
+raises alerts. It contains no OrderSend/CTrade call: it never trades.
+
 UPDATING AN EXISTING INSTALL
 ----------------------------
 New releases add features (for example the monthly/weekly/daily backtest

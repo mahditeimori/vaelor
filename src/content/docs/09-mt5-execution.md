@@ -48,7 +48,7 @@ Windows user, including broker-branded folders and portable copies.
 
 ## 5.3 Quick start
 
-1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.1.0).
+1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.2.0).
 2. Unzip it to a folder you control, for example `C:\Vaelor\mt5-bridge`.
 3. Double-click `run.cmd`. The first run creates `.venv`, installs dependencies
    and writes `.env`; the console prints a URL and a token and saves both to
@@ -143,7 +143,75 @@ Every order passes the same server-side gate before it reaches the broker:
 The kill switch can flatten the book in the same action. Releasing it is a
 separate, explicit confirmation.
 
-## 5.8 Order lifecycle
+## 5.8 Live signals and manual management
+
+The Signal section of the Execution page is fed by the bridge itself. Every
+enabled **rule (DSL)** strategy is evaluated on the **last closed bar** of its
+timeframe with exactly the same code the backtester uses, so the chart, the
+signal and the measured result cannot disagree.
+
+Each ticket states everything needed to place and manage the trade by hand:
+
+| Field | Meaning |
+|---|---|
+| Side, symbol, timeframe | What to trade and on which chart |
+| Entry | The closed bar's price; the ticket is valid while the level holds |
+| SL / TP | Absolute prices computed from the strategy's stop and target rules |
+| Lots | Suggested size at your configured risk per trade (default 1%) |
+| R / RR | Stop distance in R and the reward-to-risk ratio |
+| Management | Plan for moving the stop (see below) |
+| Note | One-line summary of the setup |
+
+Management defaults, taken from the strategy manifest:
+
+* move the stop to **breakeven at 1R** — the trade becomes risk-free;
+* when the strategy defines a `trail`, trail the stop after 1R (ATR multiple,
+  pips or percent);
+* take profit at the target, or close early when the exit rule fires;
+* **never widen the stop**.
+
+Pending strategy tickets expire after two bars (minimum one hour) so an old
+level is never treated as actionable. Identical closed bars are deduplicated.
+The feed refreshes every 15 seconds; **Scan now** evaluates immediately.
+
+**Copy** puts the whole ticket on the clipboard, ready to paste into the MT5
+order window. Nothing is sent to the broker by the signal machinery.
+
+## 5.9 Prop-firm mode: signal-only
+
+Prop firms usually forbid robots that manage the account. Turn on
+**Signal-only** in the Safety section and the bridge refuses **every opening
+order** — manual tickets, approved signals and auto-execution alike. The lock
+is stored in the bridge database and survives restarts.
+
+Closing a position and moving a stop stay available because they reduce risk.
+Signals, alerts and the MT5 indicator keep working, so you remain in full
+manual control of the account. `GET /api/status` reports the lock as
+`safety.propSafe`.
+
+### 5.9.1 Signal-only MT5 indicator
+
+The strategy table has an **MT5** column. For each rule strategy, **Indicator**
+downloads `<id>-vaelor-signal.mq5`: a MetaTrader 5 indicator generated from
+that strategy's own conditions, stop, target and trail rules.
+
+The file is intentionally an **indicator, not an Expert Advisor**. It contains
+no `OrderSend`, no `CTrade` and no trade include, so it can never trade the
+account:
+
+* buy/sell arrows on the closed bar that satisfies the rules;
+* horizontal entry, stop and target lines;
+* a panel with suggested lots and the management plan;
+* an alert on each new signal, plus a note when the chart timeframe does not
+  match the strategy.
+
+To install it: in MetaTrader 5 open **File → Open Data Folder → MQL5 →
+Indicators**, copy the `.mq5` file there, open it in MetaEditor (F4), compile
+with F7, then drag it from the Navigator onto the matching symbol and
+timeframe. Python `on_bar` strategies and external EAs cannot be translated
+automatically; the button is disabled for them and explains why.
+
+## 5.10 Order lifecycle
 
 1. The ticket is validated in the browser and again by the bridge.
 2. Risk gates run; the terminal connection is confirmed.
@@ -155,7 +223,7 @@ separate, explicit confirmation.
 Supported management actions: modify SL/TP, break-even, trail by pips, partial
 close, full close and close-all. Every action is written to the audit log.
 
-## 5.9 Strategies from people and AI
+## 5.11 Strategies from people and AI
 
 Strategies are published through the MCP tools
 (`register_strategy`, `submit_signal`) or the REST registry:
@@ -183,7 +251,7 @@ targets accept `atr`, `pips` and `percent` rules. Manifests are validated twice:
 by the registry at publish time (so the author gets an actionable error) and by
 the execution engine before anything runs.
 
-### 5.9.1 Bring your own strategy (the editor)
+### 5.11.1 Bring your own strategy (the editor)
 
 The **Strategy registry** panel on `/execution` has an *Add your own strategy*
 editor. The preferred format is a **JSON manifest**: the bridge evaluates and
@@ -245,7 +313,7 @@ strategy**. The registered strategy arrives **disabled**: run a backtest on your
 broker's history first, then enable it from the table when the numbers justify
 it.
 
-### 5.9.2 Drop a file instead of pasting
+### 5.11.2 Drop a file instead of pasting
 
 The editor accepts a file two ways: the *Load file* button, or by **dragging a
 file onto the editor** and dropping it. A `.json` or `.py` file (plain text is
@@ -262,7 +330,7 @@ also fine) is read locally in the browser; nothing is uploaded until you press
   unwrapped and treated as Python source rather than rejected as an invalid
   manifest.
 
-### 5.9.3 The Python `on_bar` contract
+### 5.11.3 The Python `on_bar` contract
 
 A backtestable Python strategy is a single module with an `on_bar(ctx)` entry
 point. The bridge calls it once per closed bar, oldest first, and acts on the
@@ -303,7 +371,7 @@ no `dunder` traversal. A strategy that needs any of those is an `external` EA
 and must run itself — the bridge will not execute it, and its backtest button is
 disabled with the reason shown.
 
-### 5.9.4 External Python and MQL5 strategies
+### 5.11.4 External Python and MQL5 strategies
 
 If you already have a self-contained bot that connects to the terminal itself
 (typically `import MetaTrader5` and `mt5.order_send`), drop the `.py` file in as
@@ -313,7 +381,7 @@ attach it as an EA in MetaTrader 5); the desk will still attribute its closed
 deals to the strategy when they carry the matching magic number, and the
 measured live results appear in the registry next to rule-based strategies.
 
-## 5.10 Measuring success
+## 5.12 Measuring success
 
 Results come from two evidence sources, never from a number supplied by the
 author:
@@ -329,7 +397,7 @@ lower bound so small samples cannot score highly. Confidence is labelled
 `insufficient`, `low`, `medium` or `high`. Live evidence takes over from backtest
 only after ten closed trades.
 
-### 5.10.1 Choosing the test window and reading the report
+### 5.12.1 Choosing the test window and reading the report
 
 Backtests run from the **Test window** picker in Section 07, not from a fixed
 two-year default: last 10 days, 1, 2, 3 or 6 months, 1 or 2 years, or a custom
@@ -362,7 +430,7 @@ If the four report views stay empty after a run, the local bridge is older than
 the page: Section 01 shows `bridge v… · update`. Close the bridge, install the
 current `.zip` from Section 01 and restart it, then run the backtest again.
 
-## 5.11 Bridge API reference
+## 5.13 Bridge API reference
 
 All routes except `/health` require the `x-bridge-token` header.
 
@@ -378,8 +446,10 @@ All routes except `/health` require the `x-bridge-token` header.
 | `/api/positions`, `/api/history` | GET | Open book and closed deals |
 | `/api/orders` | POST | Market or limit order |
 | `/api/positions/{ticket}/*` | POST | modify, close, breakeven, trail |
-| `/api/risk`, `/api/kill`, `/api/mode` | GET/PUT/POST | Safety controls |
+| `/api/risk`, `/api/kill`, `/api/mode`, `/api/prop` | GET/PUT/POST | Safety controls, including the signal-only lock |
 | `/api/strategies*`, `/api/signals*` | GET/POST | Registry, queue and `/api/strategies/python` |
+| `/api/signals/scan` | POST | Evaluate enabled strategies now |
+| `/api/strategies/{id}/indicator.mq5` | GET | Download the signal-only MT5 indicator |
 | `/api/backtest`, `/api/backtests` | POST/GET | Historical simulation |
 | `/api/audit`, `/api/snapshot` | GET | Traceability and bulk view |
 
@@ -387,7 +457,7 @@ The bridge answers Chrome's Private Network Access preflight with
 `Access-Control-Allow-Private-Network: true`, which is what lets an HTTPS page
 reach a loopback service.
 
-## 5.12 Troubleshooting
+## 5.14 Troubleshooting
 
 | Symptom | Cause | Fix |
 |---|---|---|
@@ -400,7 +470,7 @@ reach a loopback service.
 | No terminals detected | MT5 installed for another Windows user | Run the bridge as the user who installed it |
 | Port 8899 busy | Another process owns it | Automatic: the launcher reuses a running bridge (URL + token saved to `connect.txt`) or picks the next free port 8899–8925 |
 
-## 5.13 Security model
+## 5.15 Security model
 
 * The bridge binds to loopback and refuses non-token requests.
 * The pairing token is handed to the browser only through the bridge's own
