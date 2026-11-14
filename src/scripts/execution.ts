@@ -34,6 +34,7 @@ interface StatusPayload {
   accountError: string | null;
   risk: Json;
   safety: Json;
+  live?: Json;
   cloud: Json;
   counts: Json;
   server: Json;
@@ -554,6 +555,8 @@ function renderStatus(): void {
       : 'Signal-only lock is off. Enable it on a prop-firm account so no robot can trade the account.';
     $('propSafeState').style.color = propSafe ? '#7bd88f' : '';
   }
+
+  syncLiveProfileFromStatus();
 }
 
 function renderAccount(): void {
@@ -595,7 +598,6 @@ function renderRisk(): void {
   set('riskMaxPositions', risk.maxOpenPositions);
   set('riskMaxDailyLoss', risk.maxDailyLossPct);
   set('riskMaxDD', risk.maxDrawdownPct);
-  set('riskWhitelist', (risk.symbolWhitelist ?? []).join(', '));
   const market = el('riskAllowMarket') as HTMLInputElement | null;
   if (market) market.checked = Boolean(risk.allowMarketOrders);
 
@@ -738,6 +740,136 @@ function fillSymbolSelects(): void {
   if (match) {
     select.value = match.symbol;
     selectedSymbol = match.symbol;
+  }
+  fillLiveProfileControls();
+}
+
+/* ------------------------------------------------------------------ */
+/* Live desk profile (timeframe, broker symbols, strategy)            */
+/* ------------------------------------------------------------------ */
+
+const LIVE_TIMEFRAMES = ['M1', 'M5', 'M15', 'H1', 'H4', 'D1'] as const;
+type LiveTimeframe = (typeof LIVE_TIMEFRAMES)[number];
+
+let liveTimeframe: LiveTimeframe = 'H1';
+const liveSymbolsSelection = new Set<string>();
+let liveSymbolsFilled = false;
+let liveStrategyFilled = false;
+let liveProfileSeeded = false;
+
+function liveProfile(): { timeframe?: string; symbols?: string[]; strategyId?: string | null } {
+  return (status?.live ?? {}) as { timeframe?: string; symbols?: string[]; strategyId?: string | null };
+}
+
+function renderLiveTimeframeButtons(): void {
+  document.querySelectorAll<HTMLButtonElement>('#liveTimeframeRow [data-timeframe]').forEach((btn) => {
+    btn.setAttribute('aria-pressed', btn.getAttribute('data-timeframe') === liveTimeframe ? 'true' : 'false');
+  });
+}
+
+function selectedLiveSymbols(): string[] {
+  const select = el('liveSymbols') as HTMLSelectElement | null;
+  const values = new Set<string>();
+  if (select && select.options.length) {
+    for (const option of select.options) {
+      if (option.selected) values.add(option.value);
+    }
+  }
+  for (const s of liveSymbolsSelection) values.add(s);
+  return [...values];
+}
+
+function renderLiveSymbolOptions(): void {
+  const select = el('liveSymbols') as HTMLSelectElement | null;
+  if (!select) return;
+  const filterEl = el('liveSymbolFilter') as HTMLInputElement | null;
+  const filter = (filterEl?.value ?? '').trim().toUpperCase();
+  const visible = symbols.filter(
+    (row) =>
+      !filter ||
+      row.symbol.toUpperCase().includes(filter) ||
+      String(row.description ?? '').toUpperCase().includes(filter),
+  );
+  select.innerHTML = visible
+    .map((row) => {
+      const suffix = row.tradable ? '' : ' (not tradable)';
+      return `<option value="${escapeHtml(row.symbol)}" ${
+        liveSymbolsSelection.has(row.symbol) ? 'selected' : ''
+      }>${escapeHtml(row.symbol)} — ${escapeHtml(row.description ?? '')}${suffix}</option>`;
+    })
+    .join('');
+}
+
+function fillLiveProfileControls(): void {
+  if (el('liveSymbols') && symbols.length) {
+    renderLiveSymbolOptions();
+    liveSymbolsFilled = true;
+  }
+  if (el('liveStrategy')) {
+    const select = el('liveStrategy') as HTMLSelectElement;
+    const previous = select.value;
+    select.innerHTML =
+      '<option value="">manual / choose a strategy</option>' +
+      strategies
+        .map((strategy) => `<option value="${escapeHtml(strategy.id)}">${escapeHtml(`${strategy.name} (${strategy.id})`)}</option>`)
+        .join('');
+    if (previous && strategies.some((strategy) => strategy.id === previous)) select.value = previous;
+    liveStrategyFilled = true;
+  }
+}
+
+/** Sync the UI from the bridge status (timeframe buttons, state line). */
+function syncLiveProfileFromStatus(): void {
+  const cfg = liveProfile();
+  if (cfg.timeframe && LIVE_TIMEFRAMES.includes(cfg.timeframe as LiveTimeframe)) {
+    liveTimeframe = cfg.timeframe as LiveTimeframe;
+  }
+  if (!liveProfileSeeded && Array.isArray(cfg.symbols)) {
+    for (const symbol of cfg.symbols) liveSymbolsSelection.add(String(symbol).toUpperCase());
+    liveProfileSeeded = true;
+  }
+  renderLiveTimeframeButtons();
+  const select = el('liveSymbols') as HTMLSelectElement | null;
+  if (select && liveSymbolsFilled) {
+    for (const option of select.options) option.selected = liveSymbolsSelection.has(option.value);
+  }
+  const strategySelect = el('liveStrategy') as HTMLSelectElement | null;
+  if (strategySelect && cfg.strategyId !== undefined && document.activeElement !== strategySelect) {
+    strategySelect.value = cfg.strategyId ?? '';
+  }
+  if (el('liveProfileState')) {
+    const symbolsLabel = liveSymbolsSelection.size
+      ? `${liveSymbolsSelection.size} symbol${liveSymbolsSelection.size === 1 ? '' : 's'}`
+      : 'all broker symbols';
+    const strategyLabel = cfg.strategyId ?? 'manual / none';
+    $('liveProfileState').textContent = `Live desk: ${liveTimeframe} · ${symbolsLabel} · strategy ${strategyLabel}.`;
+  }
+}
+
+async function saveLiveConfig(): Promise<void> {
+  const strategySelect = el('liveStrategy') as HTMLSelectElement | null;
+  try {
+    const symbolsList = selectedLiveSymbols();
+    const result = await api<{ ok: boolean; live: Json }>('/api/live-config', {
+      method: 'POST',
+      body: {
+        timeframe: liveTimeframe,
+        symbols: symbolsList,
+        strategyId: strategySelect?.value || null,
+      },
+    });
+    const live = result.live ?? {};
+    liveSymbolsSelection.clear();
+    for (const s of (live.symbols as string[] | undefined) ?? []) liveSymbolsSelection.add(String(s).toUpperCase());
+    renderLiveSymbolOptions();
+    const count = Array.isArray(live.symbols) ? live.symbols.length : symbolsList.length;
+    const okText = `Live desk saved: ${live.timeframe ?? liveTimeframe} · ${count ? `${count} broker symbol${count === 1 ? '' : 's'}` : 'all broker symbols'} · strategy ${live.strategyId ?? 'manual / none'}.`;
+    if (el('liveProfileState')) $('liveProfileState').textContent = okText;
+    toast(okText, 'ok');
+    liveProfileSeeded = true;
+    await poll();
+  } catch (err) {
+    showError(err);
   }
 }
 
@@ -997,6 +1129,7 @@ async function refreshStrategies(silent = false): Promise<void> {
     renderStrategies();
     renderStrategyPerformance();
     fillStrategySelects();
+    fillLiveProfileControls();
     if (!silent) toast('Strategy registry refreshed.', 'ok');
   } catch (err) {
     if (!silent) showError(err);
@@ -1006,13 +1139,20 @@ async function refreshStrategies(silent = false): Promise<void> {
 const perfFor = (id: string): PerfRow | undefined =>
   (performance?.strategies ?? []).find((row: PerfRow) => row.id === id) as PerfRow | undefined;
 
+const selectedStrategies = new Set<string>();
+
 function renderStrategies(): void {
   const body = el('strategiesBody');
   if (!body) return;
   if (!strategies.length) {
     body.innerHTML =
-      '<tr><td colspan="10" class="ex-empty">No strategies yet. Publish one through the AI/MCP bridge or register a manifest.</td></tr>';
+      '<tr><td colspan="12" class="ex-empty">No strategies yet. Publish one through the AI/MCP bridge or register a manifest.</td></tr>';
     return;
+  }
+  // Drop selections for strategies that no longer exist.
+  const liveIds = new Set(strategies.map((row) => row.id));
+  for (const id of [...selectedStrategies]) {
+    if (!liveIds.has(id)) selectedStrategies.delete(id);
   }
   body.innerHTML = strategies
     .map((strategy) => {
@@ -1024,6 +1164,11 @@ function renderStrategies(): void {
             ? '<span class="ex-tag">PY on_bar</span>'
             : '';
       return `<tr>
+        <td class="center"><label class="ex-toggle"><input type="checkbox" data-select-strategy="${escapeHtml(
+          strategy.id,
+        )}" ${selectedStrategies.has(strategy.id) ? 'checked' : ''} aria-label="Select ${escapeHtml(
+          strategy.name,
+        )}" /></label></td>
         <td><b>${escapeHtml(strategy.name)}</b><span class="sub">${escapeHtml(strategy.id)}</span></td>
         <td><span class="ex-tag">${escapeHtml(strategy.source ?? 'local')}</span> ${runtimeTag}</td>
         <td>${perf ? escapeHtml(perf.evidence) : '—'}</td>
@@ -1049,6 +1194,19 @@ function renderStrategies(): void {
                   ? 'Python on_bar strategies cannot be translated to MQL5 automatically.'
                   : 'External EAs place their own orders; export an indicator from a rule manifest.'
               }">No indicator</button>`
+        }</td>
+        <td class="right">${
+          selectedStrategies.has(strategy.id)
+            ? `<button type="button" class="ex-btn small ghost" data-edit-strategy="${escapeHtml(
+                strategy.id,
+              )}" title="Load this strategy into the editor to change rules, symbols, timeframe, risk or stops, then save it again.">Edit</button>`
+            : ''
+        }${
+          selectedStrategies.has(strategy.id)
+            ? `<button type="button" class="ex-btn small danger" data-delete-strategy="${escapeHtml(
+                strategy.id,
+              )}" title="Delete this strategy from the registry. The audit log keeps the history.">Delete</button>`
+            : ''
         }</td>
       </tr>`;
     })
@@ -1116,6 +1274,55 @@ function fillStrategySelects(): void {
         .map((strategy) => `<option value="${escapeHtml(strategy.id)}">${escapeHtml(strategy.name)}</option>`)
         .join('');
     if (previous && strategies.some((strategy) => strategy.id === previous)) orderSelect.value = previous;
+  }
+}
+
+const NON_MANIFEST_FIELDS = new Set(['performance', 'hasCode', 'source', 'createdAt', 'updatedAt']);
+
+/** Open the editor prefilled with a registry strategy so it can be changed and re-saved. */
+async function editStrategy(id: string): Promise<void> {
+  try {
+    const result = await api<{ strategy: Json }>(`/api/strategies/${encodeURIComponent(id)}`);
+    const row = result.strategy ?? {};
+    const manifest: Json = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (!NON_MANIFEST_FIELDS.has(key)) manifest[key] = value;
+    }
+    // Re-register as disabled so it can be reviewed before trading again.
+    manifest.enabled = false;
+    manifest.autoExecute = false;
+    const area = el('stratManifest') as HTMLTextAreaElement | null;
+    if (!area) return;
+    const raw = JSON.stringify(manifest, null, 2);
+    area.value = raw;
+    stratFileName = '';
+    const kind = detectStrategyKind(raw);
+    setStrategyKind(kind);
+    const panel = el('stratAddPanel');
+    if (panel) panel.hidden = false;
+    const toggle = el('stratAddToggle') as HTMLButtonElement | null;
+    if (toggle) toggle.textContent = 'Hide editor';
+    toast(`Editing ${id}: the editor re-saves it as a disabled copy — backtest it, then enable it.`, 'ok');
+    panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    showError(err);
+  }
+}
+
+/** Delete a strategy after an explicit confirmation. */
+async function deleteStrategy(id: string): Promise<void> {
+  const ok = window.confirm(
+    `Delete strategy "${id}" from the registry?\n\nIts pending signal tickets are dropped too. The audit log keeps the history. This cannot be undone.`,
+  );
+  if (!ok) return;
+  try {
+    await api(`/api/strategies/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    selectedStrategies.delete(id);
+    toast(`Strategy ${id} deleted.`, 'ok');
+    await refreshStrategies(true);
+    await poll();
+  } catch (err) {
+    showError(err);
   }
 }
 
@@ -2225,6 +2432,13 @@ function renderOffline(reason: string): void {
   setBadge('setupChip', 'not paired', 'bad');
   if (el('diagWrap')) $('diagWrap').hidden = true;
   if (el('disconnectBtn')) $('disconnectBtn').hidden = true;
+  // The live desk profile belongs to the pairing; reset it so stale choices
+  // do not bleed into a re-pair.
+  liveProfileSeeded = false;
+  liveSymbolsFilled = false;
+  liveStrategyFilled = false;
+  liveSymbolsSelection.clear();
+  selectedStrategies.clear();
 }
 
 async function pairBridge(): Promise<void> {
@@ -2319,7 +2533,7 @@ function forgetBridge(): void {
   $('positionsBody').innerHTML =
     '<tr><td colspan="11" class="ex-empty">No positions. Connect a terminal to see your live book.</td></tr>';
   $('signalsBody').innerHTML = '<tr><td colspan="10" class="ex-empty">No pending signals.</td></tr>';
-  $('strategiesBody').innerHTML = '<tr><td colspan="10" class="ex-empty">No strategies registered yet.</td></tr>';
+  $('strategiesBody').innerHTML = '<tr><td colspan="12" class="ex-empty">No strategies registered yet.</td></tr>';
   $('perfBody').innerHTML = '<tr><td colspan="9" class="ex-empty">No measured results yet — run a backtest.</td></tr>';
   $('auditBody').innerHTML = '<tr><td colspan="5" class="ex-empty">Nothing logged yet.</td></tr>';
   if (el('bridgeToken')) (el('bridgeToken') as HTMLInputElement).value = '';
@@ -2331,10 +2545,6 @@ function forgetBridge(): void {
 
 async function saveRisk(): Promise<void> {
   const numberFrom = (id: string): number => Number((el(id) as HTMLInputElement)?.value ?? 0);
-  const whitelist = ((el('riskWhitelist') as HTMLInputElement)?.value ?? '')
-    .split(',')
-    .map((value) => value.trim().toUpperCase())
-    .filter(Boolean);
   try {
     await api('/api/risk', {
       method: 'PUT',
@@ -2344,7 +2554,7 @@ async function saveRisk(): Promise<void> {
         maxOpenPositions: Math.round(numberFrom('riskMaxPositions')),
         maxDailyLossPct: numberFrom('riskMaxDailyLoss'),
         maxDrawdownPct: numberFrom('riskMaxDD'),
-        symbolWhitelist: whitelist,
+        symbolWhitelist: selectedLiveSymbols(),
         allowMarketOrders: (el('riskAllowMarket') as HTMLInputElement | null)?.checked ?? true,
         killSwitch: Boolean(status?.risk?.killSwitch),
       },
@@ -2503,6 +2713,42 @@ function wire(): void {
 
   // Risk
   $('saveRiskBtn').addEventListener('click', () => void saveRisk());
+  if (el('saveLiveConfigBtn')) {
+    $('saveLiveConfigBtn').addEventListener('click', () => void saveLiveConfig());
+  }
+  if (el('liveTimeframeRow')) {
+    $('liveTimeframeRow').addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-timeframe]');
+      if (!button) return;
+      const tf = button.getAttribute('data-timeframe') as LiveTimeframe | null;
+      if (tf && LIVE_TIMEFRAMES.includes(tf)) {
+        liveTimeframe = tf;
+        renderLiveTimeframeButtons();
+        if (el('liveProfileState')) {
+          $('liveProfileState').textContent = `Timeframe set to ${tf}. Press "Save live profile" to persist it.`;
+        }
+      }
+    });
+  }
+  if (el('liveSymbolFilter')) {
+    $('liveSymbolFilter').addEventListener('input', () => renderLiveSymbolOptions());
+  }
+  if (el('liveSymbols')) {
+    $('liveSymbols').addEventListener('change', (event) => {
+      const select = event.target as HTMLSelectElement;
+      for (const option of select.options) {
+        if (option.selected) liveSymbolsSelection.add(option.value);
+        else liveSymbolsSelection.delete(option.value);
+      }
+    });
+  }
+  if (el('liveStrategy')) {
+    $('liveStrategy').addEventListener('change', () => {
+      if (el('liveProfileState')) {
+        $('liveProfileState').textContent = 'Strategy choice changed. Press "Save live profile" to persist it.';
+      }
+    });
+  }
   $('killBtn').addEventListener('click', () => void toggleKill());
   $('releaseKillBtn').addEventListener('click', () => void toggleKill());
   const enableLiveBtn = el('enableLiveBtn');
@@ -2529,6 +2775,18 @@ function wire(): void {
     if (Number.isFinite(ticket) && row) void positionAction(ticket, action, row);
   });
   $('strategiesBody').addEventListener('click', (event) => {
+    const deleteBtn = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-delete-strategy]');
+    if (deleteBtn) {
+      const id = deleteBtn.getAttribute('data-delete-strategy');
+      if (id) void deleteStrategy(id);
+      return;
+    }
+    const editBtn = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-edit-strategy]');
+    if (editBtn) {
+      const id = editBtn.getAttribute('data-edit-strategy');
+      if (id) void editStrategy(id);
+      return;
+    }
     const indicator = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-indicator]');
     if (indicator) {
       const sid = indicator.getAttribute('data-indicator');
@@ -2550,6 +2808,16 @@ function wire(): void {
     document.getElementById('backtest')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   $('strategiesBody').addEventListener('change', (event) => {
+    const selectBox = (event.target as HTMLInputElement).closest<HTMLInputElement>('[data-select-strategy]');
+    if (selectBox) {
+      const id = selectBox.getAttribute('data-select-strategy');
+      if (id) {
+        if (selectBox.checked) selectedStrategies.add(id);
+        else selectedStrategies.delete(id);
+        renderStrategies();
+      }
+      return;
+    }
     const input = event.target as HTMLInputElement;
     const field = input.getAttribute('data-toggle') as 'enabled' | 'autoExecute' | null;
     const id = input.getAttribute('data-id');

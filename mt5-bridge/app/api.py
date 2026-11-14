@@ -18,6 +18,7 @@ from .models import (
     BacktestRequest,
     CloseRequest,
     KillRequest,
+    LiveConfig,
     ModeRequest,
     ModifyRequest,
     OrderRequest,
@@ -55,6 +56,14 @@ class PropToggle(BaseModel):
     """Signal-only lock for prop-firm accounts."""
 
     enabled: bool = True
+
+
+class LiveConfigPayload(BaseModel):
+    """The market the live desk trades: timeframe, symbols and strategy."""
+
+    timeframe: str = "H1"
+    symbols: list[str] = Field(default_factory=list, max_length=600)
+    strategyId: str | None = None
 
 
 class StrategyRegistration(BaseModel):
@@ -471,6 +480,22 @@ def prop_safe(request: Request, payload: PropToggle) -> dict:
         raise _fail(exc) from exc
 
 
+@app.get("/api/live-config", dependencies=[Depends(require_token)])
+def get_live_config(request: Request) -> dict:
+    return engine_of(request).get_live_config()
+
+
+@app.post("/api/live-config", dependencies=[Depends(require_token)])
+def set_live_config(request: Request, payload: LiveConfigPayload) -> dict:
+    """Point the live desk at a timeframe, the broker symbols it may trade and
+    the strategy whose tickets drive it."""
+    try:
+        config = LiveConfig(**payload.model_dump())
+        return {"ok": True, "live": engine_of(request).set_live_config(config)}
+    except Exception as exc:
+        raise _fail(exc) from exc
+
+
 # --------------------------------------------------------------------------
 # Strategies, signals, performance, backtests
 # --------------------------------------------------------------------------
@@ -561,6 +586,24 @@ def toggle_strategy(request: Request, sid: str, payload: StrategyToggle) -> dict
         return {"ok": True, "strategy": engine_of(request).set_strategy_enabled(sid, payload.enabled, payload.autoExecute)}
     except Exception as exc:
         raise _fail(exc) from exc
+
+
+@app.delete("/api/strategies/{sid}", dependencies=[Depends(require_token)])
+def delete_strategy(request: Request, sid: str) -> dict:
+    """Delete a strategy from the registry (its pending tickets go with it)."""
+    try:
+        return engine_of(request).delete_strategy(sid)
+    except Exception as exc:
+        raise _fail(exc) from exc
+
+
+@app.get("/api/strategies/{sid}", dependencies=[Depends(require_token)])
+def get_strategy(request: Request, sid: str) -> dict:
+    """Full registry row including source, used to prefill the editor."""
+    row = request.app.state.store.get_strategy(sid)
+    if not row:
+        raise HTTPException(status_code=404, detail=f"unknown strategy: {sid}")
+    return {"strategy": row}
 
 
 @app.get("/api/strategies/{sid}/indicator.mq5", dependencies=[Depends(require_token)])

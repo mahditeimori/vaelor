@@ -639,6 +639,103 @@ class Mql5ExportTests(unittest.TestCase):
             generate_indicator(manifest)
 
 
+class LiveConfigTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.store = Store(Path(self.tmp.name) / "test.db")
+        self.engine = TradingEngine(self.store)
+        self.engine.provider = SimProvider(self.store)
+        self.engine.risk = RiskConfig(maxLotPerTrade=5, maxOpenPositions=5)
+
+    def tearDown(self) -> None:
+        self.store.close()
+        self.tmp.cleanup()
+
+    def _manifest(self, sid: str = "live-target") -> StrategyManifest:
+        return StrategyManifest(
+            id=sid,
+            name="Live target",
+            symbols=["XAUUSD"],
+            timeframe="H1",
+            direction="long",
+            entry=Group(all=[Condition(type="always")]),
+        )
+
+    def test_live_config_persists_symbols_into_the_whitelist(self) -> None:
+        from app.models import LiveConfig
+
+        self.engine.sync_strategy(self._manifest())
+        live = self.engine.set_live_config(LiveConfig(timeframe="H1", symbols=["BTCUSD", "ETHUSD"], strategyId="live-target"))
+        self.assertEqual(live["symbols"], ["BTCUSD", "ETHUSD"])
+        self.assertEqual(self.engine.risk.symbolWhitelist, ["BTCUSD", "ETHUSD"])
+
+        # Status exposes the profile for the UI.
+        self.assertEqual(self.engine.status()["live"]["strategyId"], "live-target")
+
+        # A fresh engine over the same database still enforces the whitelist.
+        engine2 = TradingEngine(self.store)
+        engine2.provider = SimProvider(self.store)
+        self.assertEqual(engine2.get_live_config()["symbols"], ["BTCUSD", "ETHUSD"])
+
+    def test_unknown_strategy_is_rejected(self) -> None:
+        from app.models import LiveConfig
+
+        with self.assertRaises(RiskError):
+            self.engine.set_live_config(LiveConfig(timeframe="H1", symbols=["BTCUSD"], strategyId="nope"))
+
+    def test_whitelist_gate_blocks_other_symbols(self) -> None:
+        from app.models import LiveConfig
+
+        self.engine.set_live_config(LiveConfig(timeframe="H1", symbols=["BTCUSD"], strategyId=None))
+        with self.assertRaises(RiskError) as ctx:
+            self.engine.place_order(
+                OrderRequest(symbol="XAUUSD", side="buy", volume=0.1, confirm=True)
+            )
+        self.assertIn("whitelist", str(ctx.exception).lower())
+
+
+class DeleteStrategyTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+        self.store = Store(Path(self.tmp.name) / "test.db")
+        self.engine = TradingEngine(self.store)
+        self.engine.provider = SimProvider(self.store)
+        self.engine.risk = RiskConfig(maxLotPerTrade=5, maxOpenPositions=5)
+
+    def tearDown(self) -> None:
+        self.store.close()
+        self.tmp.cleanup()
+
+    def _manifest(self) -> StrategyManifest:
+        return StrategyManifest(
+            id="to-delete",
+            name="Delete me",
+            symbols=["XAUUSD"],
+            timeframe="H1",
+            direction="long",
+            entry=Group(all=[Condition(type="always")]),
+            stop={"type": "atr", "mult": 2},
+            target={"type": "atr", "mult": 3},
+        )
+
+    def test_delete_removes_strategy_and_pending_signals(self) -> None:
+        from app.models import LiveConfig
+
+        self.engine.sync_strategy(self._manifest())
+        self.engine.set_strategy_enabled("to-delete", True)
+        self.engine.set_live_config(LiveConfig(timeframe="H1", symbols=[], strategyId="to-delete"))
+        created = self.engine.scan_signals()
+        self.assertEqual(len(created), 1)
+        result = self.engine.delete_strategy("to-delete")
+        self.assertTrue(result["ok"])
+        self.assertIsNone(self.store.get_strategy("to-delete"))
+        self.assertEqual(self.store.list_signals("pending", 10), [])
+        self.assertIsNone(result["live"]["strategyId"])
+
+    def test_unknown_strategy_raises(self) -> None:
+        with self.assertRaises(RiskError):
+            self.engine.delete_strategy("unknown-strategy")
+
+
 if __name__ == "__main__":
     unittest.main()
-

@@ -13,6 +13,7 @@ from .config import SETTINGS, VERSION
 from .models import (
     BacktestRequest,
     KillRequest,
+    LiveConfig,
     ModeRequest,
     ModifyRequest,
     OrderRequest,
@@ -55,7 +56,18 @@ class TradingEngine:
         self._tick_lock = threading.Lock()
         self._last_signal_scan = 0.0
         self.prop_safe = bool(self.store.get_json("prop_safe") or False)
+        self._live = self.store.get_json("live_config") or {"timeframe": "H1", "symbols": [], "strategyId": None}
+        self._live = {
+            "timeframe": self._live.get("timeframe") or "H1",
+            "symbols": [str(s).upper() for s in (self._live.get("symbols") or [])],
+            "strategyId": self._live.get("strategyId") or None,
+        }
         self._load_risk()
+        # First run after upgrade: adopt the old text-field whitelist as the
+        # desk's symbol selection so nothing silently widens.
+        if not self.store.get_json("live_config") and self.risk.symbolWhitelist:
+            self._live["symbols"] = list(self.risk.symbolWhitelist)
+            self.store.set_json("live_config", self._live)
 
     # ------------------------------------------------------ MetaTrader link
     def mt5_diagnostics(self) -> dict:
@@ -231,7 +243,37 @@ class TradingEngine:
         self.risk = config
         self.store.set_json("risk", config.model_dump())
         self.store.audit("risk.updated", config.model_dump())
+        # Keep the desk profile in sync so the UI shows what the gate enforces.
+        self._live["symbols"] = list(config.symbolWhitelist)
+        self.store.set_json("live_config", self._live)
         return self.get_risk()
+
+    def get_live_config(self) -> dict:
+        return {
+            "timeframe": self._live.get("timeframe") or "H1",
+            "symbols": list(self._live.get("symbols") or []),
+            "strategyId": self._live.get("strategyId") or None,
+        }
+
+    def set_live_config(self, config: LiveConfig) -> dict:
+        """Persist which market/strategy the live desk trades.
+
+        The symbol list is mirrored into the risk-gate whitelist so the desk
+        cannot send an order outside the chosen broker symbols; an empty list
+        keeps the documented "empty = all symbols" semantics.
+        """
+        if config.strategyId and not self.store.get_strategy(config.strategyId):
+            raise RiskError(f"unknown strategy: {config.strategyId}")
+        self._live = {
+            "timeframe": config.timeframe,
+            "symbols": list(config.symbols),
+            "strategyId": config.strategyId or None,
+        }
+        self.store.set_json("live_config", self._live)
+        self.risk.symbolWhitelist = list(self._live["symbols"])
+        self.store.set_json("risk", self.risk.model_dump())
+        self.store.audit("live.config_updated", self._live)
+        return self.get_live_config()
 
     # ---------------------------------------------------------------- status
     def status(self) -> dict:
@@ -261,6 +303,7 @@ class TradingEngine:
             "account": account,
             "accountError": account_error,
             "risk": self.get_risk(),
+            "live": self.get_live_config(),
             "safety": {
                 "allowLiveTrades": self.live_allowed(),
                 "liveReady": self.provider.mode == "live" and self.live_allowed(),
@@ -583,6 +626,20 @@ class TradingEngine:
         lots = min(lots, self.risk.maxLotPerTrade)
         return max(spec.min_lot, round(round(lots / spec.lot_step) * spec.lot_step, 2))
 
+    def delete_strategy(self, sid: str) -> dict:
+        """Remove a strategy from the registry (audited).
+
+        Pending tickets from that strategy are dropped with it; closed
+        history stays in the audit log and performance tables.
+        """
+        if not self.store.delete_strategy(sid):
+            raise RiskError(f"unknown strategy: {sid}")
+        if self._live.get("strategyId") == sid:
+            self._live["strategyId"] = None
+            self.store.set_json("live_config", self._live)
+        self.store.audit("strategy.deleted", {"id": sid})
+        return {"ok": True, "deleted": sid, "live": self.get_live_config()}
+
     def approve_signal(self, sid: str, volume: float | None, note: str = "") -> dict:
         signal = self.store.get_signal(sid)
         if not signal:
@@ -690,9 +747,18 @@ class TradingEngine:
     def _auto_execute_signals(self) -> None:
         if self.risk.killSwitch or self.prop_safe:
             return
+        live = self.get_live_config()
+        allowed_symbols = {s.upper() for s in live["symbols"]}
         for signal in self.store.list_signals("pending", 50):
             strategy = self.store.get_strategy(signal["strategyId"])
             if not strategy or not strategy.get("enabled") or not strategy.get("autoExecute"):
+                continue
+            # The desk profile narrows which tickets may become live orders.
+            if live["strategyId"] and strategy["id"] != live["strategyId"]:
+                continue
+            if allowed_symbols and str(signal.get("symbol") or "").upper() not in allowed_symbols:
+                continue
+            if live["timeframe"] and str(signal.get("timeframe") or "").upper() != live["timeframe"]:
                 continue
             # Only act on fresh signals (one hour) to avoid surprise fills.
             try:

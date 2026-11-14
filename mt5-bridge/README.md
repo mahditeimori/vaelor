@@ -225,8 +225,11 @@ GET/PUT /api/risk                  risk configuration
 POST /api/kill                     kill switch
 POST /api/mode                     simulation/live switch
 POST /api/prop                     prop-firm signal-only lock
+GET/POST /api/live-config          timeframe, broker symbols, strategy for live desk
 GET  /api/strategies               registry + measured performance
 POST /api/strategies               register a manifest
+GET  /api/strategies/{id}          full registry row (source included)
+DELETE /api/strategies/{id}        delete a strategy and its pending tickets
 POST /api/strategies/python        register a .py strategy or converter bundle
 POST /api/strategies/{id}/toggle   enable/pause + autoExecute
 GET  /api/strategies/{id}/indicator.mq5  signal-only MT5 indicator

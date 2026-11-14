@@ -312,11 +312,43 @@ Token : &lt;random string&gt;</pre>
             <label for="riskMaxDD">Max drawdown %</label>
             <input id="riskMaxDD" type="number" min="1" max="100" step="1" />
           </div>
-          <div class="ex-field">
-            <label for="riskWhitelist">Symbol whitelist</label>
-            <input id="riskWhitelist" type="text" placeholder="empty = all symbols" spellcheck="false" />
+        </div>
+
+        <p class="ex-hint"><b>LIVE DESK PROFILE</b></p>
+        <p class="ex-hint">
+          What the live connection trades: the timeframe, the broker symbols you tick, and the
+          strategy whose tickets drive orders. Symbols are listed exactly as your connected broker
+          reports them. Auto-execution and signal routing follow these choices.
+        </p>
+        <div class="ex-grid-3">
+          <div class="ex-field ex-field-wide">
+            <label>Timeframe for live trading</label>
+            <div class="ex-chip-row" id="liveTimeframeRow" role="group" aria-label="Live timeframe">
+              <button type="button" class="ex-btn small ghost" data-timeframe="M1">1m</button>
+              <button type="button" class="ex-btn small ghost" data-timeframe="M5">5m</button>
+              <button type="button" class="ex-btn small ghost" data-timeframe="M15">15m</button>
+              <button type="button" class="ex-btn small ghost" data-timeframe="H1" aria-pressed="true">1H</button>
+              <button type="button" class="ex-btn small ghost" data-timeframe="H4">4H</button>
+              <button type="button" class="ex-btn small ghost" data-timeframe="D1">1D</button>
+            </div>
+          </div>
+          <div class="ex-field ex-field-wide">
+            <label for="liveStrategy">Strategy for live trading</label>
+            <select id="liveStrategy">
+              <option value="">manual / choose a strategy</option>
+            </select>
+          </div>
+          <div class="ex-field ex-field-wide">
+            <label for="liveSymbols">Symbols the live desk may trade</label>
+            <input id="liveSymbolFilter" type="text" placeholder="Type to filter broker symbols…" spellcheck="false" autocomplete="off" />
+            <select id="liveSymbols" multiple size="9" aria-label="Broker symbols; hold Ctrl or Cmd to select several"></select>
+            <p class="ex-hint">Each symbol your connected broker reports appears here. Hold Ctrl/Cmd to pick several. Empty selection = every symbol allowed (which the risk gate treats as no restriction).</p>
           </div>
         </div>
+        <div class="ex-btn-row">
+          <button type="button" class="ex-btn" id="saveLiveConfigBtn">Save live profile</button>
+        </div>
+        <p class="ex-hint" id="liveProfileState">Live profile not saved yet.</p>
 
         <label class="ex-check">
           <input type="checkbox" id="riskAllowMarket" />
@@ -516,6 +548,7 @@ def on_bar(ctx):
         <table class="ex-table">
           <thead>
             <tr>
+              <th class="center">Select</th>
               <th>Strategy</th>
               <th>Source</th>
               <th>Evidence</th>
@@ -526,10 +559,11 @@ def on_bar(ctx):
               <th class="center">Auto-exec</th>
               <th class="right">Backtest</th>
               <th class="right">MT5</th>
+              <th class="right">Manage</th>
             </tr>
           </thead>
           <tbody id="strategiesBody">
-            <tr><td colspan="10" class="ex-empty">Waiting for the bridge…</td></tr>
+            <tr><td colspan="12" class="ex-empty">Waiting for the bridge…</td></tr>
           </tbody>
         </table>
       </div>
@@ -1091,6 +1125,10 @@ def on_bar(ctx):
     .ex-edit-grid .ex-field { margin: 0; min-width: 90px; }
     .ex-toggle { display: inline-flex; align-items: center; justify-content: center; }
     .ex-toggle input { width: 16px; height: 16px; accent-color: var(--ex-gold); }
+    .ex-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .ex-chip-row .ex-btn[aria-pressed="true"] { border-color: var(--ex-gold); color: var(--ex-gold); }
+    .ex-field-wide { grid-column: 1 / -1; }
+    #liveSymbols { min-height: 180px; }
 
     .ex-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--ex-border-soft); border: 1px solid var(--ex-border-soft); border-radius: 8px; overflow: hidden; margin: 14px 0; }
     .ex-stat { background: var(--ex-inner); padding: 10px 12px; }

@@ -167,6 +167,14 @@ class Store:
             )
         return self.get_strategy(sid)  # type: ignore[return-value]
 
+    def delete_strategy(self, sid: str) -> bool:
+        if not self.get_strategy(sid):
+            return False
+        self._exec("DELETE FROM strategies WHERE id=?", (sid,))
+        self._exec("DELETE FROM backtests WHERE strategy_id=?", (sid,))
+        self._exec("DELETE FROM signals WHERE strategy_id=? AND status='pending'", (sid,))
+        return True
+
     def get_strategy(self, sid: str) -> dict | None:
         row = self._row("SELECT * FROM strategies WHERE id=?", (sid,))
         return _decode_strategy(row) if row else None

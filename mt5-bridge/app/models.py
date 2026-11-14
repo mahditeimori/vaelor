@@ -162,13 +162,40 @@ class RiskConfig(BaseModel):
     maxOpenPositions: int = Field(default=5, ge=1, le=50)
     maxDailyLossPct: float = Field(default=3.0, ge=0.5, le=50)
     maxDrawdownPct: float = Field(default=10.0, ge=1, le=100)
-    symbolWhitelist: list[str] = Field(default_factory=list, max_length=60)
+    symbolWhitelist: list[str] = Field(default_factory=list, max_length=600)
     allowMarketOrders: bool = True
     killSwitch: bool = False
 
     @field_validator("symbolWhitelist")
     @classmethod
     def _upper(cls, value: list[str]) -> list[str]:
+        return [v.strip().upper() for v in value if v.strip()]
+
+
+class LiveConfig(BaseModel):
+    """Which market the live desk trades.
+
+    The timeframe restricts which signals can be auto-executed, the symbols are
+    the desk's allowlist (enforced by the risk gate on every order), and the
+    strategy selects which strategy's tickets drive live trading.
+    """
+
+    timeframe: str = "H1"
+    symbols: list[str] = Field(default_factory=list, max_length=600)
+    strategyId: str | None = None
+
+    @field_validator("timeframe")
+    @classmethod
+    def _timeframe(cls, value: str) -> str:
+        allowed = {"M1", "M5", "M15", "H1", "H4", "D1"}
+        candidate = (value or "").strip().upper()
+        if candidate not in allowed:
+            raise ValueError("timeframe must be one of M1, M5, M15, H1, H4, D1")
+        return candidate
+
+    @field_validator("symbols")
+    @classmethod
+    def _symbols(cls, value: list[str]) -> list[str]:
         return [v.strip().upper() for v in value if v.strip()]
 
 

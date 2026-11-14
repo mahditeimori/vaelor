@@ -143,6 +143,31 @@ Every order passes the same server-side gate before it reaches the broker:
 The kill switch can flatten the book in the same action. Releasing it is a
 separate, explicit confirmation.
 
+## 5.7.1 Live desk profile, strategy deletion and editing
+
+Section 04 of the Execution page controls the **live desk profile** — what the
+connected broker account may trade:
+
+* **Timeframe** — `M1`, `M5`, `M15`, `H1`, `H4` or `D1`. Auto-execution only
+  fires on signals from that timeframe.
+* **Symbols** — the desk-wide allowlist. Every symbol your connected broker
+  reports is listed (as `BTCUSD`, `XAUUSD.a`, …); hold Ctrl/Cmd to select
+  several. The list is mirrored into the risk-gate whitelist, so an order
+  outside the chosen symbols is refused before it reaches the broker. An
+  empty selection means no restriction.
+* **Strategy** — the strategy whose tickets drive live trading. Auto-execution
+  and signal routing only fire for it.
+
+The profile is stored in the bridge (`/api/live-config`) and survives restarts.
+
+The strategy table now has a **Select** checkbox on the left of each row. When
+a strategy is selected, **Edit** and **Delete** buttons appear:
+
+* **Edit** loads the strategy into the bring-your-own editor as a disabled
+  copy (edits always re-register as disabled — backtest, then re-enable);
+* **Delete** removes the strategy and its pending signal tickets after a
+  confirmation. Closed history stays in the audit log.
+
 ## 5.8 Live signals and manual management
 
 The Signal section of the Execution page is fed by the bridge itself. Every
