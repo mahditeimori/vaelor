@@ -38,6 +38,17 @@ class StrategyToggle(BaseModel):
     autoExecute: bool | None = None
 
 
+class LiveToggle(BaseModel):
+    """Website control for the live-trading interlock.
+
+    Enabling needs the typed confirmation ``ENABLE LIVE``; disabling is
+    always allowed and never closes positions.
+    """
+
+    enabled: bool = True
+    confirm: str = ""
+
+
 class StrategyRegistration(BaseModel):
     strategy: StrategyManifest
 
@@ -404,6 +415,20 @@ def set_risk(request: Request, payload: RiskConfig) -> dict:
 def kill(request: Request, payload: KillRequest) -> dict:
     try:
         return engine_of(request).kill(payload)
+    except Exception as exc:
+        raise _fail(exc) from exc
+
+
+@app.post("/api/live", dependencies=[Depends(require_token)])
+def live_interlock(request: Request, payload: LiveToggle) -> dict:
+    """Unlock or re-lock live order routing without editing .env or restarting."""
+    if payload.enabled and payload.confirm != "ENABLE LIVE":
+        raise HTTPException(
+            status_code=400,
+            detail='unlocking live trading requires the typed confirmation "ENABLE LIVE"',
+        )
+    try:
+        return engine_of(request).set_live_allowed(payload.enabled)
     except Exception as exc:
         raise _fail(exc) from exc
 

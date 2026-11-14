@@ -489,6 +489,18 @@ function renderStatus(): void {
         : 'AutoTrading is off in the terminal — orders will be rejected by MetaTrader 5 until you enable it.'
       : 'Simulation fills are virtual and clearly labelled. No broker order is sent.';
   }
+
+  const allowLive = Boolean(status.safety?.allowLiveTrades);
+  const enableLiveBtn = el('enableLiveBtn') as HTMLButtonElement | null;
+  const lockLiveBtn = el('lockLiveBtn');
+  if (enableLiveBtn) enableLiveBtn.hidden = allowLive;
+  if (lockLiveBtn) lockLiveBtn.hidden = !allowLive;
+  if (el('liveState')) {
+    $('liveState').textContent = allowLive
+      ? 'Live trading is UNLOCKED — real orders can be routed after typed confirmation.'
+      : 'Live trading is locked. Real orders are refused by the bridge.';
+    $('liveState').style.color = allowLive ? '#7bd88f' : '';
+  }
 }
 
 function renderAccount(): void {
@@ -1648,6 +1660,34 @@ async function toggleKill(): Promise<void> {
   }
 }
 
+async function toggleLive(): Promise<void> {
+  const allowLive = Boolean(status?.safety?.allowLiveTrades);
+  try {
+    if (!allowLive) {
+      const first = window.confirm(
+        'Enable LIVE trading on this bridge?\n\n' +
+          'Real orders will be routed to your MetaTrader 5 account with real money ' +
+          'once you confirm on the order dialog. Risk gates and the kill switch stay active.',
+      );
+      if (!first) return;
+      const typed = window.prompt('Type ENABLE LIVE exactly to unlock real order routing.');
+      if (typed !== 'ENABLE LIVE') {
+        toast('Unlock cancelled — confirmation did not match.', 'info');
+        return;
+      }
+      await api('/api/live', { method: 'POST', body: { enabled: true, confirm: 'ENABLE LIVE' } });
+      toast('Live trading unlocked. Real orders are now possible.', 'bad');
+    } else {
+      if (!window.confirm('Lock live trading again? Real order routing will be refused.')) return;
+      await api('/api/live', { method: 'POST', body: { enabled: false } });
+      toast('Live trading locked. Orders will stay in simulation.', 'ok');
+    }
+    await poll();
+  } catch (err) {
+    showError(err);
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Wiring                                                             */
 /* ------------------------------------------------------------------ */
@@ -1708,6 +1748,10 @@ function wire(): void {
   $('saveRiskBtn').addEventListener('click', () => void saveRisk());
   $('killBtn').addEventListener('click', () => void toggleKill());
   $('releaseKillBtn').addEventListener('click', () => void toggleKill());
+  const enableLiveBtn = el('enableLiveBtn');
+  const lockLiveBtn = el('lockLiveBtn');
+  if (enableLiveBtn) $('enableLiveBtn').addEventListener('click', () => void toggleLive());
+  if (lockLiveBtn) $('lockLiveBtn').addEventListener('click', () => void toggleLive());
   $('closeAllBtn').addEventListener('click', () => {
     if (!window.confirm('Close every open position?')) return;
     void api('/api/positions/close-all', { method: 'POST', body: {} })

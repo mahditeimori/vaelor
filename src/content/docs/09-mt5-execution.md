@@ -103,8 +103,11 @@ and a plain-English explanation.
 
 Real orders need two independent keys:
 
-1. `ALLOW_LIVE_TRADES=1` in `mt5-bridge/.env`, followed by a bridge restart;
-2. a typed `LIVE` confirmation in the Execution page.
+1. the **Enable live trading** button in the Safety section of the Execution page —
+   you confirm a warning and type `ENABLE LIVE`. The unlock is stored in your local
+   bridge database, so it survives restarts; **Lock live trading** puts it back on
+   at any time. You never edit a file or restart the bridge.
+2. a typed `LIVE` confirmation on each real order.
 
 With either key missing the order is refused. A run without a connected terminal
 uses the **simulation broker**: fills are virtual, balances are tracked locally,
@@ -119,8 +122,9 @@ ALLOW_LIVE_TRADES=0
 CLOUD_SYNC=1
 ```
 
-`BRIDGE_MODE=auto` tries the terminal first and falls back to simulation with a
-stated reason.
+`ALLOW_LIVE_TRADES=1` remains available for headless installs (it unlocks at
+startup); the website button is the normal path. `BRIDGE_MODE=auto` tries the
+terminal first and falls back to simulation with a stated reason.
 
 ## 5.7 Risk gates
 

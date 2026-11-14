@@ -370,7 +370,7 @@ class MT5Provider(Provider):
         if not self.allow_live:
             raise BrokerError(
                 "live trading is locked in the bridge",
-                hint="Set ALLOW_LIVE_TRADES=1 in mt5-bridge/.env and restart the bridge.",
+                hint="Press 'Enable live trading' in the Safety section of the Execution page.",
             )
         if self.session.account_changed:
             raise BrokerError(

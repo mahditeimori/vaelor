@@ -274,8 +274,8 @@ Token : &lt;random string&gt;</pre>
           <button type="button" class="ex-btn primary" id="placeOrderBtn">Place order</button>
         </div>
         <p class="ex-hint" id="orderHint">
-          Simulation fills are labelled. Real orders require a connected terminal,
-          <code>ALLOW_LIVE_TRADES=1</code> and a typed confirmation.
+          Simulation fills are labelled. Real orders require a connected terminal, live trading
+          unlocked in the Safety section, and a typed confirmation.
         </p>
       </section>
 
@@ -339,6 +339,20 @@ Token : &lt;random string&gt;</pre>
           <button type="button" class="ex-btn ghost" id="releaseKillBtn" hidden>Release kill switch</button>
         </div>
         <p class="ex-hint" id="killState">Kill switch is off.</p>
+
+        <hr class="ex-rule" />
+
+        <p class="ex-hint"><b>LIVE TRADING INTERLOCK</b></p>
+        <p class="ex-hint">
+          Real order routing is locked until you unlock it here — no configuration files to edit
+          and no bridge restart needed. The unlock is stored in your local bridge and survives
+          restarts. Use <b>Lock live trading</b> at any time to put it back on.
+        </p>
+        <div class="ex-btn-row">
+          <button type="button" class="ex-btn primary" id="enableLiveBtn">Enable live trading…</button>
+          <button type="button" class="ex-btn ghost" id="lockLiveBtn" hidden>Lock live trading</button>
+        </div>
+        <p class="ex-hint" id="liveState">Live trading is locked.</p>
       </section>
     </div>
 
@@ -685,7 +699,7 @@ Token : &lt;random string&gt;</pre>
         <div>
           <h3>Live needs two keys</h3>
           <p>
-            <code>ALLOW_LIVE_TRADES=1</code> in the bridge environment <i>and</i> a typed
+            The <b>Enable live trading</b> button in the Safety section <i>and</i> a typed
             <code>LIVE</code> confirmation. AutoTrading must also be enabled in MetaTrader 5.
           </p>
         </div>

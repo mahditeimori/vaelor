@@ -177,6 +177,24 @@ class EngineTests(unittest.TestCase):
         self.store.close()
         self.tmp.cleanup()
 
+    def test_live_interlock_toggle(self) -> None:
+        """The website unlock persists in the store, survives a new engine, and
+        can be revoked — without ever touching SETTINGS.allow_live_trades."""
+        from app.engine import TradingEngine
+
+        self.assertFalse(self.engine.live_allowed())
+        self.engine.set_live_allowed(True)
+        self.assertTrue(self.engine.live_allowed())
+        self.assertEqual(self.store.get_kv("allow_live"), "1")
+
+        # A fresh engine over the same database sees the unlock (restart-proof).
+        engine2 = TradingEngine(self.store)
+        self.assertTrue(engine2.live_allowed())
+
+        self.engine.set_live_allowed(False)
+        self.assertFalse(self.engine.live_allowed())
+        self.assertEqual(self.store.get_kv("allow_live"), "0")
+
     def test_order_lifecycle(self) -> None:
         quote = self.engine.provider.quote("XAUUSD")
         order = self.engine.place_order(

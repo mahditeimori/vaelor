@@ -99,8 +99,13 @@ The bridge never enables that for you and never stores your password.
 LIVE TRADING INTERLOCK
 ----------------------
 Real orders are refused unless BOTH are true:
-  * mt5-bridge/.env contains ALLOW_LIVE_TRADES=1, and
+  * live trading is unlocked with the "Enable live trading" button in the Safety
+    section of the Execution page (type ENABLE LIVE there; no file editing and no
+    restart needed - the setting is saved in the bridge), and
   * you type LIVE in the Execution page confirmation.
+
+"Lock live trading" puts the interlock back on at any time. For headless
+installs, ALLOW_LIVE_TRADES=1 in mt5-bridge/.env still works as well.
 
 Default is simulation, which is safe: no broker order is ever sent.
 

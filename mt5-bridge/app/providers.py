@@ -625,5 +625,9 @@ def build_provider(store: Store) -> tuple[Provider, str]:
         return provider, requested
 
     store.set_kv("mt5_connected_path", session.path or "")
-    provider = MT5Provider(store, session, allow_live=SETTINGS.allow_live_trades)
+    provider = MT5Provider(
+        store,
+        session,
+        allow_live=SETTINGS.allow_live_trades or store.get_kv("allow_live") == "1",
+    )
     return provider, requested

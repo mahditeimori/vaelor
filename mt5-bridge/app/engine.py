@@ -59,8 +59,24 @@ class TradingEngine:
             "active": active,
             "mode": self.provider.mode,
             "connected": self.provider.connected,
-            "allowLiveTrades": SETTINGS.allow_live_trades,
+            "allowLiveTrades": self.live_allowed(),
         }
+
+    def live_allowed(self) -> bool:
+        """Live routing is unlocked by the env interlock OR by the website button.
+
+        The website unlock is stored in the bridge database, so it survives
+        restarts without the user ever touching .env.
+        """
+        return SETTINGS.allow_live_trades or self.store.get_kv("allow_live") == "1"
+
+    def set_live_allowed(self, enabled: bool) -> dict:
+        """Website control for the live-trading interlock (audited)."""
+        self.store.set_kv("allow_live", "1" if enabled else "0")
+        if hasattr(self.provider, "allow_live"):
+            self.provider.allow_live = enabled
+        self.store.audit("safety.live_interlock", {"allowed": enabled, "source": "website"})
+        return {"ok": True, "allowLiveTrades": self.live_allowed()}
 
     def connect_mt5(
         self,
@@ -89,7 +105,7 @@ class TradingEngine:
             )
             raise RiskError(reason)
 
-        previous_allow = SETTINGS.allow_live_trades
+        previous_allow = self.live_allowed()
         self.provider = MT5Provider(self.store, session, allow_live=previous_allow)
         account = info.get("account") or {}
         self.store.set_kv("mt5_connected_path", session.path or path or "")
@@ -225,14 +241,14 @@ class TradingEngine:
             "lastTick": self.last_tick,
             "lastError": self.last_error,
             "mode": self.provider.mode,
-            "tradingEnabled": self.provider.mode == "live" and SETTINGS.allow_live_trades,
+            "tradingEnabled": self.provider.mode == "live" and self.live_allowed(),
             "provider": provider_status,
             "account": account,
             "accountError": account_error,
             "risk": self.get_risk(),
             "safety": {
-                "allowLiveTrades": SETTINGS.allow_live_trades,
-                "liveReady": self.provider.mode == "live" and SETTINGS.allow_live_trades,
+                "allowLiveTrades": self.live_allowed(),
+                "liveReady": self.provider.mode == "live" and self.live_allowed(),
                 "killSwitch": self.risk.killSwitch,
                 "maxLotPerTrade": self.risk.maxLotPerTrade,
                 "maxOpenPositions": self.risk.maxOpenPositions,
@@ -475,12 +491,13 @@ class TradingEngine:
             return {
                 "ok": True,
                 "mode": "live",
-                "tradingEnabled": SETTINGS.allow_live_trades,
+                "tradingEnabled": self.live_allowed(),
             }
-        if not SETTINGS.allow_live_trades:
+        if not self.live_allowed():
             raise RiskError(
-                "live trading is locked: set ALLOW_LIVE_TRADES=1 in mt5-bridge/.env, "
-                "restart the bridge, then confirm again"
+                "live trading is locked: press 'Enable live trading' in the Safety section "
+                "of the Execution page (or set ALLOW_LIVE_TRADES=1 in mt5-bridge/.env), "
+                "then confirm again"
             )
         if request.confirm != "LIVE":
             raise RiskError('switching to live requires the typed confirmation "LIVE"')
