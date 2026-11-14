@@ -498,6 +498,15 @@ function renderStatus(): void {
   );
 
   setBadge('setupChip', live ? 'terminal connected' : 'paired · simulation', live ? 'ok' : 'warn');
+  const version = String(status.version ?? '');
+  if (version) {
+    const parts = version.split('.').map((part) => Number.parseInt(part, 10) || 0);
+    const outdated = parts[0] < 1 || (parts[0] === 1 && parts[1] < 1);
+    setBadge('bridgeVersionChip', `bridge v${version}${outdated ? ' · update' : ''}`, outdated ? 'warn' : 'ok');
+    $('bridgeVersionChip').title = outdated
+      ? 'This bridge predates the monthly/weekly/daily report. Download the latest .zip and restart the bridge.'
+      : 'Local bridge version';
+  }
   setBadge('ticketChip', live ? 'live routing' : 'simulation fills', live ? 'warn' : '');
   setBadge('cloudState', cloudOk ? `synced ${stamp(cloud.lastSync)}` : 'cloud idle', cloudOk ? 'ok' : '');
   if (el('forgetBtn')) $('forgetBtn').hidden = false;
@@ -1636,6 +1645,16 @@ function renderBacktest(result: Json): void {
     btFilter = null;
     renderTradesTable();
     setReportTab('month');
+  } else {
+    // An older bridge answers backtests without the period/reason report.
+    btReport = null;
+    btFilter = null;
+    renderTradesTable();
+    $('btPeriodStats').innerHTML = '';
+    $('btPeriodHead').innerHTML = '';
+    $('btPeriodBody').innerHTML =
+      '<tr><td colspan="10" class="ex-empty">This bridge did not send the monthly / weekly / daily / exit-reason report. Download the latest bridge .zip, restart it, then run the backtest again.</td></tr>';
+    $('btMeta').textContent += ' · report unavailable: bridge is out of date';
   }
 }
 
@@ -2306,6 +2325,7 @@ function wire(): void {
       const text = event.dataTransfer?.getData('text/plain') ?? '';
       if (text.trim()) void handleDroppedText(text);
     });
+    if (!panel.hidden && !readManifestText()) loadTemplateManifest();
   }
 
   // Terminal connect (delegated: rows are re-rendered)

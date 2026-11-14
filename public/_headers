@@ -1,0 +1,6 @@
+/downloads/*
+  Cache-Control: no-cache, must-revalidate
+  Content-Disposition: attachment
+
+/_astro/*
+  Cache-Control: public, max-age=0, must-revalidate

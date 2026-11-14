@@ -109,6 +109,14 @@ installs, ALLOW_LIVE_TRADES=1 in mt5-bridge/.env still works as well.
 
 Default is simulation, which is safe: no broker order is ever sent.
 
+UPDATING AN EXISTING INSTALL
+----------------------------
+New releases add features (for example the monthly/weekly/daily backtest
+report). To update: close the bridge window, replace the old bridge folder
+with the freshly downloaded one, keep your .env if you edited it, then run
+run.cmd again. The site shows the bridge version in Section 01: if it says
+"update", the running copy is older than the page.
+
 STOPPING
 --------
 Close the console window or press Ctrl+C. Nothing is left running.

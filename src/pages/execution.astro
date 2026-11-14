@@ -19,7 +19,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <span class="badge ex-badge" id="modeBadge">MODE —</span>
         <span class="badge ex-badge" id="tradeBadge">TRADING —</span>
         <span class="badge ex-badge" id="cloudBadge">CLOUD —</span>
-        <a class="badge ex-badge warm" href="/downloads/vaelor-mt5-bridge.zip" download>Download bridge .zip</a>
+        <a class="badge ex-badge warm" href="/downloads/vaelor-mt5-bridge.zip?v=1.1.0" download>Download bridge .zip</a>
         <a class="badge ex-badge warm" href="/docs/09-mt5-execution">Setup manual</a>
       </div>
 
@@ -56,7 +56,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <div class="ex-kicker">Section 01 · Connect your MetaTrader</div>
           <h2 class="ex-title" id="connect-title">CONNECT WIZARD</h2>
         </div>
-        <span class="ex-chip" id="setupChip">not paired</span>
+        <div class="ex-head-actions">
+          <span class="ex-chip" id="bridgeVersionChip">bridge —</span>
+          <span class="ex-chip" id="setupChip">not paired</span>
+        </div>
       </div>
 
       <div class="ex-steps">
@@ -67,7 +70,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             A small package that runs on your PC. It connects to the MetaTrader 5 already installed
             on your machine — no broker API keys, no cloud custody.
           </p>
-          <a class="ex-btn primary" href="/downloads/vaelor-mt5-bridge.zip" download>
+          <a class="ex-btn primary" href="/downloads/vaelor-mt5-bridge.zip?v=1.1.0" download>
             Download vaelor-mt5-bridge.zip
           </a>
         </article>
@@ -453,9 +456,9 @@ Token : &lt;random string&gt;</pre>
               is registered as an <b>external</b> driver and is never executed or faked.
             </p>
           </div>
-          <button type="button" class="ex-btn ghost" id="stratAddToggle">Show editor</button>
+          <button type="button" class="ex-btn ghost" id="stratAddToggle">Hide editor</button>
         </div>
-        <div id="stratAddPanel" hidden>
+        <div id="stratAddPanel">
           <div id="stratDrop" class="ex-drop">
             <div class="ex-drop-inner">
               <b>Drag a strategy file here</b>

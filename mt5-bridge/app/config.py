@@ -29,7 +29,7 @@ except Exception:  # pragma: no cover
 DATA_DIR = Path(os.environ.get("BRIDGE_DATA_DIR", BRIDGE_ROOT / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 def _bool(name: str, default: bool = False) -> bool:

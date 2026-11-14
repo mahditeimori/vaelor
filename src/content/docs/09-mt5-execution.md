@@ -48,7 +48,7 @@ Windows user, including broker-branded folders and portable copies.
 
 ## 5.3 Quick start
 
-1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip).
+1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.1.0).
 2. Unzip it to a folder you control, for example `C:\Vaelor\mt5-bridge`.
 3. Double-click `run.cmd`. The first run creates `.venv`, installs dependencies
    and writes `.env`; the console prints a URL and a token and saves both to
@@ -357,6 +357,10 @@ Every run returns four views of the same trades:
   never disagree.
 
 Days are UTC, matching MT5 timestamps.
+
+If the four report views stay empty after a run, the local bridge is older than
+the page: Section 01 shows `bridge v… · update`. Close the bridge, install the
+current `.zip` from Section 01 and restart it, then run the backtest again.
 
 ## 5.11 Bridge API reference
 
