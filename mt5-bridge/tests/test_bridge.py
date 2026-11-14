@@ -29,7 +29,9 @@ from app.models import (  # noqa: E402
     StrategyManifest,
 )
 from app.performance import max_drawdown, summarise, trade_stats, wilson_lower  # noqa: E402
-from app.providers import SimProvider, synthetic_bars  # noqa: E402
+from app.providers import SimProvider, spec_for, synthetic_bars  # noqa: E402
+from app.python_backtest import run_python_backtest  # noqa: E402
+from app.python_strategies import AnalysisError, analyze_python, extract_python  # noqa: E402
 from app.store import Store  # noqa: E402
 from app.strategies import StrategyError, validate_strategy  # noqa: E402
 
@@ -123,6 +125,95 @@ class ReportTests(unittest.TestCase):
             sum(day["trades"] for day in result["report"]["days"]),
             len(result["trades"]),
         )
+
+
+class PythonStrategyTests(unittest.TestCase):
+    RUNNABLE = """
+META = {"id": "py-ema", "name": "Python EMA", "symbols": ["XAUUSD"], "timeframe": "M1", "warmup": 30}
+import math
+
+def on_bar(ctx):
+    fast, slow = ctx.ema(9), ctx.ema(21)
+    if ctx.crossover(fast, slow):
+        return {"action": "buy", "stop_atr": 2, "target_atr": 4}
+    if ctx.crossunder(fast, slow):
+        return {"action": "sell", "stop_atr": 2, "target_atr": 4}
+    return None
+"""
+
+    def test_runnable_manifest_and_backtest(self) -> None:
+        analysis = analyze_python(self.RUNNABLE, filename="py_ema.py")
+        self.assertEqual(analysis["mode"], "python")
+        self.assertEqual(analysis["manifest"]["id"], "py-ema")
+        self.assertIn("on_bar", analysis["hooks"])
+        self.assertEqual(analysis["manifest"]["symbols"], ["XAUUSD"])
+
+        manifest = validate_strategy(StrategyManifest(**analysis["manifest"]))
+        bars = synthetic_bars("XAUUSD", "M1", 1_760_000_000, 1_760_000_000 + 5 * 86400)
+        spec = spec_for("XAUUSD")
+        ctx = SymbolCtx("XAUUSD", contract=spec.contract, pip=spec.pip, digits=spec.digits)
+        result = run_python_backtest(
+            manifest, bars, ctx, timeframe="M1", initial_balance=10_000, spread_pips=2
+        )
+        self.assertGreater(result["stats"]["trades"], 0)
+        self.assertIn("report", result)
+        self.assertEqual(
+            sum(day["trades"] for day in result["report"]["days"]),
+            len(result["trades"]),
+        )
+        # Every trade has the same shape the DSL engine emits.
+        trade = result["trades"][0]
+        for key in ("side", "entry", "exit", "lots", "pnl", "r", "entryTime", "exitTime", "reason"):
+            self.assertIn(key, trade)
+
+    def test_external_driver_is_detected_and_not_backtested(self) -> None:
+        code = (
+            "import MetaTrader5 as mt5\n"
+            "SYMBOL = 'XAUUSD'\n"
+            "def run_bot():\n"
+            "    mt5.initialize()\n"
+            "    mt5.order_send({'symbol': SYMBOL})\n"
+        )
+        analysis = analyze_python(code, filename="xauusd ea.py")
+        self.assertEqual(analysis["mode"], "external")
+        self.assertEqual(analysis["manifest"]["symbols"], ["XAUUSD"])
+        self.assertEqual(analysis["manifest"]["runtime"], "external")
+        self.assertTrue(analysis["warnings"])
+
+        manifest = validate_strategy(StrategyManifest(**analysis["manifest"]))
+        spec = spec_for("XAUUSD")
+        ctx = SymbolCtx("XAUUSD", contract=spec.contract, pip=spec.pip, digits=spec.digits)
+        bars = synthetic_bars("XAUUSD", "M1", 1_760_000_000, 1_760_000_000 + 3 * 86400)
+        with self.assertRaises(ValueError):
+            run_python_backtest(manifest, bars, ctx)
+
+    def test_json_bundle_accepts_python_source(self) -> None:
+        payload = {
+            "metadata": {"source_file": "bundle_strategy.py", "language": "python"},
+            "source": self.RUNNABLE,
+        }
+        code, filename = extract_python(payload)
+        self.assertIn("def on_bar", code)
+        self.assertEqual(filename, "bundle_strategy.py")
+        analysis = analyze_python(payload)
+        self.assertEqual(analysis["manifest"]["sourceFile"], "bundle_strategy.py")
+        self.assertEqual(analysis["mode"], "python")
+
+    def test_sandbox_rejects_filesystem_imports(self) -> None:
+        code = (
+            "import os\n"
+            "def on_bar(ctx):\n"
+            "    return None\n"
+        )
+        with self.assertRaises(AnalysisError) as caught:
+            analyze_python(code, filename="bad.py")
+        message = str(caught.exception)
+        self.assertIn("os", message)
+
+    def test_missing_on_bar_is_reported(self) -> None:
+        with self.assertRaises(AnalysisError) as caught:
+            analyze_python("META = {'name': 'No hook'}\n", filename="nohook.py")
+        self.assertIn("on_bar", str(caught.exception))
 
 
 class BacktestTests(unittest.TestCase):

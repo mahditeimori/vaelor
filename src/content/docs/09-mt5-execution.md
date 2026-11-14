@@ -164,6 +164,7 @@ Strategies are published through the MCP tools
 |---|---|
 | `GET /api/strategies` | Registry with measured performance |
 | `POST /api/strategies` | Publish a manifest |
+| `POST /api/strategies/python` | Publish a `.py` file or converter JSON bundle |
 | `DELETE /api/strategies/{id}` | Retire a strategy |
 | `POST /api/signals` | Queue a signal |
 | `GET /api/signals?status=pending` | Read the queue |
@@ -185,14 +186,19 @@ the execution engine before anything runs.
 ### 5.9.1 Bring your own strategy (the editor)
 
 The **Strategy registry** panel on `/execution` has an *Add your own strategy*
-editor. Strategies are **JSON manifests**, not script files. This is
-deliberate: the bridge evaluates and executes the rules itself, so it can
-backtest them on your broker's history and enforce the risk gates uniformly —
-and no arbitrary code (Python, MQL5, EX5) is ever executed on your machine.
-If you built your strategy in Python or MQL5, translate its entry/exit logic
-into the condition types below; the logic that cannot be expressed as rules
-belongs in your own tooling, which can then submit **signals** through the
-registry instead.
+editor. The preferred format is a **JSON manifest**: the bridge evaluates and
+executes the rules itself, so it can backtest them on your broker's history and
+enforce the risk gates uniformly, with no user code involved.
+
+Python is also accepted, in two clearly separated modes:
+
+| Mode | What it is | What the bridge does |
+|---|---|---|
+| `python` | A strategy module exposing `on_bar(ctx)` | Runs it in an isolated subprocess and **backtests** it |
+| `external` | A full EA/bot that imports `MetaTrader5` and places its own orders | Stores it as reference; never executed or backtested by the bridge |
+
+Anything that cannot be expressed as rules — including an `external` EA — can
+also live in your own tooling and submit **signals** through the registry.
 
 A complete example:
 
@@ -237,7 +243,75 @@ Workflow: **Insert example → edit → Validate** (the bridge checks the manife
 and reports the warm-up bar requirement without saving it) → **Register
 strategy**. The registered strategy arrives **disabled**: run a backtest on your
 broker's history first, then enable it from the table when the numbers justify
-it. The bridge can also load a saved manifest file with *Load .json file*.
+it.
+
+### 5.9.2 Drop a file instead of pasting
+
+The editor accepts a file two ways: the *Load file* button, or by **dragging a
+file onto the editor** and dropping it. A `.json` or `.py` file (plain text is
+also fine) is read locally in the browser; nothing is uploaded until you press
+**Register strategy**. The panel then shows the file name and the detected mode
+(`Rules`, `PY on_bar` or `PY external`).
+
+* A JSON manifest is parsed and validated exactly as if you had pasted it.
+* A Python file is analysed by the bridge: if it imports `MetaTrader5` or calls
+  `mt5.*`, it is registered as `external`; otherwise it must expose
+  `on_bar(ctx)` and becomes a backtestable `python` strategy.
+* Converter-style JSON bundles — `metadata.language: "python"` plus a `source`
+  or `code` string (for example the output of a Python→JSON converter) — are
+  unwrapped and treated as Python source rather than rejected as an invalid
+  manifest.
+
+### 5.9.3 The Python `on_bar` contract
+
+A backtestable Python strategy is a single module with an `on_bar(ctx)` entry
+point. The bridge calls it once per closed bar, oldest first, and acts on the
+returned signal at the **next bar's open**:
+
+```python
+META = {"warmup": 60, "name": "EMA 20/50 cross"}
+
+def on_bar(ctx):
+    fast = ctx.ema(20)
+    slow = ctx.ema(50)
+    if ctx.value(fast) is None or ctx.value(slow) is None:   # warm-up
+        return None
+    if not ctx.has_position and ctx.crossover(fast, slow):
+        return {"signal": "buy", "stop_atr": 2, "target_atr": 4}
+    if not ctx.has_position and ctx.crossunder(fast, slow):
+        return {"signal": "sell", "stop_atr": 2, "target_atr": 4}
+    if ctx.has_position and ctx.crossunder(fast, slow):
+        return {"signal": "close"}
+    return None
+```
+
+`ctx` exposes the current bar (`ctx.open`, `high`, `low`, `close`, `volume`,
+`time`, `bar`), account/state (`ctx.position`, `ctx.has_position`,
+`ctx.equity`, `ctx.initial_balance`, `ctx.bars_since_entry()`), and indicators
+returning whole series: `sma`, `ema`, `rsi`, `atr` (read one point with
+`ctx.value(series, offset)`), plus `crossover`, `crossunder`, `highest`,
+`lowest`, `highest_close`, `lowest_close` and `ctx.log("...")`. A signal is a
+dict (or a plain `"buy"`/`"sell"`/`"close"` string) keyed by `signal` (also
+accepts `action`/`side`), with optional `sl`/`tp` prices, `stop_atr`,
+`target_atr`, `trail_atr` multipliers, `stop_pips`/`target_pips`, `lots` and
+`trail`. Return `None` to do nothing. If `META["warmup"]` is set, bars before
+it are not signalled (default 30).
+
+The runner executes in its own process (`python -I`) with an import allowlist
+and restricted builtins: no file system, network, subprocess or `os` access, and
+no `dunder` traversal. A strategy that needs any of those is an `external` EA
+and must run itself — the bridge will not execute it, and its backtest button is
+disabled with the reason shown.
+
+### 5.9.4 External Python and MQL5 strategies
+
+If you already have a self-contained bot that connects to the terminal itself
+(typically `import MetaTrader5` and `mt5.order_send`), drop the `.py` file in as
+usual. It is registered with its metadata and source for reference, labelled
+`PY external`, and excluded from backtests. Run it in your own environment (or
+attach it as an EA in MetaTrader 5); the desk will still attribute its closed
+deals to the strategy when they carry the matching magic number, and the
+measured live results appear in the registry next to rule-based strategies.
 
 ## 5.10 Measuring success
 
@@ -301,7 +375,7 @@ All routes except `/health` require the `x-bridge-token` header.
 | `/api/orders` | POST | Market or limit order |
 | `/api/positions/{ticket}/*` | POST | modify, close, breakeven, trail |
 | `/api/risk`, `/api/kill`, `/api/mode` | GET/PUT/POST | Safety controls |
-| `/api/strategies*`, `/api/signals*` | GET/POST | Registry and queue |
+| `/api/strategies*`, `/api/signals*` | GET/POST | Registry, queue and `/api/strategies/python` |
 | `/api/backtest`, `/api/backtests` | POST/GET | Historical simulation |
 | `/api/audit`, `/api/snapshot` | GET | Traceability and bulk view |
 
@@ -334,6 +408,10 @@ reach a loopback service.
   never credentials, balances or positions.
 * Every state-changing action is auditable locally, and order rejections are
   recorded with the broker's retcode.
+* Python `on_bar` strategies run on your machine in a separate, isolated
+  interpreter with an import allowlist and restricted builtins; `external` EAs
+  are stored, never executed. No strategy file is ever sent to our servers
+  except the manifest metadata you choose to sync.
 
 Execution is provided for the account owner's own terminal. Nothing in this
 section constitutes investment advice, and no result shown by a backtest is a

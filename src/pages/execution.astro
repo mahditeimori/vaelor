@@ -445,18 +445,29 @@ Token : &lt;random string&gt;</pre>
             <div class="ex-kicker">Bring your own</div>
             <b>Add your own strategy</b>
             <p class="ex-hint">
-              Write the rules as a JSON manifest — the format this desk executes. Validate it
-              against your bridge, then register it: it lands in the table below <b>disabled</b> so
-              you can backtest it on your broker's history before switching it on. Python, MQL5 and
-              other script files are not accepted: the bridge runs the strategy itself, so rules
-              must be declarative JSON and no arbitrary code is ever executed on your machine.
+              Drop a <b>.json</b> manifest, a <b>.py</b> strategy or a JSON bundle that wraps
+              Python source. Validate it against your bridge, then register it: it lands in the
+              table below <b>disabled</b> so you can backtest it on your broker's history before
+              switching it on. A Python file that defines <code>on_bar(ctx)</code> is replayed by
+              the bridge in a sandbox; a file that imports MetaTrader5 and places its own orders
+              is registered as an <b>external</b> driver and is never executed or faked.
             </p>
           </div>
           <button type="button" class="ex-btn ghost" id="stratAddToggle">Show editor</button>
         </div>
         <div id="stratAddPanel" hidden>
+          <div id="stratDrop" class="ex-drop">
+            <div class="ex-drop-inner">
+              <b>Drag a strategy file here</b>
+              <span class="ex-hint">
+                .json manifest · .py strategy · .txt · a JSON bundle with Python source
+              </span>
+              <span class="ex-drop-file" id="stratFileName">No file loaded</span>
+            </div>
+          </div>
           <div class="ex-btn-row ex-strat-add-actions">
-            <label class="ex-btn ghost ex-file-btn">Load .json file<input id="stratFile" type="file" accept=".json,application/json" /></label>
+            <label class="ex-btn ghost ex-file-btn">Load a file<input id="stratFile" type="file" accept=".json,.py,.txt,.text,application/json,text/x-python" /></label>
+            <span class="ex-chip" id="stratMode">JSON manifest</span>
             <button type="button" class="ex-btn ghost" id="stratTemplateBtn">Insert example</button>
             <button type="button" class="ex-btn ghost" id="stratValidateBtn">Validate</button>
             <button type="button" class="ex-btn primary" id="stratRegisterBtn">Register strategy</button>
@@ -466,12 +477,19 @@ Token : &lt;random string&gt;</pre>
             class="ex-code ex-manifest"
             rows="14"
             spellcheck="false"
-            placeholder='{"id": "my-strategy", "name": "My strategy", "symbols": ["XAUUSD"], ... }'
+            placeholder='{"id": "my-strategy", "name": "My strategy", "symbols": ["XAUUSD"], ... }
+
+or a Python strategy:
+
+def on_bar(ctx):
+    if ctx.crossover(ctx.ema(9), ctx.ema(21)):
+        return {"action": "buy", "stop_atr": 2, "target_atr": 4}'
           ></textarea>
           <p class="ex-hint" id="stratAddStatus">
-            Condition types: ema_cross, sma_cross, price_vs_ema, price_vs_sma, rsi, macd, breakout,
-            bollinger, atr_filter · exits: atr / pips / percent · full reference in the
-            <a href="/docs/09-mt5-execution/">execution manual</a>.
+            JSON condition types: ema_cross, sma_cross, price_vs_ema, price_vs_sma, rsi, macd,
+            breakout, bollinger, atr_filter · exits: atr / pips / percent · Python helpers and the
+            signal shape are documented in the
+            <a href="/docs/09-mt5-execution/#59-strategies-from-people-and-ai">execution manual</a>.
           </p>
         </div>
       </div>
@@ -955,6 +973,24 @@ Token : &lt;random string&gt;</pre>
     .ex-strat-add-head b { font-size: 0.95rem; letter-spacing: 0.02em; }
     .ex-strat-add-head .ex-hint { margin-top: 4px; max-width: 72ch; }
     .ex-strat-add-actions { margin-top: 0; margin-bottom: 10px; }
+    .ex-drop {
+      margin: 12px 0; padding: 16px; border-radius: 10px; cursor: pointer;
+      border: 1px dashed rgba(201, 162, 75, 0.4);
+      background: rgba(201, 162, 75, 0.04);
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .ex-drop:hover { border-color: var(--ex-gold); }
+    .ex-drop.dragging {
+      border-color: var(--ex-gold); background: rgba(201, 162, 75, 0.12);
+      box-shadow: inset 0 0 0 1px rgba(201, 162, 75, 0.35);
+    }
+    .ex-drop-inner { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; }
+    .ex-drop-inner b { font-size: 0.86rem; letter-spacing: 0.02em; }
+    .ex-drop-file {
+      font-family: var(--mono); font-size: 0.66rem; color: var(--ex-faint);
+      letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .ex-drop-file.loaded { color: var(--ex-gold); }
     .ex-manifest {
       width: 100%; box-sizing: border-box; resize: vertical; white-space: pre;
       font-family: var(--mono); font-size: 0.74rem; line-height: 1.5;
@@ -1025,6 +1061,7 @@ Token : &lt;random string&gt;</pre>
     .ex-tag.ok { color: var(--ex-green); border-color: rgba(91, 212, 160, 0.4); }
     .ex-tag.warn { color: var(--ex-gold); border-color: rgba(201, 162, 75, 0.4); }
     .ex-tag.bad { color: var(--ex-red); border-color: rgba(224, 101, 107, 0.4); }
+    .ex-warn { color: var(--ex-gold); }
     .ex-edit-row td { background: rgba(201, 162, 75, 0.04); }
     .ex-edit-grid { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
     .ex-edit-grid .ex-field { margin: 0; min-width: 90px; }

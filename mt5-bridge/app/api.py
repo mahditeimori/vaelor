@@ -28,6 +28,7 @@ from .models import (
     TrailRequest,
 )
 from .mt5_provider import BrokerError
+from .python_strategies import AnalysisError, analyze_python
 from .seed import seed
 from .store import Store
 from .strategies import validate_strategy, warmup_bars
@@ -51,6 +52,19 @@ class LiveToggle(BaseModel):
 
 class StrategyRegistration(BaseModel):
     strategy: StrategyManifest
+
+
+class PythonStrategyRequest(BaseModel):
+    """A dropped file: raw Python text, a converter-style JSON bundle, or code."""
+
+    code: str | None = None
+    payload: Any | None = None
+    filename: str | None = Field(default=None, max_length=180)
+    name: str | None = Field(default=None, max_length=80)
+    symbol: str | None = Field(default=None, max_length=20)
+    timeframe: str | None = Field(default=None, max_length=8)
+    direction: str | None = Field(default=None, max_length=8)
+    registerStrategy: bool = False
 
 
 class SignalRegistration(BaseModel):
@@ -467,6 +481,57 @@ def validate_strategy_manifest(request: Request, payload: StrategyRegistration) 
         return {"ok": True, "id": manifest.id, "warmupBars": warmup_bars(manifest)}
     except Exception as exc:
         raise _fail(exc) from exc
+
+
+@app.post("/api/strategies/python", dependencies=[Depends(require_token)])
+def python_strategy(request: Request, payload: PythonStrategyRequest) -> dict:
+    """Analyse a dropped Python file or JSON bundle and optionally register it.
+
+    Analysis never executes the code: it parses the AST, reads module-level
+    literals and classifies the file as a sandboxed ``on_bar`` strategy or an
+    external MetaTrader 5 driver.
+    """
+    raw = payload.payload if payload.payload is not None else payload.code
+    if raw is None or (isinstance(raw, str) and not raw.strip()):
+        raise HTTPException(status_code=400, detail="provide `payload` (the dropped file) or `code`")
+    try:
+        analysis = analyze_python(
+            raw,
+            filename=payload.filename,
+            name=payload.name,
+            symbol=payload.symbol,
+            timeframe=payload.timeframe,
+            direction=payload.direction,
+        )
+    except AnalysisError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=[{"loc": item["loc"], "msg": item["msg"]} for item in exc.errors],
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    registered = None
+    if payload.registerStrategy:
+        try:
+            manifest = StrategyManifest(**analysis["manifest"])
+            registered = engine_of(request).sync_strategy(manifest, source="python")
+            registered.pop("code", None)
+        except Exception as exc:
+            raise _fail(exc) from exc
+
+    public_manifest = {k: v for k, v in analysis["manifest"].items() if k != "code"}
+    return {
+        "ok": True,
+        "mode": analysis["mode"],
+        "manifest": public_manifest,
+        "summary": analysis["summary"],
+        "imports": analysis["imports"],
+        "warnings": analysis["warnings"],
+        "hooks": analysis["hooks"],
+        "sourceFile": analysis["sourceFile"],
+        "registered": registered,
+    }
 
 
 @app.post("/api/strategies/sync", dependencies=[Depends(require_token)])

@@ -112,6 +112,14 @@ class StrategyManifest(BaseModel):
     tags: list[str] = Field(default_factory=list, max_length=12)
     enabled: bool = False
     autoExecute: bool = False
+    # Python strategies keep their source alongside the manifest. `runtime`
+    # says how they can be evaluated: "dsl" (declarative rules), "python"
+    # (sandboxed on_bar code the bridge replays itself) or "external" (a script
+    # that drives MetaTrader 5 directly and therefore cannot be replayed).
+    language: Literal["json", "python"] = "json"
+    runtime: Literal["dsl", "python", "external"] = "dsl"
+    code: str | None = Field(default=None, max_length=400_000)
+    sourceFile: str | None = Field(default=None, max_length=180)
     createdAt: str = Field(default_factory=now_iso)
     updatedAt: str = Field(default_factory=now_iso)
 
@@ -139,6 +147,10 @@ class StrategyManifest(BaseModel):
 
     @model_validator(mode="after")
     def _has_entry(self) -> "StrategyManifest":
+        # Python strategies and external drivers carry their logic in `code`,
+        # so they are valid without a declarative entry group.
+        if self.language == "python":
+            return self
         if not (self.entry or self.entryLong or self.entryShort):
             raise ValueError("strategy needs entry, entryLong or entryShort")
         return self

@@ -97,6 +97,9 @@ interface StrategyRow {
   source: string;
   enabled: boolean;
   autoExecute: boolean;
+  language?: 'json' | 'python';
+  runtime?: 'dsl' | 'python' | 'external';
+  hasCode?: boolean;
   performance: Json;
 }
 
@@ -237,6 +240,18 @@ async function api<T = any>(path: string, options: { method?: string; body?: unk
 
   if (!response.ok) {
     const detail = payload?.detail ?? payload;
+    // FastAPI validation errors arrive as a list of {loc, msg, type}. Turn them
+    // into something a person can act on instead of "HTTP 422".
+    if (Array.isArray(detail)) {
+      const parts = detail.slice(0, 6).map((item: any) => {
+        if (!item || typeof item !== 'object') return String(item);
+        const loc = Array.isArray(item.loc)
+          ? item.loc.filter((part: unknown) => part !== 'body').join('.')
+          : '';
+        return `${loc ? `${loc}: ` : ''}${item.msg ?? 'invalid value'}`;
+      });
+      throw new ApiError(parts.join('; ') || `HTTP ${response.status}`, response.status);
+    }
     if (typeof detail === 'string') {
       throw new ApiError(detail, response.status);
     }
@@ -971,9 +986,15 @@ function renderStrategies(): void {
   body.innerHTML = strategies
     .map((strategy) => {
       const perf = perfFor(strategy.id);
+      const runtimeTag =
+        strategy.runtime === 'external'
+          ? '<span class="ex-tag warn">PY external</span>'
+          : strategy.runtime === 'python'
+            ? '<span class="ex-tag">PY on_bar</span>'
+            : '';
       return `<tr>
         <td><b>${escapeHtml(strategy.name)}</b><span class="sub">${escapeHtml(strategy.id)}</span></td>
-        <td><span class="ex-tag">${escapeHtml(strategy.source ?? 'local')}</span></td>
+        <td><span class="ex-tag">${escapeHtml(strategy.source ?? 'local')}</span> ${runtimeTag}</td>
         <td>${perf ? escapeHtml(perf.evidence) : '—'}</td>
         <td class="right ex-mono-cell">${perf ? num(perf.sample, 0) : '—'}</td>
         <td class="right ex-mono-cell">${perf ? (perf.sample ? `${num(perf.successRate, 1)}%` : '—') : '—'}</td>
@@ -984,7 +1005,11 @@ function renderStrategies(): void {
         <td class="center"><label class="ex-toggle"><input type="checkbox" data-toggle="autoExecute" data-id="${escapeHtml(
           strategy.id,
         )}" ${strategy.autoExecute ? 'checked' : ''} /></label></td>
-        <td class="right"><button type="button" class="ex-btn small" data-backtest="${escapeHtml(strategy.id)}">Backtest</button></td>
+        <td class="right">${
+          strategy.runtime === 'external'
+            ? '<button type="button" class="ex-btn small" disabled title="External MetaTrader 5 driver: the bridge cannot replay it on bar history.">Not backtestable</button>'
+            : `<button type="button" class="ex-btn small" data-backtest="${escapeHtml(strategy.id)}">Backtest</button>`
+        }</td>
       </tr>`;
     })
     .join('');
@@ -1035,10 +1060,13 @@ function fillStrategySelects(): void {
   const orderSelect = el('orderStrategy') as HTMLSelectElement | null;
   if (backtestSelect) {
     const previous = backtestSelect.value;
-    backtestSelect.innerHTML = strategies
-      .map((strategy) => `<option value="${escapeHtml(strategy.id)}">${escapeHtml(strategy.name)}</option>`)
-      .join('');
-    if (previous && strategies.some((strategy) => strategy.id === previous)) backtestSelect.value = previous;
+    const runnable = strategies.filter((strategy) => strategy.runtime !== 'external');
+    backtestSelect.innerHTML = runnable.length
+      ? runnable
+          .map((strategy) => `<option value="${escapeHtml(strategy.id)}">${escapeHtml(strategy.name)}</option>`)
+          .join('')
+      : '<option value="">no backtestable strategy yet</option>';
+    if (previous && runnable.some((strategy) => strategy.id === previous)) backtestSelect.value = previous;
   }
   if (orderSelect) {
     const previous = orderSelect.value;
@@ -1124,6 +1152,120 @@ function readManifestText(): string {
   return ((el('stratManifest') as HTMLTextAreaElement | null)?.value ?? '').trim();
 }
 
+type StrategyKind = 'json' | 'python';
+
+interface PythonAnalysis {
+  ok: boolean;
+  mode: 'python' | 'external';
+  manifest: Json;
+  summary: Json;
+  imports: string[];
+  warnings: string[];
+  hooks: string[];
+  sourceFile: string | null;
+  registered?: Json | null;
+}
+
+let stratKind: StrategyKind = 'json';
+let stratAnalysis: PythonAnalysis | null = null;
+let stratFileName = '';
+
+/** Decide whether the loaded text is a JSON manifest or Python source. */
+function detectStrategyKind(text: string, filename = ''): StrategyKind {
+  const trimmed = text.trim();
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed) as Json;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const meta = parsed.metadata as Json | undefined;
+        const wrapsPython =
+          typeof parsed.source === 'string' ||
+          typeof parsed.code === 'string' ||
+          typeof parsed.strategy === 'string' ||
+          (meta &&
+            typeof meta === 'object' &&
+            String(meta.language ?? '').toLowerCase() === 'python');
+        if (wrapsPython) return 'python';
+        return 'json';
+      }
+    } catch {
+      // Malformed JSON — fall through to the filename/content guess.
+    }
+  }
+  if (filename.toLowerCase().endsWith('.json')) return 'json';
+  return 'python';
+}
+
+function setStrategyKind(kind: StrategyKind): void {
+  stratKind = kind;
+  const chip = el('stratMode');
+  if (chip) chip.textContent = kind === 'json' ? 'JSON manifest' : 'Python strategy';
+}
+
+function setStrategyStatus(html: string): void {
+  const status = el('stratAddStatus');
+  if (status) status.innerHTML = html;
+}
+
+function setStrategyFileName(name: string): void {
+  stratFileName = name;
+  const label = el('stratFileName');
+  if (!label) return;
+  label.textContent = name || 'No file loaded';
+  label.classList.toggle('loaded', Boolean(name));
+}
+
+function describeAnalysis(analysis: PythonAnalysis): string {
+  const summary = analysis.summary ?? {};
+  const bits: string[] = [];
+  bits.push(
+    analysis.mode === 'external'
+      ? '<b>External MetaTrader 5 driver</b>'
+      : '<b>Python strategy</b> · handled by the sandboxed <code>on_bar</code> runner',
+  );
+  bits.push(
+    `${escapeHtml(summary.name ?? '')} · <code>${escapeHtml(summary.id ?? '')}</code> · ` +
+      `${escapeHtml((summary.symbols ?? []).join(', '))} ${escapeHtml(summary.timeframe ?? '')} · ` +
+      `${num(summary.lines, 0)} lines`,
+  );
+  if (analysis.sourceFile) bits.push(`file: <code>${escapeHtml(analysis.sourceFile)}</code>`);
+  if (analysis.imports?.length) bits.push(`imports: ${escapeHtml(analysis.imports.join(', '))}`);
+  const warnings = (analysis.warnings ?? []).map((item) => escapeHtml(item));
+  if (warnings.length) bits.push(`<span class="ex-warn">${warnings.join('<br />')}</span>`);
+  return bits.join('<br />');
+}
+
+/** Turn a dropped/loaded file into editor text and analyse it. */
+async function handleStrategyFile(file: File): Promise<void> {
+  if (file.size > 1_500_000) {
+    toast('That file is larger than 1.5 MB — strategy files should be much smaller.', 'bad');
+    return;
+  }
+  setStrategyFileName(file.name);
+  const area = el('stratManifest') as HTMLTextAreaElement | null;
+  let text = '';
+  try {
+    text = await file.text();
+  } catch (err) {
+    toast(`Could not read the file: ${err instanceof Error ? err.message : String(err)}`, 'bad');
+    return;
+  }
+  if (area) area.value = text;
+  setStrategyKind(detectStrategyKind(text, file.name));
+  setStrategyStatus('Reading and checking the file…');
+  await validateStrategyInput();
+}
+
+/** Show a dragged string that is not a file (e.g. text dropped from an editor). */
+async function handleDroppedText(text: string): Promise<void> {
+  const area = el('stratManifest') as HTMLTextAreaElement | null;
+  if (area) area.value = text;
+  setStrategyFileName('');
+  setStrategyKind(detectStrategyKind(text, ''));
+  setStrategyStatus('Checking the dropped text…');
+  await validateStrategyInput();
+}
+
 function parseManifest(): Json | null {
   const raw = readManifestText();
   if (!raw) {
@@ -1142,11 +1284,7 @@ function parseManifest(): Json | null {
   }
 }
 
-async function validateManifest(): Promise<void> {
-  if (!pairing.token) {
-    toast('Pair the bridge first — the editor validates against it.', 'bad');
-    return;
-  }
+async function validateJsonManifest(): Promise<void> {
   const manifest = parseManifest();
   if (!manifest) return;
   try {
@@ -1155,17 +1293,111 @@ async function validateManifest(): Promise<void> {
       body: { strategy: manifest },
     });
     toast(`Manifest is valid · ${result.id} · needs ${result.warmupBars} warm-up bars.`, 'ok');
+    setStrategyStatus(
+      `<b>JSON manifest valid</b> · <code>${escapeHtml(result.id)}</code> · needs ` +
+        `${num(result.warmupBars, 0)} warm-up bars. Register it, then backtest it.`,
+    );
   } catch (err) {
     // Surface the bridge's own explanation (e.g. "unknown condition type: …").
-    toast(`Manifest rejected: ${err instanceof Error ? err.message : String(err)}`, 'bad');
+    const message = err instanceof Error ? err.message : String(err);
+    toast(`Manifest rejected: ${message}`, 'bad');
+    setStrategyStatus(`<span class="ex-warn">Manifest rejected: ${escapeHtml(message)}</span>`);
   }
 }
 
-async function registerManifest(): Promise<void> {
+async function analysePythonStrategy(): Promise<PythonAnalysis | null> {
+  const raw = readManifestText();
+  if (!raw) {
+    toast('Drop a Python file first.', 'bad');
+    return null;
+  }
+  try {
+    const analysis = await api<PythonAnalysis>('/api/strategies/python', {
+      method: 'POST',
+      body: { payload: raw, filename: stratFileName || undefined },
+    });
+    stratAnalysis = analysis;
+    setStrategyKind('python');
+    setStrategyStatus(describeAnalysis(analysis));
+    toast(
+      analysis.mode === 'external'
+        ? 'External MetaTrader 5 driver detected — it can be registered, but not backtested here.'
+        : 'Python strategy accepted — it will run in the bridge sandbox.',
+      analysis.mode === 'external' ? 'info' : 'ok',
+    );
+    return analysis;
+  } catch (err) {
+    stratAnalysis = null;
+    const message = err instanceof Error ? err.message : String(err);
+    toast(`Python strategy rejected: ${message}`, 'bad');
+    setStrategyStatus(`<span class="ex-warn">Python strategy rejected: ${escapeHtml(message)}</span>`);
+    return null;
+  }
+}
+
+async function validateStrategyInput(): Promise<void> {
+  if (!pairing.token) {
+    toast('Pair the bridge first — the editor validates against it.', 'bad');
+    return;
+  }
+  const raw = readManifestText();
+  if (!raw) {
+    toast('Drop a file or paste a strategy first.', 'bad');
+    return;
+  }
+  setStrategyKind(detectStrategyKind(raw, stratFileName));
+  if (stratKind === 'json') {
+    stratAnalysis = null;
+    await validateJsonManifest();
+    return;
+  }
+  await analysePythonStrategy();
+}
+
+async function registerStrategyInput(): Promise<void> {
   if (!pairing.token) {
     toast('Pair the bridge first, then register the strategy.', 'bad');
     return;
   }
+  const raw = readManifestText();
+  if (!raw) {
+    toast('Drop a file or paste a strategy first.', 'bad');
+    return;
+  }
+  setStrategyKind(detectStrategyKind(raw, stratFileName));
+
+  if (stratKind === 'python') {
+    try {
+      const analysis = await api<PythonAnalysis>('/api/strategies/python', {
+        method: 'POST',
+        body: {
+          payload: raw,
+          filename: stratFileName || undefined,
+          registerStrategy: true,
+        },
+      });
+      const saved = analysis.registered ?? null;
+      if (!saved) {
+        toast('The bridge accepted the file but did not confirm registration — check the strategy list.', 'bad');
+        return;
+      }
+      toast(
+        analysis.mode === 'external'
+          ? `Registered ${saved.name ?? saved.id} as an external Python driver. It is disabled and cannot be backtested here.`
+          : `Registered ${saved.name ?? saved.id}. It is disabled — backtest it, then enable it.`,
+        'ok',
+      );
+      setStrategyStatus(describeAnalysis(analysis));
+      await refreshStrategies(true);
+      closeStrategyEditor();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      toast(`Could not register the strategy: ${message}`, 'bad');
+      setStrategyStatus(`<span class="ex-warn">Could not register the strategy: ${escapeHtml(message)}</span>`);
+    }
+    return;
+  }
+
   const manifest = parseManifest();
   if (!manifest) return;
   // Always register disabled so the strategy can be backtested before it can trade.
@@ -1178,30 +1410,27 @@ async function registerManifest(): Promise<void> {
     });
     toast(`Strategy registered: ${result.strategy?.name ?? manifest.id}. It is disabled — backtest it, then enable it.`, 'ok');
     await refreshStrategies(true);
-    const panel = el('stratAddPanel');
-    if (panel) panel.hidden = true;
-    (el('stratAddToggle') as HTMLButtonElement).textContent = 'Show editor';
+    closeStrategyEditor();
   } catch (err) {
     showError(err);
   }
+}
+
+function closeStrategyEditor(): void {
+  const panel = el('stratAddPanel');
+  if (panel) panel.hidden = true;
+  const button = el('stratAddToggle') as HTMLButtonElement | null;
+  if (button) button.textContent = 'Show editor';
 }
 
 function loadTemplateManifest(): void {
   const area = el('stratManifest') as HTMLTextAreaElement | null;
   if (!area) return;
   area.value = JSON.stringify(STRATEGY_TEMPLATE, null, 2);
+  stratAnalysis = null;
+  setStrategyKind('json');
+  setStrategyFileName('');
   area.focus();
-}
-
-function loadManifestFile(file: File | undefined): void {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const area = el('stratManifest') as HTMLTextAreaElement | null;
-    if (area) area.value = String(reader.result ?? '');
-    void validateManifest();
-  };
-  reader.readAsText(file);
 }
 
 function toggleStrategyEditor(): void {
@@ -2036,13 +2265,48 @@ function wire(): void {
   // Strategy editor
   $('stratAddToggle').addEventListener('click', toggleStrategyEditor);
   $('stratTemplateBtn').addEventListener('click', loadTemplateManifest);
-  $('stratValidateBtn').addEventListener('click', () => void validateManifest());
-  $('stratRegisterBtn').addEventListener('click', () => void registerManifest());
+  $('stratValidateBtn').addEventListener('click', () => void validateStrategyInput());
+  $('stratRegisterBtn').addEventListener('click', () => void registerStrategyInput());
   $('stratFile').addEventListener('change', (event) => {
     const input = event.target as HTMLInputElement;
-    loadManifestFile(input.files?.[0]);
+    const file = input.files?.[0];
+    if (file) void handleStrategyFile(file);
     input.value = '';
   });
+  const area = el('stratManifest') as HTMLTextAreaElement | null;
+  if (area) {
+    area.addEventListener('input', () => {
+      stratAnalysis = null;
+      setStrategyKind(detectStrategyKind(area.value, stratFileName));
+    });
+  }
+  const drop = el('stratDrop');
+  const panel = el('stratAddPanel');
+  if (drop) {
+    drop.addEventListener('click', () => (el('stratFile') as HTMLInputElement | null)?.click());
+  }
+  if (panel) {
+    const clearDrag = () => drop?.classList.remove('dragging');
+    ['dragenter', 'dragover'].forEach((name) => {
+      panel.addEventListener(name, (event) => {
+        event.preventDefault();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+        drop?.classList.add('dragging');
+      });
+    });
+    ['dragleave', 'dragend'].forEach((name) => panel.addEventListener(name, clearDrag));
+    panel.addEventListener('drop', (event) => {
+      event.preventDefault();
+      clearDrag();
+      const files = event.dataTransfer?.files;
+      if (files && files.length) {
+        void handleStrategyFile(files[0]);
+        return;
+      }
+      const text = event.dataTransfer?.getData('text/plain') ?? '';
+      if (text.trim()) void handleDroppedText(text);
+    });
+  }
 
   // Terminal connect (delegated: rows are re-rendered)
   $('terminalList').addEventListener('click', (event) => {

@@ -23,6 +23,7 @@ from .models import (
 )
 from .performance import summarise, trade_stats, wilson_lower
 from .providers import Provider, SimProvider, build_provider, spec_for, strategy_magic
+from .python_backtest import run_python_backtest
 from .store import Store
 from .strategies import StrategyError, validate_strategy
 
@@ -524,6 +525,10 @@ class TradingEngine:
         strategies = self.store.list_strategies()
         perf = {row["id"]: row for row in self.performance()["strategies"]}
         for strategy in strategies:
+            # The source code can be hundreds of kilobytes; the desk only needs
+            # to know that it exists. Backtests load it from the store directly.
+            strategy["hasCode"] = bool(strategy.get("code"))
+            strategy.pop("code", None)
             strategy["performance"] = perf.get(strategy["id"], {})
         return strategies
 
@@ -734,16 +739,25 @@ class TradingEngine:
             pip=spec_for(request.symbol).pip,
             digits=spec_for(request.symbol).digits,
         )
-        result = run_backtest(
-            manifest,
-            bars,
-            symbol_ctx,
-            initial_balance=request.initialBalance,
-            risk_pct=request.riskPct,
-            spread_pips=request.spreadPips,
-            commission_per_lot=request.commissionPerLot,
-            leverage=request.leverage,
-        )
+        if manifest.runtime == "external":
+            raise ValueError(
+                "This strategy is an external MetaTrader 5 driver: it places its own orders, "
+                "so the bridge cannot replay it on bar history. Register a JSON manifest or a "
+                "Python on_bar strategy to run backtests."
+            )
+        run_kwargs = {
+            "initial_balance": request.initialBalance,
+            "risk_pct": request.riskPct,
+            "spread_pips": request.spreadPips,
+            "commission_per_lot": request.commissionPerLot,
+            "leverage": request.leverage,
+        }
+        if manifest.runtime == "python":
+            result = run_python_backtest(
+                manifest, bars, symbol_ctx, timeframe=timeframe, **run_kwargs
+            )
+        else:
+            result = run_backtest(manifest, bars, symbol_ctx, **run_kwargs)
         params = {
             "symbol": request.symbol,
             "timeframe": timeframe,

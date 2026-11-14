@@ -118,6 +118,40 @@ Signals are queued by AI agents (`submit_signal` MCP tool) and appear in the
 the strategy is enabled **and** has `autoExecute: true` **and** the kill switch
 is off.
 
+### Python strategies
+
+`POST /api/strategies/python` accepts a `.py` file, raw source, or a
+converter-style JSON bundle (`metadata.language: "python"` plus `source`/`code`).
+The bridge analyses the module and picks one of two honest modes:
+
+| Mode | Detection | Behaviour |
+|---|---|---|
+| `python` | defines `on_bar(ctx)` and does not import `MetaTrader5` | backtested in an isolated `python -I` subprocess |
+| `external` | imports `MetaTrader5` / calls `mt5.*` | registered with metadata and source only; never executed or backtested |
+
+```python
+META = {"warmup": 60}
+
+def on_bar(ctx):
+    fast, slow = ctx.ema(20), ctx.ema(50)
+    if ctx.value(fast) is None or ctx.value(slow) is None:
+        return None
+    if not ctx.has_position and ctx.crossover(fast, slow):
+        return {"signal": "buy", "stop_atr": 2, "target_atr": 4}
+    if not ctx.has_position and ctx.crossunder(fast, slow):
+        return {"signal": "sell", "stop_atr": 2, "target_atr": 4}
+    if ctx.has_position and ctx.crossunder(fast, slow):
+        return {"signal": "close"}
+    return None
+```
+
+Signals are evaluated on closed bars and filled at the next bar's open with the
+same spread, commission, stop-before-target ordering and risk gates as the DSL
+engine. The runner gets restricted builtins and an import allowlist (no
+filesystem, network, subprocess or `os`); a strategy that needs those is an
+`external` EA. `list_strategies` strips `code` and reports `hasCode` / `runtime`
+so the desk can label it without shipping the source to the browser.
+
 ## Backtesting
 
 `POST /api/backtest` runs the manifest bar by bar on historical data:
@@ -136,6 +170,11 @@ is off.
   breakdown, and the complete trade list. Bars returned by the terminal are
   clamped to the requested window, so a fallback fetch can never leak a
   different period into the statistics.
+
+Python strategies with `runtime="python"` take the same path through
+`app/python_backtest.py` (subprocess, 180 s timeout, identical stats/report).
+`runtime="external"` is refused with an explanatory 400: the bridge will not
+pretend to backtest an EA that places its own orders.
 
 Live MT5 uses the terminal's own history. Simulation uses the Vaelor Worker's
 real futures history where a mapping exists and a deterministic synthetic
@@ -161,6 +200,7 @@ POST /api/kill                     kill switch
 POST /api/mode                     simulation/live switch
 GET  /api/strategies               registry + measured performance
 POST /api/strategies               register a manifest
+POST /api/strategies/python        register a .py strategy or converter bundle
 POST /api/strategies/{id}/toggle   enable/pause + autoExecute
 POST /api/strategies/sync          pull the cloud registry now
 GET  /api/signals                  signal queue
