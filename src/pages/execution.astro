@@ -339,10 +339,13 @@ Token : &lt;random string&gt;</pre>
             </select>
           </div>
           <div class="ex-field ex-field-wide">
-            <label for="liveSymbols">Symbols the live desk may trade</label>
-            <input id="liveSymbolFilter" type="text" placeholder="Type to filter broker symbols…" spellcheck="false" autocomplete="off" />
-            <select id="liveSymbols" multiple size="9" aria-label="Broker symbols; hold Ctrl or Cmd to select several"></select>
-            <p class="ex-hint">Each symbol your connected broker reports appears here. Hold Ctrl/Cmd to pick several. Empty selection = every symbol allowed (which the risk gate treats as no restriction).</p>
+            <label for="liveSymbolFilter">Symbols the live desk may trade</label>
+            <div class="ex-chipbox" id="liveChipbox">
+              <div class="ex-chipbox-chips" id="liveSymbolChips" aria-live="polite" aria-label="Selected broker symbols"></div>
+              <input id="liveSymbolFilter" type="text" class="ex-chipbox-input" placeholder="Type to search 300+ broker symbols…" spellcheck="false" autocomplete="off" role="combobox" aria-expanded="true" aria-controls="liveSymbolList" aria-autocomplete="list" />
+            </div>
+            <div class="ex-symbol-list" id="liveSymbolList" role="listbox" aria-multiselectable="true" aria-label="Matching broker symbols"></div>
+            <p class="ex-hint">Each symbol your connected broker reports is searchable here. Click a row to add it, search again to add more; hover a chip and use the tiny × to remove it. Empty selection = every symbol allowed.</p>
           </div>
         </div>
         <div class="ex-btn-row">
@@ -996,6 +999,62 @@ def on_bar(ctx):
     .ex-field input:focus, .ex-field select:focus { outline: none; border-color: var(--ex-gold); }
     .ex-field input::placeholder { color: #5c5052; }
     .ex-field select option { background: #0a0d13; }
+
+    /* Combobox chip input for broker symbols */
+    .ex-chipbox {
+      display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+      width: 100%; background: #080506; border: 1px solid var(--ex-border);
+      border-radius: 8px; padding: 7px 9px; cursor: text;
+    }
+    .ex-chipbox:focus-within { border-color: var(--ex-gold); }
+    .ex-chipbox-chips { display: contents; }
+    .ex-chipbox-input {
+      flex: 1 1 180px; min-width: 140px; border: none !important; background: transparent !important;
+      padding: 4px 2px !important; width: auto !important;
+    }
+    .ex-chipbox-input:focus { outline: none; }
+    .ex-symbol-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-family: var(--mono); font-size: 0.71rem; color: var(--ex-gold);
+      border: 1px solid rgba(214, 178, 94, 0.35); background: rgba(214, 178, 94, 0.08);
+      border-radius: 999px; padding: 2px 4px 2px 9px; white-space: nowrap;
+    }
+    .ex-symbol-chip button {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      border: none; background: transparent; color: var(--ex-dim);
+      font-size: 0.72rem; line-height: 1; cursor: pointer; padding: 0;
+      opacity: 0; transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+    }
+    .ex-symbol-chip:hover button,
+    .ex-symbol-chip:focus-within button { opacity: 1; }
+    .ex-symbol-chip button:hover { color: #0b0b0b; background: var(--ex-gold); }
+    .ex-symbol-chip button:focus-visible { opacity: 1; outline: 1px solid var(--ex-gold); }
+    .ex-chipbox-empty {
+      font-family: var(--mono); font-size: 0.68rem; color: #5c5052; padding: 3px 2px;
+    }
+    .ex-symbol-list {
+      max-height: 216px; overflow-y: auto; border: 1px solid var(--ex-border-soft);
+      border-radius: 8px; background: #080506; margin-top: 6px;
+    }
+    .ex-symbol-list:empty { display: none; }
+    .ex-symbol-row {
+      display: flex; align-items: baseline; gap: 10px; width: 100%;
+      border: none; background: transparent; text-align: left; cursor: pointer;
+      padding: 7px 10px; font-family: var(--mono); font-size: 0.76rem; color: var(--ex-dim);
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .ex-symbol-row:last-child { border-bottom: none; }
+    .ex-symbol-row:hover, .ex-symbol-row:focus-visible { background: rgba(214,178,94,0.08); color: var(--ex-text); outline: none; }
+    .ex-symbol-row.is-added { color: #5f6f5f; text-decoration: line-through; cursor: default; }
+    .ex-symbol-row .sym-name { color: var(--ex-text); min-width: 96px; }
+    .ex-symbol-row.is-added .sym-name { color: inherit; }
+    .ex-symbol-row .sym-desc { font-size: 0.66rem; color: var(--ex-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ex-symbol-row .sym-add { margin-left: auto; font-size: 0.62rem; color: var(--ex-faint); }
+    .ex-symbol-more {
+      padding: 7px 10px; font-family: var(--mono); font-size: 0.66rem; color: var(--ex-faint);
+      border-top: 1px dashed var(--ex-border-soft); text-align: center;
+    }
     .ex-btn {
       display: inline-flex; align-items: center; justify-content: center;
       font-family: var(--mono); font-size: 0.76rem; letter-spacing: 0.05em;
@@ -1128,7 +1187,6 @@ def on_bar(ctx):
     .ex-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
     .ex-chip-row .ex-btn[aria-pressed="true"] { border-color: var(--ex-gold); color: var(--ex-gold); }
     .ex-field-wide { grid-column: 1 / -1; }
-    #liveSymbols { min-height: 180px; }
 
     .ex-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; background: var(--ex-border-soft); border: 1px solid var(--ex-border-soft); border-radius: 8px; overflow: hidden; margin: 14px 0; }
     .ex-stat { background: var(--ex-inner); padding: 10px 12px; }

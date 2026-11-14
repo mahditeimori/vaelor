@@ -753,7 +753,6 @@ type LiveTimeframe = (typeof LIVE_TIMEFRAMES)[number];
 
 let liveTimeframe: LiveTimeframe = 'H1';
 const liveSymbolsSelection = new Set<string>();
-let liveSymbolsFilled = false;
 let liveStrategyFilled = false;
 let liveProfileSeeded = false;
 
@@ -768,43 +767,92 @@ function renderLiveTimeframeButtons(): void {
 }
 
 function selectedLiveSymbols(): string[] {
-  const select = el('liveSymbols') as HTMLSelectElement | null;
-  const values = new Set<string>();
-  if (select && select.options.length) {
-    for (const option of select.options) {
-      if (option.selected) values.add(option.value);
-    }
-  }
-  for (const s of liveSymbolsSelection) values.add(s);
-  return [...values];
+  return [...liveSymbolsSelection];
 }
 
-function renderLiveSymbolOptions(): void {
-  const select = el('liveSymbols') as HTMLSelectElement | null;
-  if (!select) return;
-  const filterEl = el('liveSymbolFilter') as HTMLInputElement | null;
-  const filter = (filterEl?.value ?? '').trim().toUpperCase();
-  const visible = symbols.filter(
+const LIVE_SYMBOL_LIST_LIMIT = 60;
+
+function filteredBrokerSymbols(filter: string): SymbolRow[] {
+  const needle = filter.trim().toUpperCase();
+  const rows = [...symbols].sort((a, b) => a.symbol.localeCompare(b.symbol));
+  if (!needle) return rows;
+  return rows.filter(
     (row) =>
-      !filter ||
-      row.symbol.toUpperCase().includes(filter) ||
-      String(row.description ?? '').toUpperCase().includes(filter),
+      row.symbol.toUpperCase().includes(needle) ||
+      String(row.description ?? '').toUpperCase().includes(needle),
   );
-  select.innerHTML = visible
-    .map((row) => {
-      const suffix = row.tradable ? '' : ' (not tradable)';
-      return `<option value="${escapeHtml(row.symbol)}" ${
-        liveSymbolsSelection.has(row.symbol) ? 'selected' : ''
-      }>${escapeHtml(row.symbol)} — ${escapeHtml(row.description ?? '')}${suffix}</option>`;
-    })
+}
+
+/** Render the searchable results list. Clicking a row adds the symbol. */
+function renderLiveSymbolList(): void {
+  const list = el('liveSymbolList');
+  if (!list) return;
+  const filterEl = el('liveSymbolFilter') as HTMLInputElement | null;
+  const filter = filterEl?.value ?? '';
+  const matches = filteredBrokerSymbols(filter);
+  const shown = matches.slice(0, LIVE_SYMBOL_LIST_LIMIT);
+  const rows = shown.map((row) => {
+    const added = liveSymbolsSelection.has(row.symbol);
+    const badge = added ? '✓ added' : row.tradable ? '+ add' : '+ add · closed';
+    return `<button type="button" role="option" class="ex-symbol-row${added ? ' is-added' : ''}" data-add-symbol="${escapeHtml(
+      row.symbol,
+    )}" aria-selected="${added}" title="${escapeHtml(row.description ?? row.symbol)}"><span class="sym-name">${escapeHtml(
+      row.symbol,
+    )}</span><span class="sym-desc">${escapeHtml(row.description ?? '')}</span><span class="sym-add">${badge}</span></button>`;
+  });
+  if (matches.length > shown.length) {
+    rows.push(`<div class="ex-symbol-more">${matches.length - shown.length} more — keep typing to narrow the list</div>`);
+  }
+  list.innerHTML = rows.join('');
+}
+
+/** Render the chosen symbols as chips with a hover-visible × remove button. */
+function renderLiveSymbolChips(): void {
+  const wrap = el('liveSymbolChips');
+  if (!wrap) return;
+  const chosen = [...liveSymbolsSelection].sort();
+  if (!chosen.length) {
+    wrap.innerHTML = '<span class="ex-chipbox-empty">all broker symbols allowed — none chosen</span>';
+    return;
+  }
+  wrap.innerHTML = chosen
+    .map(
+      (symbol) =>
+        `<span class="ex-symbol-chip">${escapeHtml(symbol)}<button type="button" data-remove-symbol="${escapeHtml(
+          symbol,
+        )}" aria-label="Remove ${escapeHtml(symbol)}" title="Remove ${escapeHtml(symbol)}">×</button></span>`,
+    )
     .join('');
 }
 
-function fillLiveProfileControls(): void {
-  if (el('liveSymbols') && symbols.length) {
-    renderLiveSymbolOptions();
-    liveSymbolsFilled = true;
+function renderLiveSymbolControls(): void {
+  renderLiveSymbolChips();
+  renderLiveSymbolList();
+}
+
+function addLiveSymbol(symbol: string): void {
+  liveSymbolsSelection.add(symbol.trim().toUpperCase());
+  const filterEl = el('liveSymbolFilter') as HTMLInputElement | null;
+  if (filterEl) {
+    filterEl.value = '';
+    filterEl.focus();
   }
+  renderLiveSymbolControls();
+  if (el('liveProfileState')) {
+    $('liveProfileState').textContent = `${symbol.toUpperCase()} added. Keep searching to add more, or press "Save live profile".`;
+  }
+}
+
+function removeLiveSymbol(symbol: string): void {
+  liveSymbolsSelection.delete(symbol.trim().toUpperCase());
+  renderLiveSymbolControls();
+  if (el('liveProfileState')) {
+    $('liveProfileState').textContent = `${symbol.toUpperCase()} removed. Press "Save live profile" to persist.`;
+  }
+}
+
+function fillLiveProfileControls(): void {
+  renderLiveSymbolControls();
   if (el('liveStrategy')) {
     const select = el('liveStrategy') as HTMLSelectElement;
     const previous = select.value;
@@ -829,10 +877,7 @@ function syncLiveProfileFromStatus(): void {
     liveProfileSeeded = true;
   }
   renderLiveTimeframeButtons();
-  const select = el('liveSymbols') as HTMLSelectElement | null;
-  if (select && liveSymbolsFilled) {
-    for (const option of select.options) option.selected = liveSymbolsSelection.has(option.value);
-  }
+  renderLiveSymbolControls();
   const strategySelect = el('liveStrategy') as HTMLSelectElement | null;
   if (strategySelect && cfg.strategyId !== undefined && document.activeElement !== strategySelect) {
     strategySelect.value = cfg.strategyId ?? '';
@@ -861,7 +906,7 @@ async function saveLiveConfig(): Promise<void> {
     const live = result.live ?? {};
     liveSymbolsSelection.clear();
     for (const s of (live.symbols as string[] | undefined) ?? []) liveSymbolsSelection.add(String(s).toUpperCase());
-    renderLiveSymbolOptions();
+    renderLiveSymbolControls();
     const count = Array.isArray(live.symbols) ? live.symbols.length : symbolsList.length;
     const okText = `Live desk saved: ${live.timeframe ?? liveTimeframe} · ${count ? `${count} broker symbol${count === 1 ? '' : 's'}` : 'all broker symbols'} · strategy ${live.strategyId ?? 'manual / none'}.`;
     if (el('liveProfileState')) $('liveProfileState').textContent = okText;
@@ -2435,10 +2480,12 @@ function renderOffline(reason: string): void {
   // The live desk profile belongs to the pairing; reset it so stale choices
   // do not bleed into a re-pair.
   liveProfileSeeded = false;
-  liveSymbolsFilled = false;
   liveStrategyFilled = false;
   liveSymbolsSelection.clear();
   selectedStrategies.clear();
+  const filterEl = el('liveSymbolFilter') as HTMLInputElement | null;
+  if (filterEl) filterEl.value = '';
+  renderLiveSymbolControls();
 }
 
 async function pairBridge(): Promise<void> {
@@ -2731,15 +2778,41 @@ function wire(): void {
     });
   }
   if (el('liveSymbolFilter')) {
-    $('liveSymbolFilter').addEventListener('input', () => renderLiveSymbolOptions());
-  }
-  if (el('liveSymbols')) {
-    $('liveSymbols').addEventListener('change', (event) => {
-      const select = event.target as HTMLSelectElement;
-      for (const option of select.options) {
-        if (option.selected) liveSymbolsSelection.add(option.value);
-        else liveSymbolsSelection.delete(option.value);
+    $('liveSymbolFilter').addEventListener('input', () => renderLiveSymbolList());
+    $('liveSymbolFilter').addEventListener('keydown', (event) => {
+      // Enter adds the top match, Backspace in an empty box removes the last chip.
+      const input = event.target as HTMLInputElement;
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const top = filteredBrokerSymbols(input.value).find(
+          (row) => !liveSymbolsSelection.has(row.symbol),
+        );
+        if (top) addLiveSymbol(top.symbol);
+      } else if (event.key === 'Backspace' && !input.value) {
+        const chosen = [...liveSymbolsSelection];
+        const last = chosen[chosen.length - 1];
+        if (last) removeLiveSymbol(last);
+      } else if (event.key === 'Escape') {
+        input.value = '';
+        renderLiveSymbolList();
       }
+    });
+    // Keep focus in the box when clicking the chipbox padding, not on a chip.
+    el('liveChipbox')?.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement;
+      if (target.id === 'liveChipbox') (el('liveSymbolFilter') as HTMLInputElement).focus();
+    });
+  }
+  if (el('liveSymbolList')) {
+    $('liveSymbolList').addEventListener('click', (event) => {
+      const row = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-add-symbol]');
+      if (row) addLiveSymbol(row.getAttribute('data-add-symbol') ?? '');
+    });
+  }
+  if (el('liveSymbolChips')) {
+    $('liveSymbolChips').addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-remove-symbol]');
+      if (button) removeLiveSymbol(button.getAttribute('data-remove-symbol') ?? '');
     });
   }
   if (el('liveStrategy')) {
