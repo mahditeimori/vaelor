@@ -34,6 +34,17 @@ if mt5 is not None:  # pragma: no cover - depends on the package
         "W1": mt5.TIMEFRAME_W1,
     }
 
+# Common index names -> the cash symbols brokers actually use. FOREX.com, for
+# example, lists the Dow as DJIUSD and the Nasdaq 100 as NDXUSD.
+SYMBOL_ALIASES: dict[str, tuple[str, ...]] = {
+    "US30": ("DJIUSD", "US30", "DJ30", "WS30"),
+    "DJIUSD": ("DJIUSD", "US30"),
+    "NAS100": ("NDXUSD", "NAS100", "USTEC", "US100"),
+    "NDXUSD": ("NDXUSD", "NAS100"),
+    "SPX500": ("SPXUSD", "SPX500", "US500"),
+    "SPXUSD": ("SPXUSD", "SPX500"),
+}
+
 
 class BrokerError(RuntimeError):
     """A broker call was rejected; the message is safe to show to the user."""
@@ -107,10 +118,18 @@ class MT5Provider(Provider):
         if raw in self._symbol_cache:
             return self._symbol_cache[raw]
         info = mt5.symbol_info(raw)
+        candidates = SYMBOL_ALIASES.get(raw, (raw,))
+        for candidate in candidates:
+            info = mt5.symbol_info(candidate)
+            if info is not None:
+                break
         if info is None:
-            candidates = mt5.symbols_get(f"*{raw}*") or []
-            exact = [c for c in candidates if c.name.upper() == raw]
-            info = exact[0] if exact else (candidates[0] if candidates else None)
+            for candidate in candidates:
+                found = mt5.symbols_get(f"*{candidate}*") or []
+                exact = [c for c in found if c.name.upper() == candidate]
+                info = exact[0] if exact else (found[0] if found else None)
+                if info is not None:
+                    break
         if info is None:
             raise BrokerError(
                 f"symbol {symbol} does not exist on this broker",
@@ -554,7 +573,8 @@ class MT5Provider(Provider):
             rates = mt5.copy_rates_from_pos(name, tf, 0, 5000)
         if rates is None:
             return []
-        return [
+        lo, hi = int(start), int(end)
+        bars = [
             {
                 "time": int(row["time"]),
                 "open": float(row["open"]),
@@ -565,6 +585,10 @@ class MT5Provider(Provider):
             }
             for row in rates
         ]
+        # The fallback above returns whatever the terminal has, which may be a
+        # different span than the one the user asked for. Never let bars from
+        # outside the requested window into the report.
+        return [bar for bar in bars if lo <= bar["time"] <= hi]
 
     def poll(self) -> dict:
         # The terminal owns stop/target execution; nothing to simulate.

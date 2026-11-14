@@ -31,6 +31,16 @@ class RiskError(ValueError):
     """A risk gate rejected the request."""
 
 
+# Bars per backtest window. M1 needs the most because a trading day is 1440
+# of them; a year of M1 is deliberately not attempted (it would be 375k bars).
+BACKTEST_BAR_CAPS: dict[str, int] = {
+    "M1": 60_000,
+    "M5": 40_000,
+    "M15": 30_000,
+    "M30": 30_000,
+}
+
+
 class TradingEngine:
     def __init__(self, store: Store) -> None:
         self.store = store
@@ -693,18 +703,26 @@ class TradingEngine:
 
         timeframe = request.timeframe or manifest.timeframe
         end_ts = _parse_time(request.end) if request.end else int(time.time())
-        start_ts = (
+        requested_start = (
             _parse_time(request.start)
             if request.start
             else end_ts - 365 * 2 * 86400
         )
-        if start_ts >= end_ts:
+        if requested_start >= end_ts:
             raise ValueError("start must be before end")
-        # Keep at most ~20k bars so a request stays responsive.
+
+        # Cap the number of bars so one request stays responsive. M1 gets the
+        # most bars because a day is 1440 of them; higher timeframes need far
+        # fewer. When the requested window is longer we shorten the start and
+        # say so in the result instead of silently pretending otherwise.
         step = TF_MINUTES.get(timeframe, 60) * 60
-        max_bars = 20_000
-        if (end_ts - start_ts) / step > max_bars:
+        max_bars = BACKTEST_BAR_CAPS.get(timeframe, 20_000)
+        requested_bars = int((end_ts - requested_start) / step) + 1
+        start_ts = requested_start
+        window_capped = False
+        if requested_bars > max_bars:
             start_ts = end_ts - max_bars * step
+            window_capped = True
 
         bars = self.provider.rates(request.symbol, timeframe, start_ts, end_ts)
         if len(bars) < 60:
@@ -731,6 +749,10 @@ class TradingEngine:
             "timeframe": timeframe,
             "start": start_ts,
             "end": end_ts,
+            "requestedStart": requested_start,
+            "requestedBars": requested_bars,
+            "windowCapped": window_capped,
+            "maxBars": max_bars,
             "initialBalance": request.initialBalance,
             "riskPct": request.riskPct,
             "spreadPips": request.spreadPips,
@@ -738,6 +760,15 @@ class TradingEngine:
             "leverage": request.leverage,
             "mode": self.provider.mode,
         }
+        result["stats"].update(
+            {
+                "requestedStart": requested_start,
+                "requestedBars": requested_bars,
+                "windowCapped": window_capped,
+                "maxBars": max_bars,
+                "barsAvailable": len(bars),
+            }
+        )
         record = self.store.save_backtest(manifest.id, request.symbol, timeframe, params, result)
         self.store.audit(
             "backtest.completed",

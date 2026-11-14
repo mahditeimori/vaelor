@@ -126,7 +126,16 @@ is off.
   inside a candle, ATR/pip/percent stops, ATR trailing, risk-based sizing and a
   leverage cap;
 - results include trades, equity curve, win rate, profit factor, expectancy in
-  R, Sharpe, max drawdown, score and a confidence label (Wilson lower bound).
+  R, Sharpe, max drawdown, score and a confidence label (Wilson lower bound);
+- `start`/`end` (or a `1mo`/`3mo`/`1y` style window chosen in the UI) select the
+  exact test period. `M1` is supported; bar caps keep one request responsive and
+  the response says when the window was shortened. Broker index names are
+  aliased (`US30` → `DJIUSD`, `NAS100` → `NDXUSD`, `SPX500` → `SPXUSD`);
+- every result carries a `report`: day / week / month aggregates (net P/L, wins,
+  losses, best and worst trade, opening and closing equity), an exit-reason
+  breakdown, and the complete trade list. Bars returned by the terminal are
+  clamped to the requested window, so a fallback fetch can never leak a
+  different period into the statistics.
 
 Live MT5 uses the terminal's own history. Simulation uses the Vaelor Worker's
 real futures history where a mapping exists and a deterministic synthetic

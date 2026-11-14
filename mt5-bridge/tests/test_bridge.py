@@ -10,6 +10,7 @@ import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -67,6 +68,61 @@ def always_long(stop=20.0, target=40.0) -> StrategyManifest:
         target={"type": "pips", "pips": target},
         risk={"riskPct": 1.0},
     )
+
+
+class ReportTests(unittest.TestCase):
+    def test_period_aggregates_and_reasons(self) -> None:
+        from app.report import build_report
+
+        # Two days of trades, deliberately out of order, with a cross-month
+        # boundary so day/week/month grouping each gets exercised.
+        def ts(day: int, hour: int = 10) -> int:
+            return int(datetime(2026, 1, day, hour, tzinfo=timezone.utc).timestamp())
+
+        trades = [
+            {"pnl": 120.0, "r": 2.0, "reason": "target", "entryTime": ts(2), "exitTime": ts(2, 11)},
+            {"pnl": -40.0, "r": -1.0, "reason": "stop", "entryTime": ts(2), "exitTime": ts(2, 15)},
+            {"pnl": -60.0, "r": -1.0, "reason": "stop", "entryTime": ts(1), "exitTime": ts(1, 12)},
+            {"pnl": 200.0, "r": 2.0, "reason": "signal", "entryTime": ts(30), "exitTime": ts(30, 13)},
+        ]
+        report = build_report(trades, initial_balance=10_000)
+
+        self.assertEqual(report["totals"]["trades"], 4)
+        self.assertEqual(report["totals"]["wins"], 2)
+        self.assertEqual(report["totals"]["netPnl"], 220.0)
+
+        self.assertEqual(len(report["days"]), 3)
+        self.assertEqual(report["bestDay"]["key"], "2026-01-30")
+        self.assertEqual(report["worstDay"]["key"], "2026-01-01")
+
+        # Jan 1 and Jan 2 are in ISO week 1, Jan 30 in week 5.
+        self.assertEqual(len(report["weeks"]), 2)
+        self.assertEqual(len(report["months"]), 1)
+
+        reasons = {row["reason"]: row for row in report["reasons"]}
+        self.assertEqual(reasons["stop"]["count"], 2)
+        self.assertEqual(reasons["stop"]["pnl"], -100.0)
+        # Reasons are sorted worst-first, which is how losses are surfaced.
+        self.assertEqual(report["reasons"][0]["reason"], "stop")
+        # Equity start/end are carried per bucket.
+        self.assertEqual(report["days"][0]["equityStart"], 10_000)
+        self.assertEqual(report["days"][-1]["equityEnd"], 10_220)
+
+    def test_m1_backtest_is_supported(self) -> None:
+        manifest = validate_strategy(always_long())
+        bars = trend_bars()
+        result = run_backtest(
+            manifest,
+            bars,
+            SymbolCtx("NAS100", contract=1, pip=1.0, digits=1),
+            initial_balance=10_000,
+            spread_pips=1.0,
+        )
+        self.assertIn("report", result)
+        self.assertEqual(
+            sum(day["trades"] for day in result["report"]["days"]),
+            len(result["trades"]),
+        )
 
 
 class BacktestTests(unittest.TestCase):

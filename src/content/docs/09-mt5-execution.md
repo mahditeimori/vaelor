@@ -255,6 +255,35 @@ lower bound so small samples cannot score highly. Confidence is labelled
 `insufficient`, `low`, `medium` or `high`. Live evidence takes over from backtest
 only after ten closed trades.
 
+### 5.10.1 Choosing the test window and reading the report
+
+Backtests run from the **Test window** picker in Section 07, not from a fixed
+two-year default: last 10 days, 1, 2, 3 or 6 months, 1 or 2 years, or a custom
+`From`/`To` date pair. `M1` is available alongside `M5`–`D1`; indices such as
+**US30 (Dow Jones)** and **NAS100 (Nasdaq 100)** are in the symbol list next to
+gold, silver and the FX majors.
+
+The engine fetches the broker's own bars for that exact window. Long windows on
+low timeframes are capped so one request stays responsive (M1: 60,000 bars,
+M5: 40,000, M15/M30: 30,000, H1 and above: 20,000); when the cap bites the result
+says so and the report shows the window actually tested.
+
+Every run returns four views of the same trades:
+
+* **Monthly / Weekly / Daily** — per period: trade count, wins, losses, win rate,
+  net P/L, best and worst trade, and opening/closing equity. Click a row to filter
+  the full trade list to that period.
+* **Exit reasons** — P/L grouped by the decision that closed the trade (stop
+  loss, take profit, exit signal, still open at the end), so the cost of each
+  rule is visible rather than buried in a total.
+* **All trades** — every fill from the first to the last, with entry/exit, lots,
+  P/L, R multiple, bars held and exit reason. **Download CSV** exports the same
+  list.
+* **Equity curve** — sampled from the same run, so the curve and the tables can
+  never disagree.
+
+Days are UTC, matching MT5 timestamps.
+
 ## 5.11 Bridge API reference
 
 All routes except `/health` require the `x-bridge-token` header.

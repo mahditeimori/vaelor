@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any, Sequence
 
 from .performance import max_drawdown, summarise
+from .report import build_report
 from .strategies import EvalContext, entry_side, should_exit, warmup_bars
 from .models import StrategyManifest, TF_MINUTES
 
@@ -234,6 +235,9 @@ def run_backtest(
     stats["leverageCapped"] = blocked_by_leverage
     stats["spreadPips"] = spread_pips
     stats["commissionPerLot"] = commission_per_lot
+    report = build_report(trades, initial_balance)
+    stats["firstTrade"] = report["firstTradeTime"]
+    stats["lastTrade"] = report["lastTradeTime"]
 
     max_points = 600
     step = max(1, math.ceil(len(clean_curve) / max_points))
@@ -246,6 +250,7 @@ def run_backtest(
         "trades": trades,
         "equity": sampled,
         "warmupBars": warmup,
+        "report": report,
     }
 
 

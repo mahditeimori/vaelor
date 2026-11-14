@@ -99,6 +99,18 @@ def spec_for(symbol: str) -> SymbolSpec:
     sym = symbol.upper()
     if sym in SIM_SYMBOLS:
         return SIM_SYMBOLS[sym]
+    # Broker-specific names for the index contracts, so sizing and P/L use the
+    # same numbers as the canonical symbol (FOREX.com uses DJIUSD/NDXUSD).
+    alias = {
+        "DJIUSD": "US30",
+        "US30CASH": "US30",
+        "NDXUSD": "NAS100",
+        "NAS100CASH": "NAS100",
+        "SPXUSD": "SPX500",
+        "US500": "SPX500",
+    }.get(sym)
+    if alias:
+        return SIM_SYMBOLS[alias]
     # Unknown symbols (custom MT5 broker names) get conservative FX defaults.
     return SymbolSpec(sym, sym, 5, 0.0001, 100000, 1.0, 0.0006, 1.5)
 

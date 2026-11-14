@@ -303,6 +303,13 @@ const escapeHtml = (value: unknown): string =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
+/** yyyy-mm-dd in UTC from an epoch-seconds timestamp. */
+const date8 = (value: string | number | null | undefined): string => {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds <= 0) return '—';
+  return new Date(seconds * 1000).toISOString().slice(0, 10);
+};
+
 const truncate = (value: unknown, length = 90): string => {
   const text = String(value ?? '');
   return text.length > length ? `${text.slice(0, length - 1)}…` : text;
@@ -1210,6 +1217,103 @@ function toggleStrategyEditor(): void {
 /* Backtest                                                           */
 /* ------------------------------------------------------------------ */
 
+const BT_RANGE_DAYS: Record<string, number> = {
+  '10d': 10,
+  '1mo': 30,
+  '2mo': 60,
+  '3mo': 90,
+  '6mo': 182,
+  '1y': 365,
+  '2y': 730,
+};
+
+const BT_TF_MINUTES: Record<string, number> = {
+  M1: 1,
+  M5: 5,
+  M15: 15,
+  M30: 30,
+  H1: 60,
+  H4: 240,
+  D1: 1440,
+};
+
+const BT_BAR_CAP: Record<string, number> = {
+  M1: 60000,
+  M5: 40000,
+  M15: 30000,
+  M30: 30000,
+};
+
+function btCap(tf: string): number {
+  return BT_BAR_CAP[tf] ?? 20000;
+}
+
+/** ISO date (UTC) `days` before now, as yyyy-mm-dd. */
+function isoDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+
+/** Resolve the test window from the preset picker or the custom date inputs. */
+function readBacktestWindow(): { start: string; end: string } | null {
+  const range = (el('btRange') as HTMLSelectElement | null)?.value ?? '1mo';
+  const startInput = el('btStart') as HTMLInputElement | null;
+  const endInput = el('btEnd') as HTMLInputElement | null;
+  if (range === 'custom') {
+    const start = startInput?.value ?? '';
+    const end = endInput?.value ?? '';
+    if (!start || !end) {
+      toast('Pick both a From and a To date for a custom window.', 'bad');
+      return null;
+    }
+    if (start > end) {
+      toast('The From date must be before the To date.', 'bad');
+      return null;
+    }
+    return { start, end };
+  }
+  const end = new Date().toISOString().slice(0, 10);
+  const start = isoDaysAgo(BT_RANGE_DAYS[range] ?? 30);
+  if (startInput && !startInput.value) startInput.value = start;
+  if (endInput && !endInput.value) endInput.value = end;
+  return { start, end };
+}
+
+/** Keep the date inputs and the window note in sync with the picker. */
+function syncBacktestWindow(): void {
+  const range = (el('btRange') as HTMLSelectElement | null)?.value ?? '1mo';
+  const startInput = el('btStart') as HTMLInputElement | null;
+  const endInput = el('btEnd') as HTMLInputElement | null;
+  const custom = range === 'custom';
+  if (startInput) startInput.disabled = !custom;
+  if (endInput) endInput.disabled = !custom;
+
+  if (custom) {
+    if (startInput && !startInput.value) startInput.value = isoDaysAgo(90);
+    if (endInput && !endInput.value) endInput.value = new Date().toISOString().slice(0, 10);
+  } else {
+    const days = BT_RANGE_DAYS[range] ?? 30;
+    if (startInput) startInput.value = isoDaysAgo(days);
+    if (endInput) endInput.value = new Date().toISOString().slice(0, 10);
+  }
+
+  const tf = (el('btTimeframe') as HTMLSelectElement | null)?.value ?? 'H1';
+  const start = startInput?.value;
+  const end = endInput?.value;
+  const hint = el('btWindowHint');
+  if (!hint) return;
+  if (!start || !end) {
+    hint.textContent = 'pick a window';
+    return;
+  }
+  const days = Math.max(0, (Date.parse(end) - Date.parse(start)) / 86400000);
+  const bars = Math.round((days * 1440) / (BT_TF_MINUTES[tf] ?? 60));
+  const cap = btCap(tf);
+  hint.textContent =
+    bars > cap
+      ? `≈ ${bars.toLocaleString('en-US')} ${tf} bars requested · the bridge tests the most recent ${cap.toLocaleString('en-US')} bars`
+      : `≈ ${bars.toLocaleString('en-US')} ${tf} bars · ${days.toFixed(0)} calendar days`;
+}
+
 async function runBacktest(): Promise<void> {
   if (backtestBusy) return;
   const strategyId = (el('btStrategy') as HTMLSelectElement)?.value;
@@ -1217,6 +1321,8 @@ async function runBacktest(): Promise<void> {
     toast('Pick a strategy to backtest.', 'bad');
     return;
   }
+  const window = readBacktestWindow();
+  if (!window) return;
   const numberOr = (id: string, fallback: number | null = null): number | null => {
     const raw = (el(id) as HTMLInputElement | null)?.value.trim();
     if (!raw) return fallback;
@@ -1228,6 +1334,8 @@ async function runBacktest(): Promise<void> {
     strategyId,
     symbol: ((el('btSymbol') as HTMLInputElement)?.value ?? '').trim().toUpperCase() || selectedSymbol,
     timeframe: (el('btTimeframe') as HTMLSelectElement)?.value,
+    start: window.start,
+    end: window.end,
     initialBalance: numberOr('btBalance', 10000),
     spreadPips: numberOr('btSpread', 1),
     commissionPerLot: numberOr('btCommission', 0),
@@ -1262,11 +1370,12 @@ async function runBacktest(): Promise<void> {
 
 function renderBacktest(result: Json): void {
   const stats = result.result?.stats ?? {};
-  const trades: Json[] = result.result?.trades ?? [];
   const equity: Json[] = result.result?.equity ?? [];
   $('btResult').hidden = false;
   $('btStatus').textContent = `${result.strategyId} · ${result.symbol} ${result.timeframe} · ${stats.bars ?? 0} bars`;
-  $('btMeta').textContent = `${stamp(stats.start)} → ${stamp(stats.end)} · ${num(stats.bars, 0)} bars`;
+  $('btMeta').textContent = `${date8(stats.start)} → ${date8(stats.end)} · ${num(stats.bars, 0)} bars${
+    stats.windowCapped ? ` · window capped to ${num(stats.maxBars, 0)} bars` : ''
+  }`;
 
   const cards: Array<[string, string, string?]> = [
     ['Trades', num(stats.trades, 0)],
@@ -1290,28 +1399,244 @@ function renderBacktest(result: Json): void {
     .join('');
 
   drawEquity(equity);
+  renderTradeRows();
+
+  const report = result.result?.report;
+  if (report) {
+    btReport = report;
+    btFilter = null;
+    renderTradesTable();
+    setReportTab('month');
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Backtest report: day / week / month / exit reasons                 */
+/* ------------------------------------------------------------------ */
+
+let btReport: Json | null = null;
+let btTab: 'month' | 'week' | 'day' | 'reason' = 'month';
+let btFilter: { kind: 'day' | 'week' | 'month'; key: string; label: string } | null = null;
+
+function isoWeekKey(ts: number): string {
+  const date = new Date(ts * 1000);
+  const probe = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const weekday = probe.getUTCDay() || 7;
+  probe.setUTCDate(probe.getUTCDate() + 4 - weekday);
+  const yearStart = new Date(Date.UTC(probe.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((probe.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${probe.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+function btBucketKey(ts: number, kind: 'day' | 'week' | 'month'): string {
+  const iso = new Date(ts * 1000).toISOString();
+  if (kind === 'day') return iso.slice(0, 10);
+  if (kind === 'month') return iso.slice(0, 7);
+  return isoWeekKey(ts);
+}
+
+function setReportTab(tab: 'month' | 'week' | 'day' | 'reason'): void {
+  btTab = tab;
+  document.querySelectorAll<HTMLButtonElement>('[data-bt-tab]').forEach((button) => {
+    const active = button.getAttribute('data-bt-tab') === tab;
+    button.classList.toggle('primary', active);
+    button.classList.toggle('ghost', !active);
+    button.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  renderPeriodReport();
+}
+
+function renderPeriodReport(): void {
+  if (!btReport) return;
+  const stats = lastBacktest?.result?.stats ?? {};
+  const totals = btReport.totals ?? {};
+  const counts = btReport.counts ?? {};
+
+  if (btTab === 'reason') {
+    const reasons: Json[] = btReport.reasons ?? [];
+    const stop = reasons.find((r) => r.reason === 'stop');
+    const target = reasons.find((r) => r.reason === 'target');
+    $('btPeriodStats').innerHTML = [
+      ['Trades', num(totals.trades, 0)],
+      ['Net P/L', signed(totals.netPnl, 2)],
+      ['Stop-loss cost', stop ? signed(stop.pnl, 2) : '—'],
+      ['Take-profit gain', target ? signed(target.pnl, 2) : '—'],
+      ['Gross profit', signed(totals.grossProfit, 2)],
+      ['Gross loss', signed(totals.grossLoss, 2)],
+      ['Win rate', `${num(totals.winRate, 1)}%`],
+      ['Avg trade', signed(totals.avgPnl, 2)],
+    ]
+      .map(([k, v]) => `<div class="ex-stat"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(v)}</span></div>`)
+      .join('');
+    $('btPeriodHead').innerHTML =
+      '<tr><th>Decision</th><th class="right">Trades</th><th class="right">Wins</th><th class="right">Losses</th><th class="right">P/L</th><th class="right">Avg P/L</th><th class="right">Avg R</th></tr>';
+    $('btPeriodBody').innerHTML = reasons.length
+      ? reasons
+          .map(
+            (row) => `<tr>
+              <td>${escapeHtml(row.label ?? row.reason)}</td>
+              <td class="right ex-mono-cell">${num(row.count, 0)}</td>
+              <td class="right ex-mono-cell pos">${num(row.wins, 0)}</td>
+              <td class="right ex-mono-cell neg">${num(row.losses, 0)}</td>
+              <td class="right ex-mono-cell ${cls(row.pnl)}">${signed(row.pnl, 2)}</td>
+              <td class="right ex-mono-cell ${cls(row.avgPnl)}">${signed(row.avgPnl, 2)}</td>
+              <td class="right ex-mono-cell ${cls(row.avgR)}">${signed(row.avgR, 2)}R</td>
+            </tr>`,
+          )
+          .join('')
+      : '<tr><td colspan="7" class="ex-empty">No trades to break down.</td></tr>';
+    return;
+  }
+
+  const rows: Json[] =
+    btTab === 'month' ? btReport.months ?? [] : btTab === 'week' ? btReport.weeks ?? [] : btReport.days ?? [];
+  const isDay = btTab === 'day';
+  const best = btTab === 'month' ? btReport.bestMonth : btTab === 'week' ? btReport.bestWeek : btReport.bestDay;
+  const worst = btTab === 'month' ? btReport.worstMonth : btTab === 'week' ? btReport.worstWeek : btReport.worstDay;
+
+  $('btPeriodStats').innerHTML = [
+    [`Best ${btTab}`, best ? `${signed(best.netPnl, 2)}` : '—'],
+    [`Worst ${btTab}`, worst ? `${signed(worst.netPnl, 2)}` : '—'],
+    [`${btTab[0].toUpperCase()}${btTab.slice(1)}s traded`, num(rows.length, 0)],
+    ['Profitable days', `${num(counts.profitableDays, 0)} / ${num(counts.days, 0)}`],
+    ['Losing days', num(counts.losingDays, 0)],
+    ['Avg day', signed(counts.avgDayPnl, 2)],
+    ['Net P/L', signed(totals.netPnl, 2)],
+    ['Window', stats.start && stats.end ? `${date8(stats.start)} → ${date8(stats.end)}` : '—'],
+  ]
+    .map(([k, v]) => `<div class="ex-stat"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(v)}</span></div>`)
+    .join('');
+
+  $('btPeriodHead').innerHTML = `<tr>
+    <th>${isDay ? 'Day' : btTab === 'week' ? 'Week' : 'Month'}</th>
+    <th class="right">Trades</th>
+    <th class="right">W</th>
+    <th class="right">L</th>
+    <th class="right">Win %</th>
+    <th class="right">Net P/L</th>
+    <th class="right">Best trade</th>
+    <th class="right">Worst trade</th>
+    <th class="right">Equity start</th>
+    <th class="right">Equity end</th>
+  </tr>`;
+
+  $('btPeriodBody').innerHTML = rows.length
+    ? rows
+        .map(
+          (row) => `<tr data-bt-key="${escapeHtml(String(row.key))}" data-bt-label="${escapeHtml(String(row.label))}">
+            <td>${escapeHtml(String(row.label))}</td>
+            <td class="right ex-mono-cell">${num(row.trades, 0)}</td>
+            <td class="right ex-mono-cell pos">${num(row.wins, 0)}</td>
+            <td class="right ex-mono-cell neg">${num(row.losses, 0)}</td>
+            <td class="right ex-mono-cell">${num(row.winRate, 1)}%</td>
+            <td class="right ex-mono-cell ${cls(row.netPnl)}">${signed(row.netPnl, 2)}</td>
+            <td class="right ex-mono-cell pos">${signed(row.bestTradePnl, 2)}</td>
+            <td class="right ex-mono-cell neg">${signed(row.worstTradePnl, 2)}</td>
+            <td class="right ex-mono-cell">${num(row.equityStart, 2)}</td>
+            <td class="right ex-mono-cell">${num(row.equityEnd, 2)}</td>
+          </tr>`,
+        )
+        .join('')
+    : `<tr><td colspan="10" class="ex-empty">No ${btTab}s had a closed trade in this window.</td></tr>`;
+}
+
+function renderTradesTable(): void {
+  const trades: Json[] = lastBacktest?.result?.trades ?? [];
+  const filtered = btFilter
+    ? trades.filter((trade) => {
+        const ts = Number(trade.exitTime ?? trade.entryTime ?? 0);
+        return ts > 0 && btBucketKey(ts, btFilter!.kind) === btFilter!.key;
+      })
+    : trades;
+
+  $('btTradeCount').textContent = `${filtered.length}${btFilter ? ` of ${trades.length}` : ''}`;
+  const note = el('btFilterNote');
+  const clear = el('btClearFilter');
+  if (note) {
+    note.hidden = !btFilter;
+    note.textContent = btFilter ? `filtered: ${btFilter.label}` : '';
+  }
+  if (clear) clear.hidden = !btFilter;
 
   const body = $('btTradesBody');
-  const recent = trades.slice(-25).reverse();
-  body.innerHTML = recent.length
-    ? recent
-        .map(
-          (trade, offset) => `<tr>
-            <td class="ex-mono-cell">${trades.length - offset}</td>
-            <td class="ex-mono-cell">${stamp(trade.entryTime ?? trade.opened ?? trade.time)}</td>
+  body.innerHTML = filtered.length
+    ? filtered
+        .map((trade) => {
+          const index = trades.indexOf(trade) + 1;
+          const ts = Number(trade.exitTime ?? trade.entryTime ?? 0);
+          return `<tr>
+            <td class="ex-mono-cell">${index}</td>
+            <td class="ex-mono-cell">${ts ? stamp(ts) : '—'}</td>
             <td><span class="ex-tag ${trade.side === 'buy' ? 'ok' : 'bad'}">${escapeHtml(
               String(trade.side ?? '').toUpperCase(),
             )}</span></td>
             <td class="right ex-mono-cell">${num(trade.entry ?? trade.entryPrice, 5)}</td>
             <td class="right ex-mono-cell">${num(trade.exit ?? trade.exitPrice, 5)}</td>
+            <td class="right ex-mono-cell">${num(trade.lots, 2)}</td>
             <td class="right ex-mono-cell ${cls(trade.pnl)}">${signed(trade.pnl, 2)}</td>
             <td class="right ex-mono-cell ${cls(trade.r)}">${trade.r == null ? '—' : `${signed(trade.r, 2)}R`}</td>
             <td class="right ex-mono-cell">${num(trade.bars, 0)}</td>
             <td>${escapeHtml(trade.reason ?? trade.exitReason ?? '—')}</td>
-          </tr>`,
-        )
+          </tr>`;
+        })
         .join('')
-    : '<tr><td colspan="9" class="ex-empty">No trades were generated in this window.</td></tr>';
+    : `<tr><td colspan="10" class="ex-empty">${
+        btFilter ? 'No trades in that period.' : 'No trades were generated in this window.'
+      }</td></tr>`;
+}
+
+function renderTradeRows(): void {
+  btFilter = null;
+  renderTradesTable();
+}
+
+function downloadBacktestCsv(): void {
+  const trades: Json[] = lastBacktest?.result?.trades ?? [];
+  if (!trades.length) {
+    toast('Run a backtest first — there are no trades to export.', 'info');
+    return;
+  }
+  const header = [
+    '#',
+    'closed_utc',
+    'opened_utc',
+    'side',
+    'entry',
+    'exit',
+    'lots',
+    'pnl',
+    'r',
+    'bars',
+    'exit_reason',
+  ];
+  const rows = trades.map((trade) => {
+    const opened = Number(trade.entryTime ?? 0);
+    const closed = Number(trade.exitTime ?? 0);
+    return [
+      trades.indexOf(trade) + 1,
+      closed ? new Date(closed * 1000).toISOString() : '',
+      opened ? new Date(opened * 1000).toISOString() : '',
+      trade.side ?? '',
+      trade.entry ?? '',
+      trade.exit ?? '',
+      trade.lots ?? '',
+      trade.pnl ?? '',
+      trade.r ?? '',
+      trade.bars ?? '',
+      trade.reason ?? '',
+    ];
+  });
+  const csv = [header, ...rows].map((row) => row.join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const stats = lastBacktest?.result?.stats ?? {};
+  link.href = url;
+  link.download = `vaelor-backtest-${lastBacktest?.symbol ?? 'symbol'}-${lastBacktest?.timeframe ?? 'tf'}-${
+    stats.start ? new Date(Number(stats.start) * 1000).toISOString().slice(0, 10) : 'start'
+  }.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function drawEquity(points: Json[]): void {
@@ -1802,6 +2127,40 @@ function wire(): void {
 
   // Backtest
   $('runBacktestBtn').addEventListener('click', () => void runBacktest());
+  if (el('btRange')) {
+    $('btRange').addEventListener('change', () => syncBacktestWindow());
+    $('btStart').addEventListener('change', () => syncBacktestWindow());
+    $('btEnd').addEventListener('change', () => syncBacktestWindow());
+    $('btTimeframe').addEventListener('change', () => syncBacktestWindow());
+    syncBacktestWindow();
+  }
+  document.querySelectorAll<HTMLButtonElement>('[data-bt-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const tab = button.getAttribute('data-bt-tab') as 'month' | 'week' | 'day' | 'reason' | null;
+      if (tab) setReportTab(tab);
+    });
+  });
+  if (el('btPeriodBody')) {
+    $('btPeriodBody').addEventListener('click', (event) => {
+      const row = (event.target as HTMLElement).closest('tr[data-bt-key]');
+      const key = row?.getAttribute('data-bt-key');
+      if (!row || !key || btTab === 'reason') return;
+      btFilter = {
+        kind: btTab,
+        key,
+        label: row.getAttribute('data-bt-label') ?? key,
+      };
+      renderTradesTable();
+      document.getElementById('btTradesBody')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+  if (el('btClearFilter')) {
+    $('btClearFilter').addEventListener('click', () => {
+      btFilter = null;
+      renderTradesTable();
+    });
+  }
+  if (el('btCsvBtn')) $('btCsvBtn').addEventListener('click', downloadBacktestCsv);
   window.addEventListener('resize', () => {
     if (lastBacktest) drawEquity(lastBacktest.result?.equity ?? []);
   });

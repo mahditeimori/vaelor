@@ -515,12 +515,23 @@ Token : &lt;random string&gt;</pre>
         </div>
         <div class="ex-field">
           <label for="btSymbol">Symbol</label>
-          <input id="btSymbol" type="text" value="XAUUSD" spellcheck="false" />
+          <input id="btSymbol" type="text" value="XAUUSD" list="btSymbolList" spellcheck="false" />
+          <datalist id="btSymbolList">
+            <option value="XAUUSD">Gold vs US Dollar</option>
+            <option value="XAGUSD">Silver vs US Dollar</option>
+            <option value="US30">Dow Jones 30 index · broker code DJIUSD</option>
+            <option value="NAS100">Nasdaq 100 index · broker code NDXUSD</option>
+            <option value="SPX500">S&amp;P 500 index · broker code SPXUSD</option>
+            <option value="EURUSD">Euro vs US Dollar</option>
+            <option value="GBPUSD">British Pound vs US Dollar</option>
+            <option value="USDJPY">US Dollar vs Japanese Yen</option>
+            <option value="BTCUSD">Bitcoin vs US Dollar</option>
+          </datalist>
         </div>
         <div class="ex-field">
           <label for="btTimeframe">Timeframe</label>
           <select id="btTimeframe">
-            <option>M5</option><option>M15</option><option>M30</option>
+            <option>M1</option><option>M5</option><option>M15</option><option>M30</option>
             <option selected>H1</option><option>H4</option><option>D1</option>
           </select>
         </div>
@@ -546,6 +557,34 @@ Token : &lt;random string&gt;</pre>
         </div>
       </div>
 
+      <div class="ex-grid-4">
+        <div class="ex-field">
+          <label for="btRange">Test window</label>
+          <select id="btRange">
+            <option value="10d">Last 10 days</option>
+            <option value="1mo" selected>Last 1 month</option>
+            <option value="2mo">Last 2 months</option>
+            <option value="3mo">Last 3 months</option>
+            <option value="6mo">Last 6 months</option>
+            <option value="1y">Last 1 year</option>
+            <option value="2y">Last 2 years</option>
+            <option value="custom">Custom dates…</option>
+          </select>
+        </div>
+        <div class="ex-field">
+          <label for="btStart">From</label>
+          <input id="btStart" type="date" />
+        </div>
+        <div class="ex-field">
+          <label for="btEnd">To</label>
+          <input id="btEnd" type="date" />
+        </div>
+        <div class="ex-field">
+          <label>Window note</label>
+          <span class="ex-hint" id="btWindowHint">the broker's own history is used</span>
+        </div>
+      </div>
+
       <div class="ex-btn-row">
         <button type="button" class="ex-btn primary" id="runBacktestBtn">Run backtest</button>
         <span class="ex-mono" id="btStatus">pick a strategy and run it on your broker's history</span>
@@ -560,15 +599,52 @@ Token : &lt;random string&gt;</pre>
           </div>
           <canvas id="btCanvas" height="240" aria-label="Backtest equity curve"></canvas>
         </div>
-        <div class="ex-table-wrap">
+
+        <div class="ex-report-head">
+          <div>
+            <div class="ex-kicker">Period report</div>
+            <h3 class="ex-report-title">WHERE THE PROFIT CAME FROM</h3>
+          </div>
+          <div class="ex-tabs" role="tablist" aria-label="Report period">
+            <button type="button" class="ex-btn small primary" data-bt-tab="month" role="tab" aria-selected="true">Monthly</button>
+            <button type="button" class="ex-btn small ghost" data-bt-tab="week" role="tab" aria-selected="false">Weekly</button>
+            <button type="button" class="ex-btn small ghost" data-bt-tab="day" role="tab" aria-selected="false">Daily</button>
+            <button type="button" class="ex-btn small ghost" data-bt-tab="reason" role="tab" aria-selected="false">Exit reasons</button>
+          </div>
+        </div>
+        <div class="ex-stat-grid" id="btPeriodStats"></div>
+        <div class="ex-table-wrap ex-report-wrap">
+          <table class="ex-table" id="btPeriodTable">
+            <thead id="btPeriodHead"></thead>
+            <tbody id="btPeriodBody"></tbody>
+          </table>
+        </div>
+        <p class="ex-hint">
+          Pick a row to filter the trade list below to that day, week or month. Days are UTC, matching
+          the broker's timestamps.
+        </p>
+
+        <div class="ex-report-head">
+          <div>
+            <div class="ex-kicker">Every fill</div>
+            <h3 class="ex-report-title">ALL TRADES <span class="ex-chip" id="btTradeCount">0</span></h3>
+          </div>
+          <div class="ex-btn-row">
+            <span class="ex-hint" id="btFilterNote" hidden></span>
+            <button type="button" class="ex-btn ghost small" id="btClearFilter" hidden>Show all trades</button>
+            <button type="button" class="ex-btn ghost small" id="btCsvBtn">Download CSV</button>
+          </div>
+        </div>
+        <div class="ex-table-wrap ex-trades-wrap">
           <table class="ex-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Opened</th>
+                <th>Closed (UTC)</th>
                 <th>Side</th>
                 <th class="right">Entry</th>
                 <th class="right">Exit</th>
+                <th class="right">Lots</th>
                 <th class="right">P/L</th>
                 <th class="right">R</th>
                 <th class="right">Bars</th>
@@ -964,6 +1040,17 @@ Token : &lt;random string&gt;</pre>
     .ex-chart-wrap canvas { width: 100%; height: 240px; display: block; }
     .ex-audit-wrap { max-height: 420px; overflow-y: auto; }
     .ex-audit-wrap thead th { position: sticky; top: 0; z-index: 1; }
+    .ex-report-head {
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+      flex-wrap: wrap; margin: 18px 0 8px;
+    }
+    .ex-report-title { font-size: 0.9rem; letter-spacing: 0.06em; margin: 2px 0 0; }
+    .ex-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ex-report-wrap { max-height: 460px; overflow-y: auto; }
+    .ex-report-wrap thead th, .ex-trades-wrap thead th { position: sticky; top: 0; z-index: 1; background: var(--ex-inner); }
+    .ex-trades-wrap { max-height: 560px; overflow-y: auto; }
+    .ex-table tbody tr[data-bt-key] { cursor: pointer; }
+    .ex-table tbody tr[data-bt-key]:hover { background: rgba(255, 255, 255, 0.03); }
     .ex-about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
     .ex-about-grid h3 { font-size: 0.95rem; margin-bottom: 4px; }
     .ex-about-grid p { font-size: 0.84rem; color: var(--ex-dim); margin: 0; }
