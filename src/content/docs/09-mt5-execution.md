@@ -48,7 +48,7 @@ Windows user, including broker-branded folders and portable copies.
 
 ## 5.3 Quick start
 
-1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.2.0).
+1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.3.0).
 2. Unzip it to a folder you control, for example `C:\Vaelor\mt5-bridge`.
 3. Double-click `run.cmd`. The first run creates `.venv`, installs dependencies
    and writes `.env`; the console prints a URL and a token and saves both to
@@ -64,6 +64,32 @@ Execution page and press **Connect**.
 The page then polls the bridge automatically. There is no refresh button by
 design — the account, book, strategies, signals and audit log all update in
 place.
+
+### 5.3.1 Run it as a background service
+
+The console window is only a launcher. To keep the desk running with no window
+at all, run once from the bridge folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\install-service.ps1
+```
+
+That registers a Windows scheduled task (**Vaelor MT5 Bridge**) which starts the
+bridge hidden at every logon, checks it every minute, restarts it if it dies,
+and keeps MetaTrader 5 attached — **if you close the terminal, the bridge
+relaunches `terminal64.exe` and logs the account back in**. You can then close
+the console, close the website and close MetaTrader; positions stay with the
+broker and the bridge keeps scanning for new signals and moving stops.
+
+```powershell
+.\service-run.ps1 -Status          # is it running? pid, log, task state
+.\service-run.ps1 -Stop            # stop the bridge
+.\install-service.ps1 -Uninstall   # remove the scheduled task
+```
+
+Pressing **Disconnect** on the Execution page is respected: supervision stays
+off until you connect again. Set `MT5_AUTO_CONNECT=0` in `.env` to disable
+automatic re-attach entirely. Logs are written to `logs\bridge.log`.
 
 ## 5.4 Terminal discovery
 
@@ -486,7 +512,7 @@ reach a loopback service.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Page says bridge offline | Bridge not running or wrong port | Start `run.cmd` **on the PC where MetaTrader 5 is installed**; keep its window open; confirm the URL. `http://127.0.0.1:8899` is correct — it means "this computer" |
+| Page says bridge offline | Bridge not running or wrong port | Start `run.cmd` **on the PC where MetaTrader 5 is installed** (or run `install-service.ps1` once so it always runs hidden); confirm the URL. `http://127.0.0.1:8899` is correct — it means "this computer" |
 | `Token rejected` | Token belongs to another bridge data folder | Copy the token printed at startup |
 | `Authorization failed` | No account logged in | Sign in inside MetaTrader 5 |
 | `retcode 10027` | AutoTrading off | Enable the toolbar button and Expert Advisors option |

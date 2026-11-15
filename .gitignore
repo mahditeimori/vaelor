@@ -62,6 +62,7 @@ mt5-bridge/token.txt
 mt5-bridge/connect.txt
 mt5-bridge/__pycache__/
 mt5-bridge/**/__pycache__/
+mt5-bridge/logs/
 **/__pycache__/
 *.pyc
 

@@ -53,6 +53,7 @@ class TradingEngine:
         self.last_error: str | None = None
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+        self._supervisor: threading.Thread | None = None
         self._tick_lock = threading.Lock()
         self._last_signal_scan = 0.0
         self.prop_safe = bool(self.store.get_json("prop_safe") or False)
@@ -112,6 +113,7 @@ class TradingEngine:
         password: str | None = None,
         server: str | None = None,
         portable: bool = False,
+        auto: bool = False,
     ) -> dict:
         """Attach the engine to a user-selected MetaTrader 5 terminal."""
         from .mt5_provider import MT5Provider
@@ -135,6 +137,14 @@ class TradingEngine:
         self.provider = MT5Provider(self.store, session, allow_live=previous_allow)
         account = info.get("account") or {}
         self.store.set_kv("mt5_connected_path", session.path or path or "")
+        if login:
+            self.store.set_kv("mt5_login", str(login))
+        if server:
+            self.store.set_kv("mt5_server", server)
+        if not auto:
+            # An explicit connect from the website re-arms supervision: from now
+            # on the bridge re-attaches (and relaunches the terminal) by itself.
+            self.store.set_kv("mt5_auto_connect", "1")
         self.store.set_json(
             "mt5_account",
             {
@@ -168,6 +178,9 @@ class TradingEngine:
         self.provider = SimProvider(self.store)
         self.provider.reason = "MetaTrader 5 disconnected — simulation broker active"
         self.store.set_kv("mt5_connected_path", "")
+        # An explicit disconnect from the website is a user decision: the
+        # supervisor must not silently re-attach (and relaunch the terminal).
+        self.store.set_kv("mt5_auto_connect", "0")
         self.store.audit("mt5.disconnected", {"mode": "simulation"})
         return {"ok": True, "provider": self.provider.status()}
 
@@ -193,11 +206,76 @@ class TradingEngine:
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, name="engine-tick", daemon=True)
         self._thread.start()
+        self._supervisor = threading.Thread(
+            target=self._supervise_mt5, name="engine-supervisor", daemon=True
+        )
+        self._supervisor.start()
 
     def stop(self) -> None:
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=2)
+
+    # ---------------------------------------------------------- supervision
+    def _auto_connect_enabled(self) -> bool:
+        """Auto-attach is on unless the user explicitly disconnected."""
+        if not SETTINGS.mt5_auto_connect:
+            return False
+        return self.store.get_kv("mt5_auto_connect") != "0"
+
+    def _terminal_target(self) -> tuple[str | None, int | None, str | None, str | None]:
+        """Terminal path + credentials for a supervised (re)connect."""
+        path = self.store.get_kv("mt5_connected_path") or SETTINGS.mt5_terminal or None
+        login = SETTINGS.mt5_login or (
+            int(self.store.get_kv("mt5_login")) if (self.store.get_kv("mt5_login") or "").isdigit() else None
+        )
+        server = SETTINGS.mt5_server or self.store.get_kv("mt5_server") or None
+        password = SETTINGS.mt5_password
+        if not path:
+            from .mt5ctl import installed_terminals_hint
+
+            path = installed_terminals_hint()
+        return path, login, password, server
+
+    def _supervise_mt5(self) -> None:
+        """Keep MetaTrader 5 attached for as long as the bridge runs.
+
+        * terminal closed by the user  → the session reconnects, which launches
+          terminal64.exe again (MetaTrader5.initialize(path=…) starts it) and
+          logs the account back in;
+        * bridge restarted (service)   → the engine re-attaches on its own;
+        * explicit "Disconnect" on the website → supervision stays off.
+        """
+        while not self._stop.is_set():
+            self._stop.wait(10)
+            try:
+                from .mt5_provider import MT5Provider
+
+                if isinstance(self.provider, MT5Provider):
+                    # Attached already: check() reconnects (and relaunches) when
+                    # the terminal went away.
+                    self.provider.session.check()
+                    continue
+                if not self._auto_connect_enabled():
+                    continue
+                path, login, password, server = self._terminal_target()
+                if not path and not login:
+                    continue
+                self.connect_mt5(
+                    path=path,
+                    login=login,
+                    password=password,
+                    server=server,
+                    portable=SETTINGS.mt5_portable,
+                    auto=True,
+                )
+                self.store.audit(
+                    "mt5.auto_connected",
+                    {"path": path, "login": login, "server": server, "source": "supervisor"},
+                )
+            except Exception:
+                # Keep supervising; the next cycle retries.
+                continue
 
     def _loop(self) -> None:
         while not self._stop.is_set():

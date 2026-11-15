@@ -39,6 +39,45 @@ copy .env.example .env
 .\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8899
 ```
 
+## Background service (no console window)
+
+The console window is only a launcher — the trading engine runs inside the
+bridge process. To run without a window, install the service once:
+
+```powershell
+cd mt5-bridge
+powershell -ExecutionPolicy Bypass -File .\install-service.ps1
+```
+
+This registers the Windows scheduled task **Vaelor MT5 Bridge**, which:
+
+- starts the bridge hidden at every logon and checks it every minute,
+- restarts it if the process ever dies (and on failure),
+- never starts a second instance while one is running,
+- keeps MetaTrader 5 attached: **if you close terminal64.exe the bridge
+  relaunches it and logs the account back in** (`MT5_AUTO_CONNECT=1`),
+- logs everything to `mt5-bridge\logs\bridge.log`.
+
+After that you can close the console, close the website and even close
+MetaTrader — the desk keeps running. Your open positions live at the broker,
+so they stay managed regardless; the bridge only needs to be alive to place
+new orders, move stops and run the auto-execution scan.
+
+Manage it with:
+
+```powershell
+.\service-run.ps1 -Status          # running? pid, log, task state
+.\service-run.ps1                  # start hidden (idempotent)
+.\service-run.ps1 -Stop            # stop the bridge
+.\install-service.ps1 -Uninstall   # remove the scheduled task
+```
+
+An explicit **Disconnect** on the Execution page is respected: supervision
+stays off until you press **Connect** again. Set `MT5_AUTO_CONNECT=0` in
+`.env` to disable supervised re-attach entirely. The bridge still binds to
+`127.0.0.1` only — the website reaches it through the browser on the same
+machine, so no port is ever exposed to the internet.
+
 ## Modes and safety interlocks
 
 | Mode | What happens |

@@ -325,6 +325,30 @@ class EngineTests(unittest.TestCase):
         self.store.close()
         self.tmp.cleanup()
 
+    def test_disconnect_stops_supervision_and_connect_rearms_it(self) -> None:
+        """Closing MT5 from the website must stop the supervisor from silently
+        relaunching the terminal; an explicit connect arms it again."""
+        self.assertTrue(self.engine._auto_connect_enabled())
+
+        self.engine.disconnect_mt5()
+        self.assertEqual(self.store.get_kv("mt5_auto_connect"), "0")
+        self.assertFalse(self.engine._auto_connect_enabled())
+
+        # Simulate what connect_mt5(auto=False) writes once MT5 has attached.
+        self.store.set_kv("mt5_auto_connect", "1")
+        self.assertTrue(self.engine._auto_connect_enabled())
+
+    def test_supervisor_target_prefers_saved_terminal_and_login(self) -> None:
+        """The supervisor must reuse the terminal the user picked, plus the
+        saved login/server, so a restart re-attaches without the browser."""
+        self.store.set_kv("mt5_connected_path", r"C:\Program Files\MetaTrader 5\terminal64.exe")
+        self.store.set_kv("mt5_login", "600143124")
+        self.store.set_kv("mt5_server", "Opogroup-Server1")
+        path, login, _password, server = self.engine._terminal_target()
+        self.assertTrue(path and path.endswith("terminal64.exe"))
+        self.assertEqual(login, 600143124)
+        self.assertEqual(server, "Opogroup-Server1")
+
     def test_live_interlock_toggle(self) -> None:
         """The website unlock persists in the store, survives a new engine, and
         can be revoked — without ever touching SETTINGS.allow_live_trades."""

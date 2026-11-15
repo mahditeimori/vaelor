@@ -32,6 +32,8 @@ const INCLUDED = [
   '.env.example',
   'run.ps1',
   'run.cmd',
+  'service-run.ps1',
+  'install-service.ps1',
 ];
 
 const FOLDERS = [
@@ -78,13 +80,28 @@ FIRST RUN
 5. On the site, pick your terminal from the detected list and connect. If
    the terminal is logged in, the account appears immediately.
 
-KEEP THE WINDOW OPEN
---------------------
-The console window IS the bridge. While you trade it must stay open - you can
-minimise it, but closing it stops the bridge and the page goes offline. The
-window never closes by itself: if anything goes wrong (missing Python, failed
-install, port already used, a crashed server) it stops, prints the reason in
-plain English, and waits for you to press a key, so you can read the message.
+KEEP THE WINDOW OPEN - OR RUN IT AS A SERVICE
+--------------------------------------------
+The console window IS the bridge. While you trade with the window open you can
+minimise it, but closing it stops the bridge and the page goes offline.
+
+Prefer to close everything? Install the background service once:
+
+  powershell -ExecutionPolicy Bypass -File install-service.ps1
+
+That registers a Windows scheduled task ("Vaelor MT5 Bridge") that
+  * starts the bridge with no console window,
+  * starts again at every logon and checks every minute,
+  * restarts the bridge if it ever dies,
+  * and keeps MetaTrader 5 attached: if you close the terminal, the bridge
+    launches it again and logs the account back in.
+
+After that you can close the console, close the website and even close
+MetaTrader 5 - the desk keeps running and keeps trading.
+Manage it with:
+  service-run.ps1 -Status      status
+  service-run.ps1 -Stop        stop the bridge
+  install-service.ps1 -Uninstall  remove the service
 
 ABOUT AUTOTRADING
 -----------------
