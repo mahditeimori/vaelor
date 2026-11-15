@@ -24,6 +24,12 @@ import '../styles/global.css';
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{pageTitle}</title>
+    <script>
+      // Membership bootstrap: defines window.VaelorMembership before any page
+      // module runs, then gates docs and locked sections once the DOM is ready.
+      import { applyMemberGate } from '../scripts/gate.ts';
+      applyMemberGate();
+    </script>
   </head>
   <body class={variant}>
     {variant !== 'landing' && (
@@ -45,6 +51,7 @@ import '../styles/global.css';
           <a href="/news" class="nav-link" aria-current={Astro.url.pathname.startsWith('/news') ? 'page' : undefined}>News</a>
           <a href="/execution" class="nav-link" aria-current={Astro.url.pathname.startsWith('/execution') ? 'page' : undefined}>Execution</a>
           <a href="/ai" class="nav-link" aria-current={Astro.url.pathname.startsWith('/ai') ? 'page' : undefined}>AI</a>
+          <a href="/login.html" class="nav-link" aria-current={Astro.url.pathname.startsWith('/login') ? 'page' : undefined}>Sign in</a>
         </nav>
       </header>
     )}

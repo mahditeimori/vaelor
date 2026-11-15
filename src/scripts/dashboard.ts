@@ -774,6 +774,11 @@ function renderAnalysis(results: Analysis[], selectedId: string, weeks: number):
 
 async function runAnalysis(): Promise<void> {
   if (analyzing || !state) return;
+  const vmDash = (window as unknown as { VaelorMembership?: { can: (f: string) => boolean; openFeatureLock: (f: string) => void } }).VaelorMembership;
+  if (!vmDash?.can || !vmDash.can('analytical_chart')) {
+    vmDash?.openFeatureLock?.('analytical_chart');
+    return;
+  }
   analyzing = true;
   const btn = el<HTMLButtonElement>('analyzeBtn');
   const host = el('analysisResults');
@@ -998,6 +1003,12 @@ function init(): void {
   });
 
   wireControls();
+  const vmDash = (window as unknown as { VaelorMembership?: { can: (f: string) => boolean; openFeatureLock: (f: string) => void } }).VaelorMembership;
+  const analyzePanelEl = document.querySelector<HTMLElement>('.analyze-panel');
+  if (vmDash?.can && !vmDash.can('analytical_chart')) {
+    // Free members get the analytical engine locked: no numbers, no analysis.
+    if (analyzePanelEl) analyzePanelEl.hidden = true;
+  }
   void poll();
   window.setInterval(() => void poll(), POLL_MS);
 }

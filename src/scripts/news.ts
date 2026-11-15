@@ -672,6 +672,11 @@ function renderCustomResult(c: CustomAnalysis): void {
 async function runCustomAnalysis(): Promise<void> {
   if (customBusy) return;
   const btn = el('runCustomBtn') as HTMLButtonElement | null;
+  const vm = (window as unknown as { VaelorMembership?: { can: (f: string) => boolean; openFeatureLock: (f: string) => void } }).VaelorMembership;
+  if (!vm?.can || !vm.can('news_custom_ai')) {
+    vm?.openFeatureLock?.('news_custom_ai');
+    return;
+  }
   customBusy = true;
   if (btn) btn.disabled = true;
   try {
@@ -828,6 +833,24 @@ function wireFilters(): void {
 /* Mount                                                               */
 /* ------------------------------------------------------------------ */
 
+function applyMembershipTabs(): void {
+  const tab = document.querySelector<HTMLButtonElement>('[role="tab"][data-tab="custom"]');
+  const panel = document.getElementById('nw-panel-custom');
+  const engineTab = document.querySelector<HTMLButtonElement>('[role="tab"][data-tab="engine"]');
+  const enginePanel = document.getElementById('nw-panel-engine');
+  const vm = (window as unknown as { VaelorMembership?: { can: (f: string) => boolean } }).VaelorMembership;
+  if (!vm?.can) return;
+  const allowed = vm.can('news_custom_ai');
+  if (tab) tab.hidden = !allowed;
+  if (panel) panel.hidden = !allowed;
+  if (!allowed && engineTab && enginePanel) {
+    engineTab.setAttribute('aria-selected', 'true');
+    engineTab.classList.add('is-active');
+    engineTab.tabIndex = 0;
+    enginePanel.hidden = false;
+  }
+}
+
 export function mountNews(): void {
   if (!el('newsPage')) return;
   tickClocks();
@@ -837,6 +860,7 @@ export function mountNews(): void {
   wireTabs();
   wireFilters();
   renderDaySelector();
+  applyMembershipTabs();
   void loadWeek(0).then(() => {
     renderDaySelector();
     renderCustomDayOptions();

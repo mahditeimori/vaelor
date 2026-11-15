@@ -20,6 +20,22 @@ const controls = [
   { tag: 'FLAG', label: 'Composite Signal', detail: 'Aligned (3 criteria) · Watch (2) · None (&lt; 2)' },
   { tag: 'RE-ARM', label: 'System Re-Arming', detail: 'requires dual cryptographic signatures (PSO + Risk Controller)' },
 ];
+
+const capabilities = [
+  { key: 'signals', name: 'Signals', desc: 'Automated multi-timeframe signal feed with entry, stop, target, risk and management plan.', tier: 'subscriber' },
+  { key: 'execution_usage', name: 'Execution usage', desc: 'Live order placement, modification, closing and audit trail through the MT5 bridge.', tier: 'subscriber' },
+  { key: 'pair', name: 'Bridge pairing', desc: 'Attach any MetaTrader 5 terminal (demo or live) through the encrypted local bridge.', tier: 'subscriber' },
+  { key: 'live_trade', name: 'Live trade desk', desc: 'Bounded live routing with lot caps, drawdown guards, kill switch and typed confirmation.', tier: 'subscriber' },
+  { key: 'indicator_download', name: 'MT5 indicator export', desc: 'Publish a strategy as a MetaTrader 5 indicator with the same DSL the backtester uses.', tier: 'subscriber' },
+  { key: 'ai_chat', name: 'AI chat (MCP)', desc: 'Talk to your AI over MCP: read COT/OI/volume, publish regime calls, analyze news.', tier: 'subscriber' },
+  { key: 'oi_cot', name: 'OI / COT analytics', desc: 'Futures open interest, CFTC commercial vs speculative positioning, volume and z-scores.', tier: 'subscriber' },
+  { key: 'cdtc', name: 'CDTC charts + analysis', desc: 'Consolidated multi-timeframe charts with composite bias, entry zones and invalidation.', tier: 'subscriber' },
+  { key: 'upload_strategy', name: 'Strategy upload', desc: 'Author and upload strategies to the registry — stored disabled until the owner approves.', tier: 'subscriber' },
+  { key: 'analytical_chart', name: 'Analytical engine', desc: 'Composite signal: price/OI state, COT z-score, distance to flip, regime synthesis.', tier: 'subscriber' },
+  { key: 'terminal_section2', name: 'Terminal analysis', desc: 'Macro positioning hub: CFTC COT, open interest, volume and cross-asset structure.', tier: 'subscriber' },
+  { key: 'news_custom_ai', name: 'Custom news AI', desc: 'Tailored news impact analysis with custom prompt, scenarios and trading bias rules.', tier: 'subscriber' },
+];
+
 ---
 
 <BaseLayout title="Vaelor Trading LLC — Operating Manual" variant="landing">
@@ -198,11 +214,46 @@ const controls = [
         <pre id="ai-setup">Loading MCP API URL…</pre>
       </div>
     </section>
+    <!-- ======= Member capabilities (subscription-gated) ======= -->
+    <section class="shell section-block" id="capabilities" aria-labelledby="capabilities-title">
+      <div class="sec-head reveal">
+        <div class="kicker">Member capabilities</div>
+        <h2>What the platform does</h2>
+      </div>
+      <p style="color:var(--text-dim); max-width:720px; margin:-8px 0 18px">
+        Every capability below ships with the subscription. Free members keep the backtest and the operating
+        manual; everything else opens a membership gate.
+      </p>
+      <div class="grid grid-3">
+        {capabilities.map((c) => (
+          <button type="button" class="card dept reveal" data-cap={c.key} style="color:inherit; text-align:left; cursor:pointer">
+            <div class="dept-top">
+              <span class="dept-ic">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4" /></svg>
+              </span>
+              <span class="meta">SUB · {c.key.replace(/_/g, ' ')}</span>
+            </div>
+            <h3>{c.name}</h3>
+            <p>{c.desc}</p>
+          </button>
+        ))}
+      </div>
+    </section>
   </main>
 
   <script>
     import { initLanding } from '../scripts/landing.ts';
     initLanding();
+
+    document.querySelectorAll('[data-cap]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const key = (btn as HTMLElement).dataset.cap ?? '';
+        const vm = (window as unknown as { VaelorMembership?: { openFeatureLock: (f: string) => void } }).VaelorMembership;
+        if (vm?.openFeatureLock) {
+          vm.openFeatureLock(key as never);
+        }
+      });
+    });
 
     /* -------- MCP Worker API --------
        SET THIS to your deployed Worker URL, e.g.:

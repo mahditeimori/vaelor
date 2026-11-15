@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vaelor Trading LLC — Operational Authentication</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #070406;
+      color: #f8fafc;
+      overflow-x: hidden;
+    }
+
+    .cyber-grid {
+      background-size: 42px 42px;
+      background-image: 
+        linear-gradient(to right, rgba(225, 29, 72, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(225, 29, 72, 0.06) 1px, transparent 1px);
+    }
+
+    .cyber-dots {
+      background-image: radial-gradient(rgba(244, 63, 94, 0.22) 1px, transparent 1px);
+      background-size: 42px 42px;
+      background-position: 21px 21px;
+    }
+
+    .btn-crimson {
+      background: linear-gradient(135deg, #e11d48 0%, #be185d 50%, #9f1239 100%);
+      box-shadow: 0 8px 28px -6px rgba(225, 29, 72, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-crimson:hover:not(:disabled) {
+      box-shadow: 0 12px 34px -4px rgba(244, 63, 94, 0.75), inset 0 1px 1px rgba(255, 255, 255, 0.35);
+      transform: translateY(-1px);
+    }
+    .btn-crimson:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .vaelor-input {
+      background: rgba(18, 11, 15, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      transition: all 0.2s ease;
+    }
+    .vaelor-input:focus {
+      outline: none;
+      border-color: #e11d48;
+      box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.18);
+      background: rgba(24, 13, 19, 0.95);
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #070406; }
+    ::-webkit-scrollbar-thumb { background: #26151e; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #e11d48; }
+  </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4 lg:p-6 selection:bg-rose-500 selection:text-white">
+
+  <!-- ========================================================================= -->
+  <!-- MAIN CONTAINER                                                            -->
+  <!-- ========================================================================= -->
+  <div class="w-full max-w-[1380px] min-h-[860px] grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+    
+    <!-- ================= LEFT COLUMN: AUTHENTICATION / DASHBOARD ================= -->
+    <div class="lg:col-span-5 flex flex-col justify-center px-4 sm:px-10 md:px-12 py-8 relative z-10">
+      
+      <!-- Brand Header (Removed "• CLOUD DASHBOARD") -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-rose-950/80 border border-rose-500/40 flex items-center justify-center shadow-[0_0_15px_rgba(225,29,72,0.35)]">
+            <svg class="w-4 h-4 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="font-serif font-bold text-base tracking-wide text-white leading-none">Vaelor Trading LLC</h2>
+            <span class="font-mono text-[10px] tracking-[0.2em] text-rose-400/80 uppercase">OPS v2.0.1</span>
+          </div>
+        </div>
+
+        <!-- Auto-filled / Saved Credentials Badge -->
+        <div id="savedBadge" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-[11px] font-mono text-emerald-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Remembered
+        </div>
+      </div>
+
+      <!-- ===================================================================== -->
+      <!-- VIEW 1: LOGIN / SIGNUP CONSOLE                                        -->
+      <!-- ===================================================================== -->
+      <div id="authView">
+        <!-- Mode Switcher Pill (Sign in / Create account) -->
+        <div class="p-1 rounded-xl bg-[#110a0e] border border-white/10 grid grid-cols-2 mb-6 shadow-inner">
+          <button id="tabSignIn" type="button" onclick="switchMode('signin')" class="py-2.5 text-xs font-medium rounded-lg transition-all duration-300 btn-crimson text-white">
+            Sign in
+          </button>
+          <button id="tabSignUp" type="button" onclick="switchMode('signup')" class="py-2.5 text-xs font-medium rounded-lg transition-all duration-300 text-neutral-400 hover:text-white">
+            Create account
+          </button>
+        </div>
+
+        <!-- Dynamic Heading -->
+        <div class="mb-5">
+          <h1 id="authHeading" class="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-1">Welcome back</h1>
+          <p id="authSubtext" class="text-xs sm:text-sm text-neutral-400">Sign in to your autonomous trading dashboard.</p>
+        </div>
+
+        <!-- Saved Account Quick-Login Bar -->
+        <div id="quickLoginCard" class="hidden mb-4 p-3 rounded-xl bg-rose-950/20 border border-rose-500/30 items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div id="quickAvatar" class="w-8 h-8 rounded-full bg-rose-600/30 border border-rose-400/40 flex items-center justify-center font-mono text-xs font-bold text-rose-200">
+              OP
+            </div>
+            <div>
+              <p class="text-xs font-medium text-white" id="quickName">Saved Operator</p>
+              <p class="font-mono text-[10px] text-rose-300/80" id="quickEmail">operator@vaelor.trading</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="oneClickSavedLogin()" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-[11px] font-medium text-white transition-colors">
+              Instant Login
+            </button>
+            <button type="button" onclick="clearRememberedAccount()" title="Forget saved account" class="p-1 text-neutral-500 hover:text-rose-400 transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- OAuth Buttons (Google & GitHub) -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <button onclick="startOAuthFlow('Google')" type="button" class="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#120b0f] hover:bg-[#1a1016] border border-white/10 hover:border-rose-500/40 text-xs font-medium text-neutral-200 transition-all group">
+            <svg class="w-4 h-4 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/>
+              <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/>
+              <path fill="#FBBC05" d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"/>
+              <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"/>
+            </svg>
+            <span>Continue with Google</span>
+          </button>
+
+          <button onclick="startOAuthFlow('GitHub')" type="button" class="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#120b0f] hover:bg-[#1a1016] border border-white/10 hover:border-rose-500/40 text-xs font-medium text-neutral-200 transition-all group">
+            <svg class="w-4 h-4 text-white transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+            </svg>
+            <span>Continue with GitHub</span>
+          </button>
+        </div>
+
+        <!-- "Continue with email" Button Divider -->
+        <div class="relative flex py-2 items-center mb-3">
+          <div class="flex-grow border-t border-white/10"></div>
+          <button id="continueWithEmailBtn" onclick="activateContinueWithEmail()" type="button" class="flex-shrink mx-3 px-3.5 py-1.5 rounded-full bg-rose-950/40 border border-rose-500/40 text-[11px] font-mono uppercase tracking-wider text-rose-300 hover:bg-rose-900/50 transition-all flex items-center gap-2 shadow-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            <span id="continueEmailLabel">Continue with email</span>
+          </button>
+          <div class="flex-grow border-t border-white/10"></div>
+        </div>
+
+        <!-- Error / Validation Banner -->
+        <div id="errorBanner" class="hidden mb-3 p-3 rounded-xl bg-rose-950/70 border border-rose-500/50 text-xs text-rose-200 flex items-center gap-2.5">
+          <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span id="errorText">Invalid credentials.</span>
+        </div>
+
+        <!-- ================= EMAIL FORM ================= -->
+        <form id="authForm" onsubmit="handleAuthSubmit(event)" autocomplete="on" class="space-y-3">
+          
+          <!-- Full Profile Fields (Shown for registration) -->
+          <div id="signupExtraFields" class="space-y-3 hidden">
+            <div>
+              <label for="usernameInput" class="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Username</label>
+              <input type="text" id="usernameInput" name="username" autocomplete="username" placeholder="vaelor_quant" class="vaelor-input w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-neutral-600">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="firstNameInput" class="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1">First Name</label>
+                <input type="text" id="firstNameInput" name="given-name" autocomplete="given-name" placeholder="Arthur" class="vaelor-input w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-neutral-600">
+              </div>
+              <div>
+                <label for="lastNameInput" class="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Last Name</label>
+                <input type="text" id="lastNameInput" name="family-name" autocomplete="family-name" placeholder="Vance" class="vaelor-input w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-neutral-600">
+              </div>
+            </div>
+          </div>
+
+          <!-- Email Input -->
+          <div>
+            <label id="emailLabel" for="emailInput" class="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Email or Username</label>
+            <input type="text" id="emailInput" name="email" autocomplete="email" required placeholder="you@email.com" class="vaelor-input w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-neutral-600">
+          </div>
+
+          <!-- Password Input -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="passwordInput" class="block font-mono text-[10px] uppercase tracking-widest text-neutral-400">Password</label>
+              <button type="button" onclick="openPasswordResetModal()" class="text-[11px] text-rose-400/90 hover:text-rose-300 transition-colors">Forgot password?</button>
+            </div>
+            <div class="relative">
+              <input type="password" id="passwordInput" name="password" autocomplete="current-password" required minlength="6" placeholder="••••••••••••" class="vaelor-input w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm text-white placeholder-neutral-600">
+              <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= CAPTCHA WIDGET ================= -->
+          <div class="rounded-xl bg-[#110a0e] border border-white/10 p-3 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <button type="button" id="captchaTriggerBtn" onclick="openCaptchaChallenge()" class="w-6 h-6 rounded-lg bg-[#1a0f16] border border-white/20 hover:border-rose-400 flex items-center justify-center transition-all">
+                  <div id="captchaBoxIdle" class="w-2.5 h-2.5 rounded-sm bg-rose-500/30"></div>
+                  <svg id="captchaBoxCheck" class="hidden w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </button>
+                <div>
+                  <p id="captchaStatusText" class="text-xs font-medium text-neutral-200 cursor-pointer" onclick="openCaptchaChallenge()">I am human (Click to verify)</p>
+                  <p class="font-mono text-[10px] text-neutral-500">Vaelor PoW + Visual Cryptographic Challenge</p>
+                </div>
+              </div>
+              <span id="captchaBadge" class="font-mono text-[10px] px-2 py-0.5 rounded bg-white/5 text-neutral-400 border border-white/5">REQUIRED</span>
+            </div>
+
+            <!-- Challenge Drawer -->
+            <div id="captchaChallengePanel" class="hidden pt-2.5 border-t border-white/10 space-y-2">
+              <div class="flex items-center justify-between gap-2">
+                <canvas id="captchaCanvas" width="170" height="44" class="rounded-lg border border-rose-500/30 bg-[#090407]"></canvas>
+                <button type="button" onclick="generateCaptchaChallenge()" title="Refresh Captcha" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-mono flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  New
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <input type="text" id="captchaUserInput" placeholder="Enter characters above" class="vaelor-input flex-1 px-3 py-1.5 rounded-lg text-xs font-mono uppercase tracking-widest text-white">
+                <button type="button" onclick="validateCaptchaInput()" class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-medium text-white transition-colors">
+                  Verify
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= REMEMBER ME ================= -->
+          <div class="flex items-center justify-between pt-1 pb-1">
+            <label class="flex items-center gap-2.5 cursor-pointer select-none group">
+              <div class="relative flex items-center justify-center">
+                <input type="checkbox" id="rememberMe" checked class="peer sr-only">
+                <div class="w-4 h-4 rounded bg-[#140c10] border border-white/20 peer-checked:bg-rose-600 peer-checked:border-rose-500 transition-all"></div>
+                <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 absolute pointer-events-none transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+              <span class="text-xs text-neutral-300 group-hover:text-white transition-colors">
+                Remember me <span class="text-[11px] text-neutral-500">(save username & password for next time)</span>
+              </span>
+            </label>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="submitBtn" class="btn-crimson w-full py-3 rounded-xl font-medium text-sm text-white flex items-center justify-center gap-2">
+            <span id="submitBtnText">Sign in</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+            </svg>
+          </button>
+        </form>
+
+        <!-- Footer Mode Switcher -->
+        <p class="text-xs text-neutral-500 mt-5">
+          <span id="footerPrompt">New to Vaelor Trading?</span>
+          <button type="button" onclick="toggleModeFromFooter()" id="footerAction" class="text-rose-400 hover:text-rose-300 font-medium ml-1 underline-offset-4 hover:underline">
+            Create an account
+          </button>
+        </p>
+      </div>
+
+      <!-- ===================================================================== -->
+      <!-- VIEW 2: AUTHENTICATED OPERATOR TERMINAL (Shown upon login)            -->
+      <!-- ===================================================================== -->
+      <div id="dashboardView" class="hidden space-y-5">
+        <div class="p-5 rounded-2xl bg-[#120a0f] border border-emerald-500/30 shadow-[0_0_40px_-10px_rgba(16,185,129,0.25)]">
+          <div class="flex items-center justify-between mb-4">
+            <span class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 font-mono text-[11px] text-emerald-400">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              SESSION ACTIVE
+            </span>
+            <span id="dashAuthProvider" class="font-mono text-[11px] text-rose-400 uppercase">EMAIL AUTH</span>
+          </div>
+
+          <div class="flex items-center gap-3.5 mb-5">
+            <div id="dashAvatar" class="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-pink-700 flex items-center justify-center font-serif text-lg font-bold text-white shadow-lg">
+              AV
+            </div>
+            <div>
+              <h3 id="dashFullName" class="text-lg font-semibold text-white">Arthur Vance</h3>
+              <p id="dashUsernameEmail" class="font-mono text-xs text-neutral-400">@vaelor_quant • operator@vaelor.trading</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2.5 font-mono text-xs mb-5">
+            <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+              <span class="text-[10px] text-neutral-500 block">REMEMBER ME STATUS</span>
+              <span id="dashRememberStatus" class="text-emerald-400 font-medium">Credentials Saved</span>
+            </div>
+            <div class="p-3 rounded-xl bg-black/40 border border-white/5">
+              <span class="text-[10px] text-neutral-500 block">HUMAN VERIFICATION</span>
+              <span class="text-rose-400 font-medium">PoW Verified ✓</span>
+            </div>
+          </div>
+
+          <a href="/member" class="block text-center w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-700 hover:from-rose-500 hover:to-pink-600 text-xs font-mono uppercase tracking-wider text-white transition-all no-underline mb-2">
+            Open member dashboard →
+          </a>
+          <button onclick="logoutSession()" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-rose-950/60 border border-white/10 hover:border-rose-500/40 text-xs font-mono uppercase tracking-wider text-rose-300 transition-all">
+            Terminate Session (Log Out)
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ================= RIGHT COLUMN: HERO SHOWCASE PANEL ================= -->
+    <div class="lg:col-span-7 relative rounded-3xl overflow-hidden border border-rose-500/20 bg-[#0a0508] flex flex-col justify-between p-8 sm:p-14 lg:p-16 shadow-[0_0_90px_-20px_rgba(225,29,72,0.28)]">
+      
+      <!-- Animated Matrix / Data Stream Canvas -->
+      <canvas id="dataRainCanvas" class="absolute inset-0 w-full h-full opacity-65 pointer-events-none"></canvas>
+
+      <!-- Cyber Grid & Radial Glow Overlays -->
+      <div class="absolute inset-0 cyber-grid cyber-dots pointer-events-none"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_35%_40%,rgba(225,29,72,0.22),transparent_65%)] pointer-events-none"></div>
+      <div class="absolute inset-0 bg-gradient-to-t from-[#070305] via-transparent to-[#070305]/70 pointer-events-none"></div>
+
+      <!-- Top Floating Navigation Pill (Removed "Docs Dashboard Terminal") -->
+      <div class="relative z-10 flex items-center justify-between">
+        <div class="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-black/50 backdrop-blur-md border border-white/10">
+          <span class="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]"></span>
+          <span class="text-xs font-serif font-semibold text-white">
+            Vaelor Trading LLC
+          </span>
+        </div>
+
+        <span class="font-mono text-[11px] px-3 py-1 rounded-full bg-rose-950/50 border border-rose-500/30 text-rose-300">
+          Version 2.0.1
+        </span>
+      </div>
+
+      <!-- Center Hero Typography -->
+      <div class="relative z-10 my-auto py-12 max-w-xl">
+        <p class="font-mono text-[11px] uppercase tracking-[0.28em] text-rose-400 mb-4">
+          ALGORITHMIC FUTURES TRADING • OPERATIONAL PROTOCOL
+        </p>
+
+        <h2 class="font-serif text-5xl sm:text-6xl lg:text-[68px] leading-[1.03] tracking-tight text-white mb-6">
+          Precision <br />
+          that <span class="italic font-normal bg-gradient-to-r from-rose-400 via-pink-500 to-rose-600 bg-clip-text text-transparent pr-2">thinks.</span>
+        </h2>
+
+        <p class="text-neutral-300/90 text-sm sm:text-base leading-relaxed mb-8 font-light max-w-md">
+          Set your strategy once. Your bot runs it with precision — macro analysis, bounded autonomous execution, and futures market structure analytics tracked in real time.
+        </p>
+
+        <!-- Feature Badges -->
+        <div class="flex flex-wrap gap-2.5 mb-8">
+          <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-[#140b10]/90 border border-rose-500/25 text-xs font-medium text-white shadow-sm backdrop-blur-md">
+            <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Automated
+          </div>
+
+          <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-[#140b10]/90 border border-rose-500/25 text-xs font-medium text-white shadow-sm backdrop-blur-md">
+            <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Live sync
+          </div>
+
+          <div class="flex items-center gap-2 px-4 py-2 rounded-full bg-[#140b10]/90 border border-rose-500/25 text-xs font-medium text-white shadow-sm backdrop-blur-md">
+            <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            Encrypted
+          </div>
+        </div>
+
+        <!-- Operational Status Line (Removed "Confirmed • Deployment Ready") -->
+        <div class="flex items-center gap-2 font-mono text-xs text-neutral-400">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]"></span>
+          <span>All systems operational</span>
+        </div>
+      </div>
+
+      <!-- Bottom Telemetry Area: Completely Removed -->
+      <div></div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: GOOGLE & GITHUB OAUTH HANDSHAKE                                    -->
+  <!-- ========================================================================= -->
+  <div id="oauthModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="w-full max-w-md rounded-2xl bg-[#120a0f] border border-rose-500/30 p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2.5">
+          <span id="oauthModalIcon" class="w-6 h-6 flex items-center justify-center rounded-full bg-white/10 text-xs font-bold">G</span>
+          <div>
+            <h3 id="oauthModalTitle" class="text-sm font-semibold text-white">Sign in with Google</h3>
+            <p class="font-mono text-[10px] text-neutral-400">OAuth 2.0 Authorization Endpoint</p>
+          </div>
+        </div>
+        <button onclick="closeOAuthModal()" class="text-neutral-500 hover:text-white">✕</button>
+      </div>
+
+      <p class="text-xs text-neutral-300">Choose an account to continue to <span class="text-rose-400 font-semibold">Vaelor Trading LLC</span>:</p>
+
+      <div id="oauthAccountList" class="space-y-2"></div>
+
+      <div class="pt-2 border-t border-white/10 space-y-2">
+        <p class="font-mono text-[10px] uppercase text-neutral-400">Or use another account</p>
+        <input id="customOAuthEmail" type="email" placeholder="your.account@gmail.com" class="vaelor-input w-full px-3 py-2 rounded-xl text-xs text-white">
+        <input id="customOAuthName" type="text" placeholder="Full Name (e.g. Elena Rostova)" class="vaelor-input w-full px-3 py-2 rounded-xl text-xs text-white">
+        <button type="button" onclick="completeCustomOAuth()" class="btn-crimson w-full py-2 rounded-xl text-xs font-medium text-white">
+          Authorize & Continue
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="px-4 py-3 rounded-xl bg-[#160b11] border border-rose-500/40 shadow-2xl flex items-center gap-3 text-xs text-white">
+      <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+      <span id="toastMessage">Action completed</span>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- APPLICATION LOGIC                                                         -->
+  <!-- ========================================================================= -->
+  <script>
+    const DB_USERS_KEY = 'vaelor_users_db_v1';
+    const REMEMBER_KEY = 'vaelor_remembered_user_v1';
+    const ACTIVE_SESSION_KEY = 'vaelor_active_session_v1';
+
+    let currentMode = 'signin';
+    let captchaSolved = false;
+    let currentCaptchaCode = '';
+    let activeOAuthProvider = 'Google';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initDataRain();
+      seedDefaultDemoUserIfEmpty();
+      generateCaptchaChallenge();
+      restoreRememberedCredentials();
+      checkExistingSession();
+    });
+
+    // User DB Functions
+    function getUsersDB() {
+      try {
+        return JSON.parse(localStorage.getItem(DB_USERS_KEY)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveUsersDB(users) {
+      localStorage.setItem(DB_USERS_KEY, JSON.stringify(users));
+    }
+
+    function seedDefaultDemoUserIfEmpty() {
+      const users = getUsersDB();
+      if (users.length === 0) {
+        users.push({
+          username: 'vaelor_quant',
+          firstName: 'Arthur',
+          lastName: 'Vance',
+          email: 'you@email.com',
+          password: 'password123',
+          provider: 'Email'
+        });
+        saveUsersDB(users);
+      }
+    }
+
+    // CAPTCHA Engine
+    function openCaptchaChallenge() {
+      if (captchaSolved) return;
+      const panel = document.getElementById('captchaChallengePanel');
+      panel.classList.remove('hidden');
+      generateCaptchaChallenge();
+      document.getElementById('captchaUserInput').focus();
+    }
+
+    function generateCaptchaChallenge() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 5; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      currentCaptchaCode = code;
+
+      const canvas = document.getElementById('captchaCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#0c0509';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < 6; i++) {
+        ctx.strokeStyle = `rgba(225, 29, 72, ${0.25 + Math.random() * 0.4})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+        ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+        ctx.stroke();
+      }
+
+      ctx.font = 'bold 22px "JetBrains Mono", monospace';
+      for (let i = 0; i < code.length; i++) {
+        ctx.save();
+        const x = 18 + i * 28;
+        const y = 28 + (Math.random() * 8 - 4);
+        const angle = (Math.random() - 0.5) * 0.35;
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.fillStyle = i % 2 === 0 ? '#f43f5e' : '#f8fafc';
+        ctx.fillText(code[i], 0, 0);
+        ctx.restore();
+      }
+    }
+
+    function validateCaptchaInput() {
+      const input = document.getElementById('captchaUserInput').value.trim().toUpperCase();
+      if (input === currentCaptchaCode) {
+        captchaSolved = true;
+        document.getElementById('captchaChallengePanel').classList.add('hidden');
+        document.getElementById('captchaBoxIdle').classList.add('hidden');
+        document.getElementById('captchaBoxCheck').classList.remove('hidden');
+        
+        const statusText = document.getElementById('captchaStatusText');
+        statusText.textContent = 'Human verified (Cryptographic PoW passed)';
+        statusText.classList.add('text-emerald-400');
+
+        const badge = document.getElementById('captchaBadge');
+        badge.textContent = 'VERIFIED';
+        badge.className = 'font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30';
+        hideError();
+        showToast('CAPTCHA verified successfully.');
+      } else {
+        showError('Incorrect CAPTCHA code. A new code has been generated.');
+        document.getElementById('captchaUserInput').value = '';
+        generateCaptchaChallenge();
+      }
+    }
+
+    function resetCaptcha() {
+      captchaSolved = false;
+      document.getElementById('captchaUserInput').value = '';
+      document.getElementById('captchaBoxIdle').classList.remove('hidden');
+      document.getElementById('captchaBoxCheck').classList.add('hidden');
+      const statusText = document.getElementById('captchaStatusText');
+      statusText.textContent = 'I am human (Click to verify)';
+      statusText.classList.remove('text-emerald-400');
+      const badge = document.getElementById('captchaBadge');
+      badge.textContent = 'REQUIRED';
+      badge.className = 'font-mono text-[10px] px-2 py-0.5 rounded bg-white/5 text-neutral-400 border border-white/5';
+    }
+
+    // Continue with email & Modes
+    function activateContinueWithEmail() {
+      switchMode('signup');
+      document.getElementById('usernameInput').focus();
+      showToast('Continue with Email: Enter your details & check Remember Me.');
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      hideError();
+
+      const tabSignIn = document.getElementById('tabSignIn');
+      const tabSignUp = document.getElementById('tabSignUp');
+      const extraFields = document.getElementById('signupExtraFields');
+      const authHeading = document.getElementById('authHeading');
+      const authSubtext = document.getElementById('authSubtext');
+      const submitBtnText = document.getElementById('submitBtnText');
+      const footerPrompt = document.getElementById('footerPrompt');
+      const footerAction = document.getElementById('footerAction');
+      const emailLabel = document.getElementById('emailLabel');
+
+      if (mode === 'signup') {
+        tabSignUp.className = 'py-2.5 text-xs font-medium rounded-lg transition-all duration-300 btn-crimson text-white';
+        tabSignIn.className = 'py-2.5 text-xs font-medium rounded-lg transition-all duration-300 text-neutral-400 hover:text-white';
+        
+        extraFields.classList.remove('hidden');
+        document.getElementById('usernameInput').required = true;
+        document.getElementById('firstNameInput').required = true;
+        document.getElementById('lastNameInput').required = true;
+
+        authHeading.textContent = 'Continue with email';
+        authSubtext.textContent = 'Enter your username, name, email & password below.';
+        emailLabel.textContent = 'Email Address';
+        submitBtnText.textContent = 'Create account & Sign in';
+        footerPrompt.textContent = 'Already have an account?';
+        footerAction.textContent = 'Sign in';
+      } else {
+        tabSignIn.className = 'py-2.5 text-xs font-medium rounded-lg transition-all duration-300 btn-crimson text-white';
+        tabSignUp.className = 'py-2.5 text-xs font-medium rounded-lg transition-all duration-300 text-neutral-400 hover:text-white';
+        
+        extraFields.classList.add('hidden');
+        document.getElementById('usernameInput').required = false;
+        document.getElementById('firstNameInput').required = false;
+        document.getElementById('lastNameInput').required = false;
+
+        authHeading.textContent = 'Welcome back';
+        authSubtext.textContent = 'Sign in to your autonomous trading dashboard.';
+        emailLabel.textContent = 'Email or Username';
+        submitBtnText.textContent = 'Sign in';
+        footerPrompt.textContent = 'New to Vaelor Trading?';
+        footerAction.textContent = 'Create an account';
+      }
+    }
+
+    function toggleModeFromFooter() {
+      switchMode(currentMode === 'signin' ? 'signup' : 'signin');
+    }
+
+    // Submit & Remember Me Logic
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      hideError();
+
+      if (!captchaSolved) {
+        openCaptchaChallenge();
+        showError('Please complete the human verification CAPTCHA first.');
+        return;
+      }
+
+      const identifier = document.getElementById('emailInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+      const username = document.getElementById('usernameInput').value.trim();
+      const firstName = document.getElementById('firstNameInput').value.trim();
+      const lastName = document.getElementById('lastNameInput').value.trim();
+      const rememberMe = document.getElementById('rememberMe').checked;
+
+      const users = getUsersDB();
+
+      if (currentMode === 'signup') {
+        const existing = users.find(
+          u => u.email.toLowerCase() === identifier.toLowerCase() ||
+               (u.username && u.username.toLowerCase() === username.toLowerCase())
+        );
+        if (existing) {
+          showError('An operator with that email or username already exists.');
+          return;
+        }
+
+        const newUser = {
+          username,
+          firstName,
+          lastName,
+          email: identifier,
+          password,
+          provider: 'Email'
+        };
+        users.push(newUser);
+        saveUsersDB(users);
+
+        handleRememberMePersistence(newUser, rememberMe);
+        loginUserToDashboard(newUser, rememberMe, true);
+      } else {
+        const matchedUser = users.find(
+          u => (u.email.toLowerCase() === identifier.toLowerCase() ||
+               (u.username && u.username.toLowerCase() === identifier.toLowerCase())) &&
+               u.password === password
+        );
+
+        if (!matchedUser) {
+          showError('Invalid credentials. (Demo login: you@email.com / password123)');
+          return;
+        }
+
+        handleRememberMePersistence(matchedUser, rememberMe);
+        loginUserToDashboard(matchedUser, rememberMe, true);
+      }
+    }
+
+    async function handleRememberMePersistence(user, rememberMe) {
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_KEY, JSON.stringify(user));
+      } else {
+        localStorage.removeItem(REMEMBER_KEY);
+      }
+    }
+
+    function restoreRememberedCredentials() {
+      const raw = localStorage.getItem(REMEMBER_KEY);
+      const badge = document.getElementById('savedBadge');
+      const quickCard = document.getElementById('quickLoginCard');
+
+      if (!raw) {
+        badge.classList.add('hidden');
+        quickCard.classList.add('hidden');
+        return;
+      }
+
+      try {
+        const saved = JSON.parse(raw);
+        document.getElementById('emailInput').value = saved.username || saved.email || '';
+        document.getElementById('passwordInput').value = saved.password || '';
+        document.getElementById('usernameInput').value = saved.username || '';
+        document.getElementById('firstNameInput').value = saved.firstName || '';
+        document.getElementById('lastNameInput').value = saved.lastName || '';
+        document.getElementById('rememberMe').checked = true;
+
+        badge.classList.remove('hidden');
+        badge.classList.add('flex');
+
+        const fullName = `${saved.firstName || ''} ${saved.lastName || ''}`.trim() || saved.username || 'Operator';
+        document.getElementById('quickName').textContent = fullName;
+        document.getElementById('quickEmail').textContent = `@${saved.username || 'user'} • ${saved.email}`;
+        document.getElementById('quickAvatar').textContent = fullName.slice(0, 2).toUpperCase();
+        quickCard.classList.remove('hidden');
+        quickCard.classList.add('flex');
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function oneClickSavedLogin() {
+      const raw = localStorage.getItem(REMEMBER_KEY);
+      if (!raw) return;
+      loginUserToDashboard(JSON.parse(raw), true, false);
+    }
+
+    function clearRememberedAccount() {
+      localStorage.removeItem(REMEMBER_KEY);
+      document.getElementById('emailInput').value = '';
+      document.getElementById('passwordInput').value = '';
+      restoreRememberedCredentials();
+      showToast('Saved credentials removed.');
+    }
+
+    // OAuth Management
+    function startOAuthFlow(provider) {
+      activeOAuthProvider = provider;
+      const modal = document.getElementById('oauthModal');
+      const title = document.getElementById('oauthModalTitle');
+      const icon = document.getElementById('oauthModalIcon');
+      const list = document.getElementById('oauthAccountList');
+
+      title.textContent = `Continue with ${provider}`;
+      icon.textContent = provider === 'Google' ? 'G' : 'GH';
+
+      const presets = provider === 'Google'
+        ? [
+            { firstName: 'Arthur', lastName: 'Vance', username: 'arthur.vance', email: 'arthur.vance@gmail.com' },
+            { firstName: 'Sophia', lastName: 'Chen', username: 'schen_quant', email: 'sophia.chen@vaelor.io' }
+          ]
+        : [
+            { firstName: 'Linus', lastName: 'Kowalski', username: 'lkowalski-dev', email: 'linus@github.com' },
+            { firstName: 'Vaelor', lastName: 'CoreOps', username: 'vaelor-ops', email: 'ops@vaelor.trading' }
+          ];
+
+      list.innerHTML = presets.map((acc) => `
+        <button type="button" onclick='selectOAuthAccount(${JSON.stringify(acc)})' class="w-full p-3 rounded-xl bg-white/5 hover:bg-rose-950/40 border border-white/10 hover:border-rose-500/40 flex items-center justify-between transition-all text-left">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center font-mono text-xs font-bold text-rose-300">
+              ${acc.firstName[0]}${acc.lastName[0]}
+            </div>
+            <div>
+              <p class="text-xs font-medium text-white">${acc.firstName} ${acc.lastName}</p>
+              <p class="font-mono text-[10px] text-neutral-400">${acc.email}</p>
+            </div>
+          </div>
+          <span class="font-mono text-[10px] text-rose-400">Select →</span>
+        </button>
+      `).join('');
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeOAuthModal() {
+      const modal = document.getElementById('oauthModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function selectOAuthAccount(acc) {
+      closeOAuthModal();
+      const userObj = {
+        ...acc,
+        password: 'oauth_token_verified',
+        provider: activeOAuthProvider
+      };
+      const remember = document.getElementById('rememberMe').checked;
+      handleRememberMePersistence(userObj, remember);
+      loginUserToDashboard(userObj, remember, true);
+    }
+
+    function completeCustomOAuth() {
+      const email = document.getElementById('customOAuthEmail').value.trim();
+      const fullName = document.getElementById('customOAuthName').value.trim() || 'OAuth Operator';
+      if (!email) {
+        showToast('Please enter an email address.');
+        return;
+      }
+      const parts = fullName.split(' ');
+      selectOAuthAccount({
+        firstName: parts[0] || 'Operator',
+        lastName: parts.slice(1).join(' ') || '',
+        username: email.split('@')[0],
+        email
+      });
+    }
+
+    // Sessions
+    function loginUserToDashboard(user, remembered, redirect) {
+      localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({ user, remembered }));
+
+      document.getElementById('authView').classList.add('hidden');
+      document.getElementById('dashboardView').classList.remove('hidden');
+
+      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Operator';
+      const initials = fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'OP';
+
+      document.getElementById('dashAvatar').textContent = initials;
+      document.getElementById('dashFullName').textContent = fullName;
+      document.getElementById('dashUsernameEmail').textContent = `@${user.username || user.email.split('@')[0]} • ${user.email}`;
+      document.getElementById('dashAuthProvider').textContent = `${user.provider || 'EMAIL'} OAUTH`;
+      document.getElementById('dashRememberStatus').textContent = remembered ? 'Saved for Next Login ✓' : 'Session Only';
+
+      showToast(`Welcome, ${fullName}!`);
+      if (redirect) {
+        window.setTimeout(() => { window.location.href = '/member'; }, 700);
+      }
+    }
+
+    function checkExistingSession() {
+      const raw = localStorage.getItem(ACTIVE_SESSION_KEY);
+      if (raw) {
+        try {
+          const { user, remembered } = JSON.parse(raw);
+          loginUserToDashboard(user, remembered, false);
+        } catch (_) {}
+      }
+    }
+
+    function logoutSession() {
+      localStorage.removeItem(ACTIVE_SESSION_KEY);
+      document.getElementById('dashboardView').classList.add('hidden');
+      document.getElementById('authView').classList.remove('hidden');
+      resetCaptcha();
+      restoreRememberedCredentials();
+      switchMode('signin');
+      showToast('Logged out.');
+    }
+
+    // Password & Alerts
+    function togglePasswordVisibility() {
+      const input = document.getElementById('passwordInput');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+
+    function openPasswordResetModal() {
+      const email = document.getElementById('emailInput').value.trim();
+      if (!email) {
+        showError('Enter your email or username first, then click Forgot password.');
+        document.getElementById('emailInput').focus();
+        return;
+      }
+      const users = getUsersDB();
+      const found = users.find(u => u.email.toLowerCase() === email.toLowerCase() || (u.username && u.username.toLowerCase() === email.toLowerCase()));
+      if (found) {
+        showToast(`Recovery Hint: Password is "${found.password}"`);
+      } else {
+        showToast(`Reset protocol dispatched to ${email}.`);
+      }
+    }
+
+    function showError(msg) {
+      const banner = document.getElementById('errorBanner');
+      document.getElementById('errorText').textContent = msg;
+      banner.classList.remove('hidden');
+    }
+
+    function hideError() {
+      document.getElementById('errorBanner').classList.add('hidden');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMessage').textContent = message;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+      }, 3600);
+    }
+
+    function initDataRain() {
+      const canvas = document.getElementById('dataRainCanvas');
+      const ctx = canvas.getContext('2d');
+
+      function resize() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      const columns = Math.floor(canvas.width / 28);
+      const drops = Array.from({ length: columns }, () => ({
+        y: Math.random() * canvas.height,
+        speed: 0.6 + Math.random() * 1.4,
+        length: 40 + Math.random() * 90,
+        opacity: 0.15 + Math.random() * 0.45
+      }));
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        drops.forEach((drop, i) => {
+          const x = i * 28 + 14;
+          const grad = ctx.createLinearGradient(x, drop.y - drop.length, x, drop.y);
+          grad.addColorStop(0, 'rgba(225, 29, 72, 0)');
+          grad.addColorStop(0.7, `rgba(225, 29, 72, ${drop.opacity * 0.6})`);
+          grad.addColorStop(1, `rgba(251, 113, 133, ${drop.opacity})`);
+
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(x, drop.y - drop.length);
+          ctx.lineTo(x, drop.y);
+          ctx.stroke();
+
+          ctx.fillStyle = `rgba(255, 228, 230, ${drop.opacity})`;
+          ctx.fillRect(x - 1, drop.y, 2, 3);
+
+          drop.y += drop.speed;
+          if (drop.y - drop.length > canvas.height) {
+            drop.y = -20;
+            drop.speed = 0.6 + Math.random() * 1.4;
+          }
+        });
+
+        requestAnimationFrame(draw);
+      }
+      draw();
+    }
+  </script>
+</body>
+</html>

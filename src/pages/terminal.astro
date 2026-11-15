@@ -151,7 +151,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
 
       <!-- Tab 1 · CFTC raw interactive -->
-      <div class="hub-tab-panel" id="tab-cftc" role="tabpanel" aria-label="CFTC raw data">
+      <div class="hub-tab-panel" id="tab-cftc" role="tabpanel" aria-label="CFTC raw data" data-gate="terminal_section2">
         <div class="kpi-grid" id="kpiGrid"><!-- KPI cards injected by terminal.ts --></div>
         <div class="cot-controls">
           <div class="ctl-block">
@@ -175,7 +175,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
 
       <!-- Tab 2 · Futures COT & OI (self-hosted, always available) -->
-      <div class="hub-tab-panel" id="tab-tvcot" role="tabpanel" aria-label="Futures COT and open interest" hidden>
+      <div class="hub-tab-panel" id="tab-tvcot" role="tabpanel" aria-label="Futures COT and open interest" data-gate="terminal_section2" hidden>
         <div class="cot-controls">
           <div class="ctl-block">
             <div class="ctl-label">Series</div>
@@ -201,7 +201,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
 
       <!-- Tab 3 · Cross-asset COT structure -->
-      <div class="hub-tab-panel" id="tab-finviz" role="tabpanel" aria-label="Cross-asset COT structure" hidden>
+      <div class="hub-tab-panel" id="tab-finviz" role="tabpanel" aria-label="Cross-asset COT structure" data-gate="terminal_section2" hidden>
         <div class="finviz-main" id="finvizMain"><!-- self-rendered COT structure --></div>
         <div class="panel-foot">
           Finviz retired its static futures chart images in 2026, so this panel draws the same

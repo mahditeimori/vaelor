@@ -43,7 +43,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
 
     <!-- Panel 1 · Price / Volume -->
-    <div class="dash-panel">
+    <div class="dash-panel" data-gate="oi_cot">
       <div class="panel-head">
         <div class="panel-title">Panel 1 — Price / Volume</div>
         <div class="panel-src">
@@ -72,7 +72,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
 
     <!-- Panel 2 · COT -->
-    <div class="dash-panel">
+    <div class="dash-panel" data-gate="oi_cot">
       <div class="panel-head">
         <div class="panel-title">Panel 2 — CFTC COT: Commercial vs Large Speculator</div>
         <div class="panel-src">
@@ -95,7 +95,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
 
     <!-- Panel 3 · Open Interest -->
-    <div class="dash-panel" id="oiPanel">
+    <div class="dash-panel" id="oiPanel" data-gate="oi_cot">
       <div class="panel-head">
         <div class="panel-title">Panel 3 — Futures Open Interest</div>
         <div class="panel-src">
@@ -123,7 +123,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       <div id="oiChart" class="chart"></div>
     </div>
 
-    <aside class="composite-bar" aria-label="Composite Signal Dashboard">
+    <aside class="composite-bar" aria-label="Composite Signal Dashboard" data-gate="cdtc">
       <div class="composite-grid">
         <div class="comp-cell">
           <span class="k">Price / OI State</span>
@@ -158,7 +158,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </aside>
 
     <!-- Analyze · below the composite panel, at the bottom of the page -->
-    <section class="dash-panel analyze-panel" aria-labelledby="analyze-title">
+    <section class="dash-panel analyze-panel" aria-labelledby="analyze-title" data-gate="analytical_chart">
       <div class="panel-head">
         <div class="panel-title" id="analyze-title">Analyze — composite bias &amp; entry zones</div>
         <div class="analyze-controls">

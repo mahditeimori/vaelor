@@ -2404,6 +2404,12 @@ async function togglePropSafe(): Promise<void> {
 }
 
 async function downloadIndicator(id: string): Promise<void> {
+  // Membership · MT5 indicator export is subscription only.
+  const vmInd = (window as unknown as { VaelorMembership?: { can: (f: string) => boolean; openFeatureLock: (f: string) => void } }).VaelorMembership;
+  if (!vmInd?.can || !vmInd.can('indicator_download')) {
+    vmInd?.openFeatureLock?.('indicator_download');
+    return;
+  }
   try {
     const response = await fetch(
       `${pairing.url.replace(/\/+$/, '')}/api/strategies/${encodeURIComponent(id)}/indicator.mq5`,
@@ -2984,6 +2990,17 @@ function init(): void {
   if (pairing.token) (el('bridgeToken') as HTMLInputElement).value = pairing.token;
   wire();
   setSide('buy');
+
+  // Membership · the live trading desk is subscription only.
+  const vmEx = (window as unknown as { VaelorMembership?: { can: (f: string) => boolean; openFeatureLock: (f: string) => void } }).VaelorMembership;
+  if (vmEx?.can && !vmEx.can('live_trade')) {
+    const enableLive = document.getElementById('enableLiveBtn');
+    const lockLive = document.getElementById('lockLiveBtn');
+    if (enableLive) enableLive.hidden = true;
+    if (lockLive) lockLive.hidden = true;
+    const liveState = document.getElementById('liveState');
+    if (liveState) liveState.textContent = 'Live trading requires a subscription.';
+  }
 
   if (pairing.token && pairing.url) {
     void (async () => {
