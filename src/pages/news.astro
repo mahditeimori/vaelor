@@ -1,0 +1,451 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
+---
+
+<BaseLayout
+  title="News · Economic Calendar"
+  description="Weekly macroeconomic calendar for USD, EUR, GBP and Gold with Iran Jalali dates, Tehran and New York release times, and a pre-release USD/XAU fundamental prediction engine."
+>
+  <main class="shell nw-page" id="newsPage">
+    <section class="hero" style="padding-bottom:18px">
+      <div class="kicker">Macro event monitor · weekly outlook</div>
+      <h1>News that moves markets.</h1>
+      <p class="lede">
+        High-impact and medium-impact economic releases for <b>USD</b>, <b>EUR</b>, <b>GBP</b> and
+        <b>Gold</b> — every event shown in <b>Tehran (IRST)</b> and <b>New York (EST/EDT)</b> time with
+        the <b>Iranian Jalali calendar</b> date, plus a rule-based pre-release engine that calls the
+        USD direction before the number drops.
+      </p>
+      <div class="nw-badges">
+        <span class="nw-badge-pill">ForexFactory weekly feed</span>
+        <span class="nw-badge-pill">Jalali · fa-IR calendar</span>
+        <span class="nw-badge-pill">Dual timezone</span>
+        <span class="nw-badge-pill">MCP tools exposed</span>
+      </div>
+      <div class="nw-clockbox">
+        <div class="nw-clock"><label>TEHRAN · ASIA/TEHRAN</label><strong id="tehranClock">--:--:--</strong></div>
+        <div class="nw-clock"><label>NEW YORK · AMERICA/NEW_YORK</label><strong id="nyClock">--:--:--</strong></div>
+      </div>
+    </section>
+
+    <section class="nw-stats">
+      <div class="nw-stat"><span>THIS WEEK · HIGH IMPACT</span><strong id="highCount">—</strong><em>Red-folder events</em></div>
+      <div class="nw-stat"><span>THIS WEEK · MEDIUM IMPACT</span><strong id="mediumCount">—</strong><em>Orange-folder events</em></div>
+      <div class="nw-stat"><span>WATCHLIST</span><strong>4</strong><em>USD · EUR · GBP · XAU</em></div>
+      <div class="nw-stat"><span>NEXT HIGH-VISIBILITY EVENT</span><strong id="nextEvent">—</strong><em id="nextEventTime">Waiting for calendar data</em></div>
+    </section>
+
+    <!-- ================= CALENDAR ================= -->
+    <section class="nw-section" aria-labelledby="calendar-title">
+      <div class="nw-section-head">
+        <div>
+          <div class="panel-kicker">01 · ECONOMIC CALENDAR</div>
+          <h2 id="calendar-title">Weekly release schedule</h2>
+          <p class="nw-weeklabel" id="weekLabel">Events are shown in Tehran and New York local time.</p>
+        </div>
+        <div class="nw-topright">
+          <span class="nw-conn"><i class="nw-dot" id="statusDot"></i><span id="connectionStatus">CONNECTING…</span></span>
+          <button type="button" class="nw-btn" id="refreshBtn">Refresh data</button>
+        </div>
+      </div>
+
+      <div class="nw-filters">
+        <label>Asset
+          <select id="filterCurrency">
+            <option value="all">All watched</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="XAU">XAU relevance</option>
+          </select>
+        </label>
+        <label>Impact
+          <select id="filterImpact">
+            <option value="all">High + Medium</option>
+            <option value="high">High only · Red</option>
+            <option value="medium">Medium only · Orange</option>
+          </select>
+        </label>
+        <label>Day of week
+          <select id="filterDay">
+            <option value="all">All days</option>
+          </select>
+        </label>
+        <span class="nw-count" id="filterCounts"></span>
+      </div>
+
+      <div class="nw-table-wrap">
+        <table class="nw-table">
+          <thead>
+            <tr>
+              <th>Release time</th>
+              <th>Event</th>
+              <th>Currency</th>
+              <th>Impact</th>
+              <th>Previous</th>
+              <th>Forecast</th>
+              <th>Actual</th>
+            </tr>
+          </thead>
+          <tbody id="newsTableBody">
+            <tr><td colspan="7" class="nw-empty">Loading the weekly calendar…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nw-hint">
+        Low-impact (yellow/grey) noise is excluded by default. <b>XAU driver</b> tags mark USD releases
+        that directly move XAUUSD liquidity and volatility (CPI, NFP, FOMC, retail sales, ISM, claims…).
+      </p>
+    </section>
+
+    <!-- ================= PREDICTION ENGINE ================= -->
+    <section class="nw-section" aria-labelledby="engine-title">
+      <div class="nw-section-head">
+        <div>
+          <div class="panel-kicker">02 · PRE-RELEASE PREDICTION ENGINE</div>
+          <h2 id="engine-title">Fundamental bias before the number drops</h2>
+        </div>
+        <label class="nw-daysel">Analyze day
+          <select id="daySelect"><option value="">Loading…</option></select>
+        </label>
+      </div>
+      <div class="nw-panel" id="dayAnalysis">
+        <p class="nw-loading">Running the fundamental engine…</p>
+      </div>
+    </section>
+
+    <!-- ================= CUSTOM AI ANALYSIS ================= -->
+    <section class="nw-section" aria-labelledby="custom-title">
+      <div class="nw-section-head">
+        <div>
+          <div class="panel-kicker">03 · CUSTOM AI ANALYSIS</div>
+          <h2 id="custom-title">Scenario workspace</h2>
+        </div>
+        <a class="nw-link" href="/ai">Also available over MCP →</a>
+      </div>
+      <p class="nw-lede">
+        Run the day's engine with your own parameters: a custom instruction, a hypothetical actual
+        print, a target asset and your trading bias rules. The same workspace is exposed to any AI
+        client as the <code class="inline">custom_ai_news_analysis</code> MCP tool at
+        <code class="inline">{WORKER}/mcp</code>.
+      </p>
+      <div class="nw-custom-grid">
+        <div class="nw-form">
+          <label>Custom prompt / instructions
+            <textarea id="customPrompt" placeholder="e.g. I trade XAUUSD only around CPI prints — focus on the release window reaction."></textarea>
+          </label>
+          <div class="nw-form-row">
+            <label>Hypothetical event (optional)
+              <input id="hypotheticalEvent" type="text" placeholder="e.g. CPI m/m" />
+            </label>
+            <label>Hypothetical actual (optional)
+              <input id="hypotheticalActual" type="text" placeholder="e.g. 0.5%" />
+            </label>
+          </div>
+          <div class="nw-form-row">
+            <label>Target asset
+              <select id="targetAsset">
+                <option value="all">All cross-asset</option>
+                <option value="XAUUSD">XAUUSD</option>
+                <option value="EURUSD">EURUSD</option>
+                <option value="GBPUSD">GBPUSD</option>
+              </select>
+            </label>
+            <label>Analysis day
+              <select id="customDay"><option value="">Loading…</option></select>
+            </label>
+          </div>
+          <label>Trading bias rules (optional)
+            <textarea id="biasRules" placeholder="e.g. Never hold through FOMC. Risk 0.5% max. Flat after NFP Friday." style="min-height:64px"></textarea>
+          </label>
+          <button type="button" class="nw-btn nw-btn-primary" id="runCustomBtn">Run custom analysis</button>
+        </div>
+        <div class="nw-panel nw-custom-result" id="customResult">
+          <p class="nw-loading">The result renders here after you run the workspace.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    import { mountNews } from '../scripts/news.ts';
+    mountNews();
+  </script>
+
+  <style>
+    .nw-page { padding-top: 32px; padding-bottom: 64px; }
+    .nw-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+    .nw-badge-pill {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-warm);
+      border: 1px solid rgba(201, 162, 75, 0.35);
+      background: rgba(201, 162, 75, 0.07);
+      border-radius: 999px;
+      padding: 5px 12px;
+    }
+
+    /* clocks */
+    .nw-clockbox { display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .nw-clock {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 12px 16px;
+      min-width: 180px;
+    }
+    .nw-clock label {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      color: var(--text-faint);
+    }
+    .nw-clock strong {
+      display: block;
+      font-family: var(--mono);
+      font-size: 1.35rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      margin-top: 4px;
+    }
+
+    /* stats */
+    .nw-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin: 26px 0 6px;
+    }
+    .nw-stat {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 15px 17px;
+    }
+    .nw-stat span { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; color: var(--text-faint); }
+    .nw-stat strong { display: block; font-family: var(--mono); font-size: 1.5rem; color: var(--text); margin-top: 5px; }
+    .nw-stat em { font-style: normal; font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); }
+
+    /* sections */
+    .nw-section { margin-top: 36px; }
+    .nw-section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .nw-section-head h2 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 6px 0 0;
+      color: var(--text);
+    }
+    .nw-weeklabel { font-family: var(--mono); font-size: 0.72rem; color: var(--text-faint); margin: 6px 0 0; }
+    .nw-topright { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .nw-link { font-family: var(--mono); font-size: 0.78rem; color: var(--accent); }
+    .nw-lede { max-width: 860px; color: var(--text-dim); line-height: 1.7; }
+    .nw-lede code.inline {
+      font-family: var(--mono); font-size: 0.72rem; color: var(--accent-warm);
+      background: var(--bg); border: 1px solid var(--border-soft); border-radius: 5px; padding: 1px 6px;
+    }
+
+    /* connection */
+    .nw-conn {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; color: var(--text-faint);
+      border: 1px solid var(--border-soft); border-radius: 999px; padding: 6px 12px; background: var(--bg-panel);
+    }
+    .nw-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
+    .nw-dot.on { background: var(--ok, #43d6a0); box-shadow: 0 0 10px rgba(67, 214, 160, 0.5); }
+
+    /* buttons */
+    .nw-btn {
+      font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
+      background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 15px; cursor: pointer; transition: color 0.15s, border-color 0.15s;
+    }
+    .nw-btn:hover { color: var(--text); border-color: var(--accent); }
+    .nw-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .nw-btn-primary {
+      color: var(--bg); background: var(--accent-warm); border-color: var(--accent-warm); font-weight: 600;
+    }
+    .nw-btn-primary:hover { color: var(--bg); filter: brightness(1.1); border-color: var(--accent-warm); }
+
+    /* filters */
+    .nw-filters {
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      background: var(--bg-panel); border: 1px solid var(--border-soft);
+      border-radius: 12px; padding: 12px 14px; margin-bottom: 14px;
+    }
+    .nw-filters label {
+      display: flex; flex-direction: column; gap: 4px;
+      font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint);
+    }
+    .nw-filters select {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border-soft);
+      border-radius: 8px; padding: 8px 10px; font-family: var(--mono); font-size: 0.76rem; min-width: 140px;
+    }
+    .nw-count { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); margin-left: auto; }
+
+    /* table */
+    .nw-table-wrap {
+      overflow-x: auto; border: 1px solid var(--border-soft);
+      border-radius: 12px; background: var(--bg-panel);
+    }
+    .nw-table { width: 100%; border-collapse: collapse; min-width: 820px; }
+    .nw-table th {
+      text-align: left; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--text-faint); padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .nw-table td { padding: 12px 16px; border-bottom: 1px solid var(--border-soft); color: var(--text-dim); font-size: 0.82rem; }
+    .nw-table tr:last-child td { border-bottom: none; }
+    .nw-dayrow td {
+      background: var(--bg); border-bottom: 1px solid var(--border-soft);
+      font-family: var(--mono); font-size: 0.72rem; padding: 9px 16px;
+    }
+    .nw-day-jalali { color: var(--accent-warm); font-size: 0.78rem; margin-right: 12px; }
+    .nw-day-en { color: var(--text-faint); }
+    .nw-day-count { float: right; color: var(--text-faint); }
+    .nw-time { white-space: nowrap; font-family: var(--mono); }
+    .nw-t-main { display: block; color: var(--text); font-variant-numeric: tabular-nums; }
+    .nw-t-alt { display: block; color: var(--text-faint); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+    .nw-t-main small, .nw-t-alt small { font-size: 0.58rem; letter-spacing: 0.08em; color: var(--text-faint); }
+    .nw-event-line { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+    .nw-event-line strong { color: var(--text); font-weight: 600; }
+    .nw-sub { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); margin-top: 3px; }
+    .nw-impact { width: 8px; height: 22px; border-radius: 5px; flex: none; }
+    .nw-impact-high { background: #e2456c; box-shadow: 0 0 8px rgba(226, 69, 108, 0.5); }
+    .nw-impact-medium { background: #ffb454; box-shadow: 0 0 8px rgba(255, 180, 84, 0.4); }
+    .nw-goldtag {
+      font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--accent-warm); border: 1px solid rgba(201, 162, 75, 0.4);
+      background: rgba(201, 162, 75, 0.08); border-radius: 5px; padding: 2px 7px;
+    }
+    .nw-goldtag-soft { color: var(--text-faint); border-color: var(--border-soft); background: transparent; }
+    .nw-cur { font-family: var(--mono); font-weight: 600; font-size: 0.76rem; }
+    .nw-cur-usd { color: #78a9ff; }
+    .nw-cur-eur { color: #43d6a0; }
+    .nw-cur-gbp { color: #c792ea; }
+    .nw-badge { font-family: var(--mono); font-size: 0.62rem; border-radius: 6px; padding: 4px 8px; white-space: nowrap; }
+    .nw-badge-high { background: rgba(226, 69, 108, 0.14); color: #ff9aa5; border: 1px solid rgba(226, 69, 108, 0.35); }
+    .nw-badge-medium { background: rgba(255, 180, 84, 0.12); color: #ffc77c; border: 1px solid rgba(255, 180, 84, 0.3); }
+    .nw-num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+    .nw-actual { color: var(--ok, #43d6a0); font-weight: 600; }
+    .nw-empty { text-align: center; color: var(--text-faint); font-family: var(--mono); padding: 30px !important; }
+    .nw-hint { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); margin: 10px 2px 0; line-height: 1.7; }
+
+    /* engine panel */
+    .nw-daysel {
+      display: flex; flex-direction: column; gap: 4px;
+      font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint);
+    }
+    .nw-daysel select {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border-soft);
+      border-radius: 8px; padding: 8px 10px; font-family: var(--mono); font-size: 0.76rem; min-width: 230px;
+    }
+    .nw-panel {
+      background: var(--bg-panel); border: 1px solid var(--border-soft);
+      border-radius: 12px; padding: 18px 20px;
+    }
+    .nw-dayhead { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+    .nw-kicker { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
+    .nw-daytitle { font-size: 1.15rem; color: var(--text); margin: 6px 0 2px; }
+    .nw-daymeta { font-family: var(--mono); font-size: 0.7rem; color: var(--text-faint); margin: 0; }
+    .nw-verdict {
+      background: var(--bg); border: 1px solid var(--border-soft); border-radius: 10px;
+      padding: 12px 16px; min-width: 230px;
+    }
+    .nw-verdict-bullish { border-color: rgba(67, 214, 160, 0.4); }
+    .nw-verdict-bearish { border-color: rgba(226, 69, 108, 0.4); }
+    .nw-verdict-neutral { border-color: rgba(255, 180, 84, 0.4); }
+    .nw-verdict-label { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em; color: var(--text-faint); }
+    .nw-verdict-value { font-family: var(--mono); font-size: 0.95rem; font-weight: 700; margin-top: 4px; }
+    .nw-verdict-bullish .nw-verdict-value { color: var(--ok, #43d6a0); }
+    .nw-verdict-bearish .nw-verdict-value { color: #ff9aa5; }
+    .nw-verdict-neutral .nw-verdict-value { color: #ffc77c; }
+    .nw-verdict-conf { font-family: var(--mono); font-size: 0.66rem; color: var(--text-faint); margin-top: 3px; }
+    .nw-verdict-conf b { color: var(--text); }
+    .nw-confbar { height: 4px; background: var(--border-soft); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+    .nw-confbar-fill { display: block; height: 100%; border-radius: 3px; }
+    .nw-confbar-high { background: var(--ok, #43d6a0); }
+    .nw-confbar-mid { background: #ffb454; }
+    .nw-confbar-low { background: #e2456c; }
+    .nw-daysummary { color: var(--text-dim); line-height: 1.7; margin: 14px 0; }
+    .nw-preds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+    .nw-pred { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 10px; padding: 12px 14px; }
+    .nw-pred-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .nw-pred-head strong { color: var(--text); }
+    .nw-fc { font-family: var(--mono); font-size: 0.7rem; color: var(--text-faint); }
+    .nw-outcome { font-family: var(--mono); font-size: 0.66rem; font-weight: 700; border-radius: 6px; padding: 3px 8px; }
+    .nw-out-beat { color: #ff9aa5; background: rgba(226, 69, 108, 0.12); border: 1px solid rgba(226, 69, 108, 0.3); }
+    .nw-out-miss { color: #43d6a0; background: rgba(67, 214, 160, 0.1); border: 1px solid rgba(67, 214, 160, 0.3); }
+    .nw-out-inline { color: #ffc77c; background: rgba(255, 180, 84, 0.1); border: 1px solid rgba(255, 180, 84, 0.3); }
+    .nw-out-none { color: var(--text-faint); border: 1px solid var(--border-soft); }
+    .nw-dir { font-family: var(--mono); font-size: 0.66rem; font-weight: 600; }
+    .nw-bull { color: var(--ok, #43d6a0); }
+    .nw-bear { color: #ff9aa5; }
+    .nw-neutral { color: #ffc77c; }
+    .nw-risk { color: var(--text-faint); }
+    .nw-conf { font-family: var(--mono); font-size: 0.7rem; font-weight: 700; margin-left: auto; }
+    .nw-conf-high { color: var(--ok, #43d6a0); }
+    .nw-conf-mid { color: #ffb454; }
+    .nw-conf-low { color: #e2456c; }
+    .nw-why { color: var(--text-dim); font-size: 0.78rem; line-height: 1.6; margin: 8px 0 0; }
+    .nw-xau { font-family: var(--mono); font-size: 0.7rem; color: var(--accent-warm); margin: 6px 0 0; }
+    .nw-hist { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--mono); font-size: 0.66rem; color: var(--text-faint); margin-top: 8px; }
+    .nw-hist b { color: var(--text-dim); }
+    .nw-conflictbox {
+      background: rgba(255, 180, 84, 0.06); border: 1px solid rgba(255, 180, 84, 0.3);
+      border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 0.78rem; color: var(--text-dim);
+    }
+    .nw-conflictbox ul { margin: 6px 0 0; padding-left: 18px; }
+    .nw-cross {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px; margin-top: 14px;
+    }
+    .nw-cross div {
+      background: var(--bg); border: 1px solid var(--border-soft); border-radius: 8px;
+      padding: 10px 12px; font-family: var(--mono); font-size: 0.74rem; color: var(--text-dim);
+    }
+    .nw-cross span { display: block; font-size: 0.58rem; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 4px; }
+    .nw-disclaimer { font-family: var(--mono); font-size: 0.64rem; color: var(--text-faint); margin: 14px 0 0; line-height: 1.6; }
+    .nw-loading, .nw-error { font-family: var(--mono); font-size: 0.76rem; color: var(--text-faint); margin: 8px 0; }
+    .nw-error { color: #ff9aa5; }
+    .nw-note { font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim); }
+
+    /* custom workspace */
+    .nw-custom-grid { display: grid; grid-template-columns: minmax(280px, 0.9fr) 1.1fr; gap: 14px; align-items: start; }
+    .nw-form { display: flex; flex-direction: column; gap: 12px; background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px 18px; }
+    .nw-form label { display: flex; flex-direction: column; gap: 5px; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
+    .nw-form input, .nw-form textarea, .nw-form select {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border-soft);
+      border-radius: 8px; padding: 9px 11px; font-family: var(--mono); font-size: 0.76rem; width: 100%;
+    }
+    .nw-form textarea { min-height: 84px; resize: vertical; }
+    .nw-form input:focus, .nw-form textarea:focus, .nw-form select:focus { outline: none; border-color: var(--accent-warm); }
+    .nw-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .nw-custom-result { min-height: 200px; }
+    .nw-scenario {
+      font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
+      background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 12px;
+    }
+    .nw-custom-result .nw-preds { margin-top: 12px; }
+    .nw-custom-result .nw-cross { margin-top: 12px; }
+
+    @media (max-width: 900px) {
+      .nw-custom-grid { grid-template-columns: 1fr; }
+      .nw-form-row { grid-template-columns: 1fr; }
+      .nw-dayhead { flex-direction: column; }
+    }
+  </style>
+</BaseLayout>

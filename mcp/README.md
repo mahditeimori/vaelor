@@ -31,6 +31,11 @@ Base URL: **https://trading-llc-mcp.mahdi-t8256.workers.dev**
 | `POST` | `/api/macro/refresh` | Force CFTC + futures volume/OI refresh (optional Bearer `MACRO_REFRESH_TOKEN`) |
 | `GET`  | `/api/finviz?code=GC&p=w1` | Finviz COT chart proxy → `image/png` |
 | `GET`  | `/api/chart?id=gold&range=5d&interval=15m` | OHLCV bars for the on-site price chart (Yahoo proxy, TradingView fallback) |
+| `GET`  | `/api/news/calendar` | Weekly High/Medium macro calendar for USD/EUR/GBP (+ XAU tags) — Jalali date, Tehran + NY times, prev/fc/actual |
+| `GET`  | `/api/news/day?date=YYYY-MM-DD` | Pre-release prediction engine for one Tehran day (Beat/Inline/Miss + USD strengthen/weaken, confidence) |
+| `POST` | `/api/news/analyze` | Custom analysis: `custom_prompt`, `hypothetical_actual`, `target_asset`, `trading_bias_rules` |
+| `POST` | `/api/news/refresh` | Force a calendar re-sync (optional Bearer `MACRO_REFRESH_TOKEN`) |
+| `GET`  | `/api/news/status` | Calendar sync health (`fetchedAt`, `count`, `lastError`) |
 
 CORS is open (`*`), so browser apps and cloud AIs can call it directly.
 
@@ -108,6 +113,29 @@ https://trading-llc-mcp.mahdi-t8256.workers.dev/mcp
 | `get_company_code` | Departments / roles / formulas / parameters JSON |
 | `publish_analysis` | Publish regime call, signals, confidence, decisions |
 | `get_latest_analysis` | Read back the latest published analysis |
+| `get_weekly_macro_news` | Weekly USD/EUR/GBP High+Medium calendar with Iran Jalali dates, Tehran and New York times, Previous/Forecast/Actual (filters: currency, impact, day) |
+| `analyze_daily_news_impact` | One Tehran day: historical-ledger aggregation + non-contradiction alignment → per-event Beat/Inline/Miss, USD strengthen/weaken call, confidence, XAUUSD/EURUSD/GBPUSD impact |
+| `custom_ai_news_analysis` | Same engine under your instructions: `custom_prompt`, `hypothetical_actual` (scenario print), `target_asset`, `trading_bias_rules` |
+
+### News MCP resources & prompts
+
+| Resource | Content |
+|----------|---------|
+| `news://calendar/thisweek` | Full weekly calendar JSON with Jalali/dual-timezone fields |
+| `news://history/index` | Tracked release ledger (previous-value history per event) |
+
+| Prompt | Purpose |
+|--------|---------|
+| `premarket_daily_briefing` | Pre-market daily fundamental briefing (args: optional `date`) |
+| `weekly_fundamental_briefing` | Week-ahead briefing, day by day with the non-contradiction alignment |
+
+### News data pipeline
+
+| Source | Role | Cadence |
+|--------|------|---------|
+| `nfs.faireconomy.media/ff_calendar_thisweek.json` (ForexFactory) | Primary calendar (USD/EUR/GBP, High + Medium impact) | cached in KV `news:calendar`, refreshed at most every 3 h by the `*/5` cron |
+| Rolling `previous` ledger | Each sync stores every event's `previous` (the prior release's actual, revisions included) in KV `news:hist:<event>` (cap 24 points) | every sync |
+| FinancialModelingPrep (optional) | Released-actual enrichment — active only when the `FMP_API_KEY` secret is bound; failures degrade silently | on sync |
 
 Manual documents are fetched live from `https://vaelor.pages.dev/docs/<slug>`
 and HTML-stripped inside the Worker, so the AI always reads the deployed version.

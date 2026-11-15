@@ -21,7 +21,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
         <span class="ai-badge">JSON-RPC 2.0</span>
         <span class="ai-badge">Stateless · no session</span>
         <span class="ai-badge">CORS *</span>
-        <span class="ai-badge">14 tools</span>
+        <span class="ai-badge">17 tools</span>
       </div>
     </section>
 
@@ -100,6 +100,9 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
             <tr><td>list_signals</td><td>Read the signal queue by status</td><td>status, limit</td></tr>
             <tr><td>get_performance</td><td>Read measured success rates</td><td>id</td></tr>
             <tr><td>record_performance</td><td>Publish measured results (bridge only)</td><td>strategies[]</td></tr>
+            <tr><td>get_weekly_macro_news</td><td>Weekly USD/EUR/GBP High+Medium calendar with Jalali dates, Tehran/NY times, prev/fc/actual</td><td>currency, impact, day</td></tr>
+            <tr><td>analyze_daily_news_impact</td><td>Pre-release engine for one Tehran day: Beat/Inline/Miss per event + USD strengthen/weaken call with confidence</td><td>date</td></tr>
+            <tr><td>custom_ai_news_analysis</td><td>Tailored analysis: custom_prompt, hypothetical_actual, target_asset, trading_bias_rules</td><td>custom params</td></tr>
           </tbody>
         </table>
       </div>

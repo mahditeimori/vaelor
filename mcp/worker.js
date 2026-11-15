@@ -33,6 +33,18 @@ import {
   syncVolumeOi,
 } from "./lib/pipeline.js";
 import {
+  NEWS_PROMPTS,
+  NEWS_RESOURCES,
+  analyzeDay,
+  buildNewsPrompt,
+  customAnalysis,
+  ensureNews,
+  formatEventTimes,
+  readNewsResource,
+  recordNewsError,
+  syncNews,
+} from "./lib/news.js";
+import {
   formatSignal,
   formatStrategy,
   getStrategy,
@@ -86,6 +98,8 @@ export default {
             protocolVersion: "2025-03-26",
             capabilities: {
               tools: { listChanged: true },
+              resources: { listChanged: true },
+              prompts: { listChanged: true },
             },
             serverInfo: { name: "trading-llc-site", version: "2.0.0" },
           },
@@ -335,6 +349,64 @@ export default {
                   required: ["strategies"],
                 },
               },
+              {
+                name: "get_weekly_macro_news",
+                title: "Get weekly macro news",
+                description:
+                  "Current week's High (Red) and Medium (Orange) impact events for USD, EUR, GBP (Gold/XAU relevance tagged per event). " +
+                  "Each event carries the Iran Jalali date, weekday, Tehran (Asia/Tehran) and New York (America/New_York) times, " +
+                  "Previous, Forecast and Actual values. Filter with currency/impact/day.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    currency: { type: "string", description: "Optional filter: USD | EUR | GBP" },
+                    impact: { type: "string", enum: ["high", "medium"], description: "Optional impact filter." },
+                    day: { type: "string", description: "Optional Tehran calendar day (YYYY-MM-DD)." },
+                  },
+                },
+              },
+              {
+                name: "analyze_daily_news_impact",
+                title: "Analyze daily news impact",
+                description:
+                  "Pre-release fundamental analysis for one Tehran calendar day: aggregates the historical release ledger (previous-value " +
+                  "trend + revisions) and forecast for every High/Medium event that day, applies the non-contradiction alignment filter, and " +
+                  "predicts each outcome (Beat/Inline/Miss) plus whether USD strengthens or weakens, with a confidence score and XAUUSD/EURUSD/GBPUSD impact.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    date: {
+                      type: "string",
+                      description: "Tehran calendar day YYYY-MM-DD (or any event ISO timestamp that day). Defaults to today.",
+                    },
+                  },
+                },
+              },
+              {
+                name: "custom_ai_news_analysis",
+                title: "Custom AI news analysis",
+                description:
+                  "Tailored fundamental analysis: run the day's engine with custom parameters — custom_prompt (your instructions), " +
+                  "hypothetical_actual ({eventTitle, value} scenario print), target_asset (XAUUSD/EURUSD/GBPUSD), trading_bias_rules (your rules text). " +
+                  "Returns the structured base aligned to your exact instructions for your own final call.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    date: { type: "string", description: "Tehran calendar day YYYY-MM-DD; defaults to today." },
+                    eventId: { type: "string", description: "Optional event id to attach the hypothetical actual to." },
+                    eventTitle: { type: "string", description: "Optional fuzzy event title match for hypothetical_actual." },
+                    custom_prompt: { type: "string", description: "Free-form instructions for the analysis." },
+                    hypothetical_actual: {
+                      oneOf: [
+                        { type: "object", properties: { eventTitle: { type: "string" }, value: { type: "string" } }, required: ["value"] },
+                        { type: "string", description: 'Scenario actual, e.g. "3.6%" — applied to the matched/first event' },
+                      ],
+                    },
+                    target_asset: { type: "string", description: "XAUUSD | EURUSD | GBPUSD — narrows the cross-asset output." },
+                    trading_bias_rules: { type: "string", description: "User trading rules the analysis must respect." },
+                  },
+                },
+              },
             ],
           },
         });
@@ -444,6 +516,20 @@ export default {
                 : `Rejected: ${stored.error}`;
               break;
             }
+            case "get_weekly_macro_news": {
+              resultText = await getWeeklyNewsTool(env, args);
+              break;
+            }
+            case "analyze_daily_news_impact": {
+              const day = await analyzeDay(env, args.date ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran" }).format(new Date()));
+              resultText = formatDayAnalysis(day);
+              break;
+            }
+            case "custom_ai_news_analysis": {
+              const custom = await customAnalysis(env, args);
+              resultText = formatCustomAnalysis(custom);
+              break;
+            }
             default:
               return jsonRpcError(id, -32601, `Unknown tool: ${name}`);
           }
@@ -459,6 +545,37 @@ export default {
             `Internal error: ${err instanceof Error ? err.message : String(err)}`
           );
         }
+      }
+
+      /* resources & prompts (MCP) */
+      if (method === "resources/list") {
+        return jsonResponse({
+          jsonrpc,
+          id,
+          result: { resources: NEWS_RESOURCES },
+        });
+      }
+      if (method === "resources/read") {
+        const uri = params?.uri;
+        try {
+          const text = await readNewsResource(env, uri);
+          if (text === null) return jsonRpcError(id, -32002, `Unknown resource: ${uri}`);
+          return jsonResponse({
+            jsonrpc,
+            id,
+            result: { contents: [{ uri, mimeType: "application/json", text }] },
+          });
+        } catch (err) {
+          return jsonRpcError(id, -32603, `Resource error: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      if (method === "prompts/list") {
+        return jsonResponse({ jsonrpc, id, result: { prompts: NEWS_PROMPTS } });
+      }
+      if (method === "prompts/get") {
+        const prompt = await buildNewsPrompt(env, params?.name, params?.arguments ?? {});
+        if (!prompt) return jsonRpcError(id, -32002, `Unknown prompt: ${params?.name}`);
+        return jsonResponse({ jsonrpc, id, result: prompt });
       }
 
       return jsonRpcError(id, -32601, `Unknown method: ${method}`);
@@ -597,6 +714,78 @@ export default {
       return new Response(null, { status: 405, headers: corsHeaders() });
     }
 
+    /* ================= NEWS (macro calendar + prediction engine) ================= */
+    if (path === "/api/news/calendar") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      try {
+        const cal = await ensureNews(env, ctx);
+        let events = cal?.events ?? [];
+        const currency = url.searchParams.get("currency");
+        const impact = url.searchParams.get("impact");
+        if (currency) events = events.filter((e) => e.currency === currency.toUpperCase());
+        if (impact) events = events.filter((e) => e.impact === impact.toLowerCase());
+        const enriched = events.map((e) => ({ ...e, ...timeFields(e.timeIso) }));
+        return jsonResponse({
+          source: cal?.source,
+          secondarySource: cal?.secondarySource ?? null,
+          generatedAt: cal?.generatedAt ?? null,
+          weekStart: cal?.weekStart ?? null,
+          weekEnd: cal?.weekEnd ?? null,
+          count: enriched.length,
+          events: enriched,
+        });
+      } catch (err) {
+        return jsonResponse({ error: "calendar fetch failed", detail: String(err?.message ?? err) }, 502);
+      }
+    }
+
+    if (path === "/api/news/day") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      try {
+        const date = url.searchParams.get("date") ?? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran" }).format(new Date());
+        return jsonResponse(await analyzeDay(env, date));
+      } catch (err) {
+        return jsonResponse({ error: "day analysis failed", detail: String(err?.message ?? err) }, 500);
+      }
+    }
+
+    if (path === "/api/news/analyze") {
+      if (request.method !== "POST") return new Response(null, { status: 405, headers: corsHeaders() });
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        body = {};
+      }
+      try {
+        return jsonResponse(await customAnalysis(env, body));
+      } catch (err) {
+        return jsonResponse({ error: "custom analysis failed", detail: String(err?.message ?? err) }, 500);
+      }
+    }
+
+    if (path === "/api/news/refresh") {
+      if (request.method !== "POST") return new Response(null, { status: 405, headers: corsHeaders() });
+      const expected = env.MACRO_REFRESH_TOKEN;
+      if (expected) {
+        const got = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+        if (got !== expected) return jsonResponse({ error: "unauthorized" }, 401);
+      }
+      try {
+        const result = await syncNews(env);
+        return jsonResponse({ ok: true, generatedAt: result.generatedAt, count: result.count });
+      } catch (err) {
+        await recordNewsError(env, String(err?.message ?? err));
+        return jsonResponse({ error: String(err?.message ?? err) }, 502);
+      }
+    }
+
+    if (path === "/api/news/status") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      const raw = await env?.AI_STATE?.get("news:status");
+      return jsonResponse(raw ? JSON.parse(raw) : { fetchedAt: null, count: 0, source: null });
+    }
+
     if (path === "/api/health") {
       return jsonResponse({ ok: true, service: "trading-llc-mcp" });
     }
@@ -694,6 +883,8 @@ export default {
   /** Cloudflare Cron Trigger: every 5 minutes. */
   async scheduled(_controller, env, ctx) {
     ctx.waitUntil(runScheduled(env).catch(() => {}));
+    // Weekly macro calendar: refresh when the cache is older than its TTL.
+    ctx.waitUntil(ensureNews(env, ctx).catch(() => {}));
   },
 };
 
@@ -885,4 +1076,81 @@ async function getLatestAnalysis(env) {
     return "No analysis published yet. Use publish_analysis.";
   }
   return JSON.stringify(s, null, 2);
+}
+
+/* ================= news tool helpers ================= */
+
+function timeFields(iso) {
+  return formatEventTimes(iso);
+}
+
+function getWeeklyNewsTool(env, args = {}) {
+  return formatWeeklyNewsFiltered(env, args);
+}
+
+async function formatWeeklyNewsFiltered(env, args) {
+  const cal = await ensureNews(env, {});
+  if (!cal || !cal.events?.length) return "No calendar data available yet. Trigger POST /api/news/refresh and retry.";
+  let events = cal.events;
+  if (args.currency) events = events.filter((e) => e.currency === String(args.currency).toUpperCase());
+  if (args.impact) events = events.filter((e) => e.impact === String(args.impact).toLowerCase());
+  if (args.day) events = events.filter((e) => formatEventTimes(e.timeIso).tehranDay === args.day);
+  if (!events.length) return "No events match the requested filters.";
+  const lines = [
+    `Weekly macro calendar — High + Medium impact, USD/EUR/GBP (XAU relevance tagged)`,
+    `Source: ${cal.source} · week ${cal.weekStart} → ${cal.weekEnd} · generated ${cal.generatedAt}`,
+    "",
+    ...events.map((e) => {
+      const t = formatEventTimes(e.timeIso);
+      const gold = e.goldRelevance === "direct" ? " · XAUUSD direct driver" : e.goldRelevance === "indirect" ? " · XAUUSD indirect" : "";
+      return `${t.tehranDay} | ${t.jalaliEn} (${t.jalaliFa}) | ${t.tehranTime} Tehran / ${t.nyTime} NY | ` +
+        `${e.currency} ${e.impact === "high" ? "[HIGH/Red]" : "[MED/Orange]"} | ${e.title} | ` +
+        `prev ${e.previous ?? "—"} · fc ${e.forecast ?? "—"}${e.actual ? ` · act ${e.actual}` : ""}${gold}`;
+    }),
+  ];
+  return lines.join("\n");
+}
+
+function formatDayAnalysis(day) {
+  const lines = [
+    `Day analysis — ${day.day} (${day.tehran?.jalaliEn ?? ""})`,
+    `Scheduled: ${day.eventsScheduled} watched events · ${day.importantEvents} High/Medium important`,
+    "",
+    ...day.predictions.map(
+      (p) =>
+        `[${p.impact === "high" ? "HIGH" : "MED"}] ${p.title} (${p.currency}) — predict ${p.predictedOutcome ?? "n/a"}` +
+        ` → ${p.usdBias} (confidence ${p.confidence}%)\n  evidence: ${p.rationale}\n  history: ${p.historyPoints} tracked releases` +
+        `${p.history?.length ? ` (last: ${p.history.slice(-3).map((h) => `${h.date.slice(0, 10)}=${h.value}`).join(", ")})` : ""}`,
+    ),
+    "",
+    `Alignment: dominant ${day.alignment.dominantUsdBias} USD · bull ${day.alignment.bullScore} vs bear ${day.alignment.bearScore}` +
+      ` · aligned ${day.alignment.aligned.length} · conflicts ${day.alignment.conflicts.length}`,
+    ...day.alignment.conflicts.map((c) => `  conflict: ${c.title} (${c.bias}) — ${c.note}`),
+    "",
+    `Call: ${day.summary}`,
+    `Confidence: ${day.confidence}%`,
+    `Cross-asset: XAUUSD ${day.crossAsset.xauusd} · EURUSD ${day.crossAsset.eurusd} · GBPUSD ${day.crossAsset.gbpusd}`,
+    day.disclaimer,
+  ];
+  return lines.join("\n");
+}
+
+function formatCustomAnalysis(custom) {
+  const lines = [
+    `Custom AI news analysis — ${custom.day}`,
+    custom.customPrompt ? `Your instructions: ${custom.customPrompt}` : null,
+    custom.tradingBiasRules ? `Your trading bias rules: ${custom.tradingBiasRules}` : null,
+    custom.scenario ? `Scenario applied: ${custom.scenario.title} actual=${custom.scenario.hypotheticalActual} → ${custom.scenario.predictedOutcome} (${custom.scenario.usdBias})` : null,
+    "",
+    ...custom.baseAnalysis.predictions.map(
+      (p) => `[${p.impact === "high" ? "HIGH" : "MED"}] ${p.title} (${p.currency}) — ${p.predictedOutcome ?? "n/a"} → ${p.usdBias} (${p.confidence}%)\n  ${p.rationale}`,
+    ),
+    "",
+    `Alignment: dominant ${custom.alignment.dominantUsdBias} · aligned ${custom.alignment.aligned.length} · conflicts ${custom.alignment.conflicts.length}`,
+    `Call: ${custom.summary} (confidence ${custom.confidence}%)`,
+    `Cross-asset: ${Object.entries(custom.crossAsset).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(" · ")}`,
+    custom.note,
+    custom.disclaimer,
+  ].filter(Boolean);
+  return lines.join("\n");
 }
