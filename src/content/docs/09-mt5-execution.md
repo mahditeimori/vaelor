@@ -48,7 +48,7 @@ Windows user, including broker-branded folders and portable copies.
 
 ## 5.3 Quick start
 
-1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.3.0).
+1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.3.1).
 2. Unzip it to a folder you control, for example `C:\Vaelor\mt5-bridge`.
 3. Double-click `run.cmd`. The first run creates `.venv`, installs dependencies
    and writes `.env`; the console prints a URL and a token and saves both to
