@@ -170,6 +170,7 @@ if (-not (Test-Path (Join-Path $PSScriptRoot ".env"))) {
 
 # ------------------------------------------------------------------- config
 $env:BRIDGE_PORT = "$Port"
+$hostBind = if ($env:BRIDGE_HOST) { $env:BRIDGE_HOST } else { "127.0.0.1" }
 
 function Read-Setting($expr) {
     # Runs one python -c expression; on failure prints the traceback tail and exits.
@@ -226,7 +227,7 @@ Start-Job -ScriptBlock {
 } -ArgumentList "http://127.0.0.1:$Port/health", "http://127.0.0.1:$Port/pair" | Out-Null
 
 # ------------------------------------------------------------------- server
-& $python -m uvicorn app.api:app --host 127.0.0.1 --port $Port --log-level info
+& $python -m uvicorn app.api:app --host $hostBind --port $Port --log-level info
 $code = $LASTEXITCODE
 # 0xC000013A (-1073741510) = the user closed the console / pressed Ctrl+C.
 if ($code -ne 0 -and $code -ne -1073741510) {

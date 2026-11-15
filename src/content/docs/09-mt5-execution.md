@@ -91,6 +91,41 @@ Pressing **Disconnect** on the Execution page is respected: supervision stays
 off until you connect again. Set `MT5_AUTO_CONNECT=0` in `.env` to disable
 automatic re-attach entirely. Logs are written to `logs\bridge.log`.
 
+## 5.3.2 Run the bridge on a cloud VPS (no local shell at all)
+
+If you do not want any process on your own machine (no console window, no open
+MetaTrader, nothing keeping your PC awake), run the bridge on a cloud Windows
+VPS that has MetaTrader 5 installed and your account logged in, and point the
+site at it.
+
+1. Rent a Windows VPS (any mainstream provider) and install MetaTrader 5 on it,
+   then log the VPS account in.
+2. Copy the bridge onto the VPS and set in `.env`:
+
+   ```env
+   BRIDGE_HOST=0.0.0.0
+   BRIDGE_PUBLIC_HOST=<public-ip-or-domain>
+   BRIDGE_ALLOWED_ORIGIN_REGEX=https?://((\d{1,3}\.){3}\d{1,3}|localhost|127\.0\.0\.1)(:\d+)?
+   BRIDGE_MODE=live
+   ALLOW_LIVE_TRADES=1
+   MT5_AUTO_CONNECT=1
+   ```
+
+3. Start the bridge there: `powershell -ExecutionPolicy Bypass -File .\install-service.ps1`
+   (the same scheduled-task scripts work on the VPS).
+4. From your browser, open `http://<vps-public-ip>:8899/pair` →
+   **Connect the website automatically**.
+5. Close the local MetaTrader 5 and shut down the local bridge - the desk now
+   trades through the cloud VPS.
+
+Notes:
+
+- the typed `LIVE` confirmation, the hard live-order interlock, lot caps, symbol
+  whitelist, drawdown guards and the prop-firm signal-only lock still apply;
+- the VPS host must stay online (a cloud host is "always on", so the robot can
+  trade around the clock);
+- local mode (loopback + supervision) keeps working unchanged for testing.
+
 ## 5.4 Terminal discovery
 
 The bridge finds terminals from three independent sources so nothing is missed:

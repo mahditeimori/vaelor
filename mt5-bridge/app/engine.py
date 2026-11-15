@@ -54,6 +54,8 @@ class TradingEngine:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._supervisor: threading.Thread | None = None
+        self._supervise_retry_at: float = 0.0
+        self._supervise_attempts: int = 0
         self._tick_lock = threading.Lock()
         self._last_signal_scan = 0.0
         self.prop_safe = bool(self.store.get_json("prop_safe") or False)
@@ -274,8 +276,14 @@ class TradingEngine:
                     {"path": path, "login": login, "server": server, "source": "supervisor"},
                 )
             except Exception:
-                # Keep supervising; the next cycle retries.
+                # Keep supervising; back off harder on repeated failures so a
+                # missing/broken terminal does not cause launch loops.
+                self._supervise_attempts += 1
+                delay = min(300.0, 20.0 * (2 ** min(self._supervise_attempts, 4)))
+                self._supervise_retry_at = time.time() + delay
                 continue
+            self._supervise_attempts = 0
+            self._supervise_retry_at = 0.0
 
     def _loop(self) -> None:
         while not self._stop.is_set():

@@ -75,8 +75,45 @@ Manage it with:
 An explicit **Disconnect** on the Execution page is respected: supervision
 stays off until you press **Connect** again. Set `MT5_AUTO_CONNECT=0` in
 `.env` to disable supervised re-attach entirely. The bridge still binds to
-`127.0.0.1` only — the website reaches it through the browser on the same
+`127.0.0.1` only - the website reaches it through the browser on the same
 machine, so no port is ever exposed to the internet.
+
+## Cloud-hosted bridge (Windows VPS)
+
+Instead of running the bridge on your own machine, you can run it on a cloud
+Windows VPS that has MetaTrader 5 installed and your account logged in. The
+robot keeps trading there 24/7 while your local PC stays closed and asleep -
+no shell, no pop-ups, no "keep the system awake" problem.
+
+```powershell
+# on the VPS (Windows Server / Windows 10/11 + MT5 installed, logged in)
+cd vaelor-mt5-bridge
+powershell -ExecutionPolicy Bypass -File .\install-service.ps1   # background task
+# .env on the VPS:
+#   BRIDGE_HOST=0.0.0.0
+#   BRIDGE_PUBLIC_HOST=203.0.113.10        # the VPS public IP (or a domain)
+#   BRIDGE_ALLOWED_ORIGIN_REGEX=https?://((\d{1,3}\.){3}\d{1,3}|localhost|127\.0\.0\.1)(:\d+)?
+#   BRIDGE_MODE=live
+#   ALLOW_LIVE_TRADES=1
+#   MT5_AUTO_CONNECT=1
+```
+
+Then on your local machine open the pairing page of the VPS:
+
+```
+http://203.0.113.10:8899/pair
+```
+
+-> **Connect the website automatically**. The Execution page now pairs with the
+cloud bridge; the site polls `https://<vps>:8899/api/...` and the bridge places
+trades through the VPS MetaTrader 5 terminal. Your local MT5 can be closed -
+the VPS keeps running and the desk keeps trading.
+
+Trade safety is unchanged: the typed `LIVE` confirmation, the hard live-order
+interlock, the per-trade lot cap, the symbol whitelist, the daily-loss/drawdown
+guards, the kill switch and the prop-firm signal-only lock all still apply on the
+cloud host. The VPS must be left running (a cloud host is "always on", so the
+robot can trade around the clock).
 
 ## Modes and safety interlocks
 

@@ -131,7 +131,7 @@ app = FastAPI(title="Vaelor MT5 Bridge", version=VERSION, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=SETTINGS.allowed_origins,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    allow_origin_regex=SETTINGS.allowed_origin_regex,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     allow_credentials=False,
@@ -227,10 +227,10 @@ _PAIR_TEMPLATE = """<!DOCTYPE html>
   <a class="btn" id="auto" href="{target}">Connect the website automatically</a>
   <p>Redirecting in <span id="count">3</span> seconds… <a href="#" id="cancel" style="color:#c9a24b">cancel</a></p>
   <p>Manual fallback — paste these two lines into the Execution page:</p>
-  <pre>URL   : http://127.0.0.1:{port}
+  <pre>URL   : http://{host}:{port}
 Token : {token}</pre>
-  <div class="note">This page is served by the bridge on your own machine.
-  Nothing is sent to the internet except the connection details you paste.</div>
+  <div class="note">This page is served by the bridge on your own machine
+  (or your cloud VPS). Nothing is sent to the internet except the connection details you paste.</div>
 </div>
 <script>
   var timer = setTimeout(function () {{ location.replace(document.getElementById('auto').href); }}, 3000);
@@ -252,11 +252,14 @@ def pair_page() -> str:
     import base64
     import json as _json
 
+    bind_host = SETTINGS.host if not SETTINGS.public_host else SETTINGS.public_host
     payload = base64.b64encode(
-        _json.dumps({"url": f"http://127.0.0.1:{SETTINGS.port}", "token": SETTINGS.token}).encode()
+        _json.dumps(
+            {"url": f"http://{bind_host}:{SETTINGS.port}", "token": SETTINGS.token}
+        ).encode()
     ).decode()
     target = f"{SETTINGS.site_url}/execution#connect={payload}"
-    return _PAIR_TEMPLATE.format(target=target, port=SETTINGS.port, token=SETTINGS.token)
+    return _PAIR_TEMPLATE.format(target=target, port=SETTINGS.port, token=SETTINGS.token, host=bind_host)
 
 
 @app.get("/health")

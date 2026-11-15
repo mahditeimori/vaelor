@@ -79,6 +79,24 @@ class Settings:
 
     db_path: Path = Path(os.environ.get("BRIDGE_DB", DATA_DIR / "bridge.db"))
 
+    # Origins allowed to call the API from a browser. Defaults cover the local
+    # dev servers; for a cloud-hosted bridge (Windows VPS) set BRIDGE_HOST=0.0.0.0
+    # and widen the regex, e.g. r"https?://((\d{1,3}\.){3}\d{1,3}|localhost|127\.0\.0\.1)(:\d+)?"
+    allowed_origins: tuple[str, ...] = (
+        "http://localhost:4321",
+        "http://127.0.0.1:4321",
+        "http://localhost:4319",
+        "http://127.0.0.1:4319",
+        "https://vaelor.pages.dev",
+    )
+    allowed_origin_regex: str = os.environ.get(
+        "BRIDGE_ALLOWED_ORIGIN_REGEX",
+        r"https?://(localhost|127\.0\.0\.1)(:\d+)?",
+    )
+
+    # Publicly reachable address of this bridge (empty = use the bind host).
+    public_host: str = os.environ.get("BRIDGE_PUBLIC_HOST", "").strip()
+
     # Cloud registry (the Vaelor Worker). Used to pull AI-authored strategies
     # and signals, and to push measured performance back to the site.
     cloud_url: str = os.environ.get(

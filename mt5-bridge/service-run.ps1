@@ -80,10 +80,11 @@ function Start-Bridge {
     }
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
     $env:BRIDGE_PORT = "$Port"
+$hostBind = if ($env:BRIDGE_HOST) { $env:BRIDGE_HOST } else { "127.0.0.1" }
 
     # Start detached: no console, output goes to the log file.
     $proc = Start-Process -FilePath $python `
-        -ArgumentList @("-m", "uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", "$Port", "--log-level", "info") `
+        -ArgumentList @("-m", "uvicorn", "app.api:app", "--host", $hostBind, "--port", "$Port", "--log-level", "info") `
         -WorkingDirectory $PSScriptRoot `
         -WindowStyle Hidden `
         -RedirectStandardOutput $logFile `

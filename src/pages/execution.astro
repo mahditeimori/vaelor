@@ -86,6 +86,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             the bridge as a hidden background service that starts at logon, restarts itself, and
             relaunches MetaTrader 5 if you close it. If port 8899 is busy, the launcher picks a
             free port by itself.
+            <b>No local process wanted?</b> The same bridge can run on a cloud Windows VPS that
+            has MetaTrader 5 — see docs <code>09-mt5-execution</code> section 5.3.2, then pair via
+            <code>http://&lt;vps-ip&gt;:8899/pair</code>.
           </p>
           <pre class="ex-code">URL   : http://127.0.0.1:8899
 Token : &lt;random string&gt;
