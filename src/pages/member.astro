@@ -7,7 +7,7 @@ import '../styles/global.css';
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Vaelor member dashboard — precision execution desk, risk gates, live terminal and guide." />
+    <meta name="description" content="Vaelor member dashboard — precision execution desk, risk gates, live terminal and operations playbook." />
     <meta name="color-scheme" content="dark" />
     <title>Vaelor Trading LLC — Operational Protocol & Execution Desk</title>
     <!-- Tailwind CSS (design system v2) -->
@@ -241,16 +241,16 @@ import '../styles/global.css';
               <i class="fa-solid fa-chart-line text-[11px]"></i> Live Terminal
               <span id="nav-pos-count" class="px-1.5 py-0.2 bg-rose-500/20 border border-rose-500/40 text-rose-300 rounded-full text-[10px] font-mono">2</span>
             </button>
-            <button onclick="switchTab('guide')" id="nav-guide" class="nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent">
-              <i class="fa-solid fa-wand-magic-sparkles text-[11px] text-amber-400"></i> Guide
+            <button onclick="switchTab('playbook')" id="nav-playbook" class="nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent">
+              <i class="fa-solid fa-book-open-reader text-[11px] text-amber-400"></i> Playbook
             </button>
           </nav>
         </div>
 
         <div class="flex items-center gap-3">
-          <button onclick="toggleBridgeState()" id="bridge-status-pill" title="Click to toggle simulated local MT5 bridge connection" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs font-mono hover:bg-emerald-900/70 transition cursor-pointer">
-            <span id="bridge-dot" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
-            <span id="bridge-text">BRIDGE: 127.0.0.1:8899</span>
+          <button onclick="refreshBridgeConnection()" id="bridge-status-pill" title="Re-check your cloud bridge connection" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-950/60 border border-amber-500/50 text-amber-200 text-xs font-mono hover:bg-amber-900/70 transition cursor-pointer">
+            <span id="bridge-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span id="bridge-text">BRIDGE: NOT PAIRED</span>
           </button>
 
           <div class="flex items-center gap-2 bg-[#160c11] border border-[#592e42] rounded-full p-1 pl-3.5 shadow-inner">
@@ -259,8 +259,8 @@ import '../styles/global.css';
               <span id="member-handle" class="text-xs font-mono text-slate-200 tracking-tight">MEMBER · @arthur.vance</span>
             </div>
             <button onclick="openSignInModal()" id="header-signin-btn" class="btn-primary-crimson text-white text-xs font-semibold px-4 py-1.5 rounded-full flex items-center gap-1.5 ml-1">
-              <i class="fa-solid fa-key text-[11px]"></i>
-              <span id="signin-btn-label">Sign In / Auth</span>
+              <i class="fa-solid fa-link text-[11px]"></i>
+              <span id="signin-btn-label">Account / Pairing</span>
             </button>
           </div>
         </div>
@@ -268,6 +268,14 @@ import '../styles/global.css';
     </header>
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-8">
+      <div id="data-mode-banner" class="mb-6 flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-950/40 border border-amber-500/50 text-amber-200 text-xs sm:text-sm leading-relaxed">
+        <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+        <div>
+          <strong class="text-amber-300 font-mono">PREVIEW DATA — NO BRIDGE PAIRED.</strong>
+          Quotes, blotter rows and fills on this page are illustrative samples, not your account.
+          Pair your cloud bridge in <em>Account / Auth</em> and this banner disappears.
+        </div>
+      </div>
       <!-- TAB 1: OVERVIEW -->
       <section id="view-overview" class="tab-view space-y-12 py-6">
         <div class="max-w-4xl mx-auto pt-4 lg:pt-12">
@@ -309,9 +317,9 @@ import '../styles/global.css';
               <span>Open Live Terminal</span>
             </button>
 
-            <button onclick="switchTab('guide')" class="btn-secondary-glass px-6 py-3.5 rounded-full font-medium text-sm flex items-center gap-2 border-amber-500/50 text-amber-200 hover:border-amber-400">
+            <button onclick="switchTab('playbook')" class="btn-secondary-glass px-6 py-3.5 rounded-full font-medium text-sm flex items-center gap-2 border-amber-500/50 text-amber-200 hover:border-amber-400">
               <i class="fa-solid fa-book-open text-amber-400"></i>
-              <span>View HTML Button &amp; Cleanup Guide</span>
+              <span>Open Operations Playbook</span>
             </button>
           </div>
         </div>
@@ -333,7 +341,7 @@ import '../styles/global.css';
               </button>
               <div id="acc-macro" class="accordion-content px-5 border-t border-[#331d27]/60 bg-[#0d070a]">
                 <div class="py-4 text-sm text-slate-300 space-y-2 leading-relaxed">
-                  <p>Every order routed through Vaelor's local MetaTrader 5 bridge passes through deterministic pre-trade checks: Max Risk Per Trade %, Daily Drawdown Lockout, and Symbol Whitelisting.</p>
+                  <p>Every order routed through your cloud MetaTrader 5 bridge passes through deterministic pre-trade checks: Max Risk Per Trade %, Daily Drawdown Lockout, and Symbol Whitelisting.</p>
                   <div class="flex flex-wrap gap-2 pt-2">
                     <button onclick="switchTab('execution')" class="px-3 py-1.5 rounded-lg bg-rose-600/20 border border-rose-500/50 text-rose-300 text-xs font-mono hover:bg-rose-600/30 transition">Configure Risk Gates →</button>
                   </div>
@@ -345,13 +353,13 @@ import '../styles/global.css';
               <button onclick="toggleAccordion('acc-bridge-overview')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-[#1c1016] transition">
                 <div class="flex items-center gap-3">
                   <span class="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono text-xs">MOD 02</span>
-                  <span class="font-semibold text-white text-sm sm:text-base">Zero-Custody Localhost MT5 Bridge (127.0.0.1:8899)</span>
+                  <span class="font-semibold text-white text-sm sm:text-base">One Dedicated Cloud Bridge Per Member</span>
                 </div>
                 <i id="icon-acc-bridge-overview" class="fa-solid fa-chevron-down text-rose-400 transition-transform duration-300"></i>
               </button>
               <div id="acc-bridge-overview" class="accordion-content px-5 border-t border-[#331d27]/60 bg-[#0d070a]">
                 <div class="py-4 text-sm text-slate-300 space-y-2 leading-relaxed">
-                  <p>Your broker credentials and API tokens never leave your local machine. The browser communicates directly with your local Python/PowerShell MT5 bridge over loopback port <code class="text-emerald-300 font-mono">127.0.0.1:8899</code> — “this computer”. This website talks to the bridge directly from your browser; your account, token and orders never touch our servers.</p>
+                  <p>Your subscription provisions a private bridge instance with its own MetaTrader 5 terminal and account session — it runs whether or not your PC is on. This page talks only to that instance, using the pairing token stored in your browser. Vaelor never holds your broker password and never routes an order you did not submit.</p>
                 </div>
               </div>
             </div>
@@ -391,9 +399,9 @@ import '../styles/global.css';
               <div>
                 <div class="flex items-center gap-2">
                   <span class="text-xs font-mono uppercase tracking-wider text-rose-400">SECTION 01 &amp; 02 · EXPANDABLE DRAWER</span>
-                  <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">127.0.0.1:8899 READY</span>
+                  <span id="bridge-chip" class="px-2 py-0.5 text-[10px] font-mono rounded bg-amber-950 text-amber-300 border border-amber-500/40">BRIDGE NOT PAIRED</span>
                 </div>
-                <h3 class="text-base font-semibold text-white">Local MT5 Bridge PowerShell Setup &amp; Security FAQs (Click to Expand/Hide)</h3>
+                <h3 class="text-base font-semibold text-white">Cloud Bridge Pairing &amp; Routing Rules (Click to Expand/Hide)</h3>
               </div>
             </div>
             <div class="flex items-center gap-2 text-xs font-mono text-rose-300 bg-rose-950/60 border border-rose-500/40 px-3 py-1.5 rounded-lg">
@@ -405,24 +413,24 @@ import '../styles/global.css';
           <div id="acc-bridge-setup" class="accordion-content px-6 border-t border-[#331d27] bg-[#0c0609]">
             <div class="p-6 space-y-4">
               <div class="bg-[#070305] border border-[#592e42] rounded-xl p-4">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-xs font-mono text-slate-400"># Run headless in Windows PowerShell to start the local MT5 bridge:</span>
-                  <button onclick="copyCommand('ps-cmd')" class="btn-secondary-glass px-3 py-1 rounded-lg text-xs font-mono flex items-center gap-1.5">
+                <div class="flex items-center justify-between gap-3 mb-2">
+                  <span class="text-xs font-mono text-slate-400"># Your dedicated bridge endpoint (from your pairing email):</span>
+                  <button onclick="copyCommand('bridge-endpoint')" class="btn-secondary-glass px-3 py-1 rounded-lg text-xs font-mono flex items-center gap-1.5">
                     <i class="fa-regular fa-copy text-rose-400"></i>
-                    <span id="copy-btn-text">Copy Command</span>
+                    <span id="copy-btn-text">Copy Endpoint</span>
                   </button>
                 </div>
-                <pre id="ps-cmd" class="font-mono text-xs sm:text-sm text-emerald-300 overflow-x-auto py-1">powershell -ExecutionPolicy Bypass -File .\install_and_run_bridge.ps1 -Port 8899 -Headless</pre>
+                <pre id="bridge-endpoint" class="font-mono text-xs sm:text-sm text-emerald-300 overflow-x-auto py-1">not paired — open Account / Auth and paste your bridge token</pre>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="p-4 rounded-xl bg-amber-950/25 border-l-4 border-amber-500 border border-amber-500/30 text-xs sm:text-sm text-slate-200 leading-relaxed">
-                  <strong class="text-amber-300 block mb-1"><i class="fa-solid fa-lock mr-1"></i> Why is the URL local? That is correct and safe.</strong>
-                  The bridge runs on your own PC, so its address is always <code class="font-mono text-amber-200">http://127.0.0.1:8899</code> — “this computer”. This website talks to the bridge directly from your browser; your account, token and orders never touch our servers.
+                  <strong class="text-amber-300 block mb-1"><i class="fa-solid fa-server mr-1"></i> The bridge runs in the cloud, not on your PC.</strong>
+                  Each member gets a dedicated instance with its own MetaTrader 5 terminal and account session. You never install anything, and closing your laptop does not stop your blotter from updating.
                 </div>
                 <div class="p-4 rounded-xl bg-amber-950/25 border-l-4 border-amber-500 border border-amber-500/30 text-xs sm:text-sm text-slate-200 leading-relaxed">
-                  <strong class="text-amber-300 block mb-1"><i class="fa-brands fa-windows mr-1"></i> Any Windows PC works.</strong>
-                  The bridge auto-detects every MetaTrader 5 terminal installed for your user, including broker-branded and portable copies. Open MetaTrader 5, sign in to a demo or live account, then connect.
+                  <strong class="text-amber-300 block mb-1"><i class="fa-solid fa-key mr-1"></i> The pairing token is the only key.</strong>
+                  Your token is stored in this browser and sent only to your own instance. Revoke and reissue it from your account page at any time; the old token stops working immediately.
                 </div>
               </div>
             </div>
@@ -520,7 +528,7 @@ import '../styles/global.css';
             <div class="pt-4 border-t border-[#331d27] space-y-4">
               <label class="flex items-center gap-3 cursor-pointer select-none group">
                 <input id="confirm-broker-checkbox" type="checkbox" checked class="w-4 h-4 rounded accent-rose-600 cursor-pointer" />
-                <span class="text-xs sm:text-sm text-slate-300 group-hover:text-white transition">I confirm this order routes to <strong class="text-white underline decoration-rose-500">my connected broker account</strong> via local bridge.</span>
+                <span class="text-xs sm:text-sm text-slate-300 group-hover:text-white transition">I confirm this order routes to <strong class="text-white underline decoration-rose-500">my connected broker account</strong> via my bridge.</span>
               </label>
 
               <div class="flex flex-wrap items-center justify-between gap-3">
@@ -606,18 +614,18 @@ import '../styles/global.css';
 
                   <div>
                     <label class="block text-[10px] font-mono uppercase text-slate-400 mb-2">SYMBOLS THE LIVE DESK MAY TRADE</label>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap gap-2" id="desk-symbols">
                       <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#160c12] border border-[#592e42] text-xs font-mono text-white cursor-pointer hover:border-rose-400">
-                        <input type="checkbox" checked class="accent-rose-500" /> ESZ6
+                        <input type="checkbox" value="ESZ6" checked onchange="syncDeskProfile()" class="desk-symbol accent-rose-500" /> ESZ6
                       </label>
                       <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#160c12] border border-[#592e42] text-xs font-mono text-white cursor-pointer hover:border-rose-400">
-                        <input type="checkbox" checked class="accent-rose-500" /> NQZ6
+                        <input type="checkbox" value="NQZ6" checked onchange="syncDeskProfile()" class="desk-symbol accent-rose-500" /> NQZ6
                       </label>
                       <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#160c12] border border-[#592e42] text-xs font-mono text-white cursor-pointer hover:border-rose-400">
-                        <input type="checkbox" checked class="accent-rose-500" /> XAUUSD
+                        <input type="checkbox" value="XAUUSD" checked onchange="syncDeskProfile()" class="desk-symbol accent-rose-500" /> XAUUSD
                       </label>
                       <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#160c12] border border-[#592e42] text-xs font-mono text-white cursor-pointer hover:border-rose-400">
-                        <input type="checkbox" class="accent-rose-500" /> BTCUSD
+                        <input type="checkbox" value="BTCUSD" onchange="syncDeskProfile()" class="desk-symbol accent-rose-500" /> BTCUSD
                       </label>
                     </div>
                   </div>
@@ -628,7 +636,7 @@ import '../styles/global.css';
             <div class="pt-4 border-t border-[#331d27] flex items-center justify-between gap-3">
               <button type="button" onclick="saveRiskGates()" class="btn-secondary-glass flex-1 py-3 px-5 rounded-xl font-mono text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2">
                 <i class="fa-solid fa-floppy-disk text-emerald-400"></i>
-                <span>Sync Risk Gates to Local Bridge</span>
+                <span>Sync Risk Gates to Bridge</span>
               </button>
               <button type="button" onclick="flattenAllPositions()" class="px-4 py-3 rounded-xl bg-rose-950/90 hover:bg-rose-800 border border-rose-500 text-rose-200 font-mono text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5">
                 <i class="fa-solid fa-skull-crossbones"></i>
@@ -644,12 +652,12 @@ import '../styles/global.css';
         <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 shadow-xl">
           <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
             <div>
-              <span class="text-xs font-mono uppercase tracking-widest text-emerald-400">REAL-TIME TELEMETRY · ZERO DEAD ROUTES</span>
+              <span class="text-xs font-mono uppercase tracking-widest text-emerald-400">LIVE TELEMETRY · POLLED FROM YOUR BRIDGE</span>
               <h2 class="font-serif text-2xl sm:text-3xl font-bold text-white mt-0.5">Active Positions &amp; Execution Blotter</h2>
             </div>
             <div class="flex items-center gap-3">
               <div class="px-4 py-2 rounded-xl bg-[#0b0608] border border-[#592e42] font-mono text-xs">
-                <span class="text-slate-400 mr-2">OPEN P&amp;L:</span>
+                <span class="text-slate-400 mr-2" id="pnl-label">SAMPLE OPEN P&amp;L:</span>
                 <span id="total-pnl-badge" class="text-emerald-400 font-bold text-sm">+$2,420.25</span>
               </div>
               <button onclick="switchTab('execution')" class="btn-primary-crimson px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
@@ -681,76 +689,88 @@ import '../styles/global.css';
         </div>
       </section>
 
-      <!-- TAB 4: GUIDE -->
-      <section id="view-guide" class="tab-view hidden space-y-8">
+      <!-- TAB 4: PLAYBOOK -->
+      <section id="view-playbook" class="tab-view hidden space-y-8">
         <div class="bg-gradient-to-r from-rose-950/80 via-[#170b12] to-[#12090e] border border-rose-500/50 rounded-2xl p-6 sm:p-8 shadow-2xl">
           <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-300 font-mono text-xs mb-3">
-            <i class="fa-solid fa-screwdriver-wrench"></i> STEP-BY-STEP WEBSITE UPGRADE MANUAL
+            <i class="fa-solid fa-book-open-reader"></i> MEMBER OPERATIONS PLAYBOOK
           </div>
           <h2 class="font-serif text-3xl sm:text-4xl font-bold text-white mb-3">
-            How to Upgrade Your <code class="text-rose-400 font-mono text-2xl sm:text-3xl">vaelor.pages.dev</code> HTML
+            How the Vaelor desk actually works
           </h2>
           <p class="text-slate-300 text-sm sm:text-base max-w-3xl leading-relaxed">
-            Below are the exact instructions and copy-pasteable patterns explaining how your new high-visibility buttons work, how the expandable sections keep your Execution Desk clean, and which dead files to delete from your repository.
+            Vaelor is a research and risk desk, not a robot that trades for you. You keep the broker account and the final click. The desk supplies the signals, the position sizing maths, and the gates that stop one bad decision from becoming a bad week.
           </p>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
             <div class="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 text-lg">
-              <i class="fa-solid fa-eye"></i>
+              <i class="fa-solid fa-satellite-dish"></i>
             </div>
-            <h3 class="text-lg font-bold text-white">1. Making Buttons Highly Visible &amp; Tactile</h3>
+            <h3 class="text-lg font-bold text-white">1. Signals are research — you pull the trigger</h3>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              In your original site, secondary buttons like <strong>“Launch Dashboard”</strong>, <strong>“SELL”</strong>, and timeframe pills (<code class="text-rose-300">1m, 5m, 15m</code>) used a very dark border (<code class="text-slate-400">#22151c</code>) that blended into the dark background.
+              The Vaelor export is a MetaTrader <strong>indicator</strong>, never an Expert Advisor. A prop firm sees a chart study, not a trading robot.
             </p>
             <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
-              <li><strong>Sign-In Button:</strong> Placed inside the top-right header pill next to <code class="text-rose-300">@arthur.vance</code> with a high-contrast crimson gradient (<code class="text-rose-300">.btn-primary-crimson</code>) and a key icon. Clicking it opens the Bridge Auth &amp; Sign-In modal.</li>
-              <li><strong>BUY &amp; SELL Toggle Buttons:</strong> Uses explicit active classes (<code class="text-emerald-300">.btn-buy-active</code> with a <code class="text-emerald-300">2px solid #34d399</code> border and neon glow, and <code class="text-rose-300">.btn-sell-active</code> with <code class="text-rose-300">2px solid #fb7185</code>).</li>
-              <li><strong>Secondary Glass Buttons:</strong> Upgraded border contrast to <code class="text-rose-300">#64364b</code> with inner top-edge highlights (<code class="text-rose-300">inset 0 1px 0 rgba(255,255,255,0.12)</code>).</li>
+              <li>The signal feed evaluates the same rule set on the last <em>closed</em> bar and publishes entry, stop and target.</li>
+              <li>You submit every order yourself from the Execution Desk.</li>
+              <li>The desk never opens a position on your behalf, on any account, ever.</li>
             </ul>
           </div>
 
           <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
             <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-lg">
-              <i class="fa-solid fa-bars-staggered"></i>
+              <i class="fa-solid fa-server"></i>
             </div>
-            <h3 class="text-lg font-bold text-white">2. Putting Relatable Items in Expandable Drawers</h3>
+            <h3 class="text-lg font-bold text-white">2. Your bridge lives in the cloud, not on your PC</h3>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              In your second screenshot, the PowerShell commands and long yellow warning boxes pushed the <strong>Order Ticket</strong> below the fold.
+              Every member gets a <strong>dedicated bridge instance</strong> with its own MetaTrader 5 terminal and account session.
             </p>
             <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
-              <li><strong>Grouped Bridge Setup &amp; FAQs:</strong> The PowerShell snippet and the two <code class="text-amber-300">127.0.0.1:8899</code> explanations are now inside an expandable drawer (<code class="text-rose-300">#acc-bridge-setup</code>) at the top of the Execution Desk.</li>
-              <li><strong>Grouped Live Desk Strategy Profile:</strong> Timeframes, strategy dropdown, and symbol checkboxes are grouped inside <code class="text-rose-300">#acc-desk-profile</code> so traders can collapse it when placing manual trades.</li>
-              <li><strong>How it works:</strong> Clicking the header triggers <code class="text-emerald-300">toggleAccordion(id)</code>, smoothly animating <code class="text-rose-300">max-height</code> and rotating the chevron icon.</li>
+              <li>Nothing has to stay awake on your side. Close the laptop; the instance keeps polling and keeps your blotter accurate.</li>
+              <li>Pairing is one token, pasted once in <strong>Account / Auth</strong>.</li>
+              <li>That token is the only key to your instance — revoke it any time and it stops working immediately.</li>
             </ul>
           </div>
 
           <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
             <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400 text-lg">
-              <i class="fa-solid fa-trash-can-arrow-up"></i>
+              <i class="fa-solid fa-shield-halved"></i>
             </div>
-            <h3 class="text-lg font-bold text-white">3. Removing Files That Have No Work on Your Website</h3>
+            <h3 class="text-lg font-bold text-white">3. Risk gates answer before your broker does</h3>
             <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Static Cloudflare Pages deployments (<code class="text-rose-300">vaelor.pages.dev</code>) cannot execute backend scripts or empty placeholder tabs. Remove these unused files from your project folder:
+              Risk per trade, max lots, max open positions, daily loss and max drawdown are enforced <strong>on the bridge</strong>, not in this page.
             </p>
-            <div class="space-y-2 text-xs font-mono">
-              <div class="p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 text-rose-200 flex items-center justify-between">
-                <span><i class="fa-solid fa-xmark text-rose-400 mr-1.5"></i> /news/index.html</span>
-                <span class="text-[10px] uppercase bg-rose-500/30 px-2 py-0.5 rounded">Delete (Empty Stub)</span>
-              </div>
-              <div class="p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 text-rose-200 flex items-center justify-between">
-                <span><i class="fa-solid fa-xmark text-rose-400 mr-1.5"></i> /ai/index.html</span>
-                <span class="text-[10px] uppercase bg-rose-500/30 px-2 py-0.5 rounded">Delete (Empty Stub)</span>
-              </div>
-              <div class="p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 text-rose-200 flex items-center justify-between">
-                <span><i class="fa-solid fa-xmark text-rose-400 mr-1.5"></i> *.py / *.ps1 in web root</span>
-                <span class="text-[10px] uppercase bg-rose-500/30 px-2 py-0.5 rounded">Move to /dist-zip</span>
-              </div>
-              <div class="p-2.5 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 flex items-center justify-between">
-                <span><i class="fa-solid fa-check text-emerald-400 mr-1.5"></i> /index.html (Unified SPA)</span>
-                <span class="text-[10px] uppercase bg-emerald-500/30 px-2 py-0.5 rounded">Keep (All-In-One)</span>
-              </div>
+            <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+              <li>The kill switch stops new routing instantly. Closes and stop moves stay available so you can always de-risk.</li>
+              <li>Every refusal is written to the bridge audit log with the gate that blocked it.</li>
+              <li>Prop-safe lock refuses opening orders outright on a challenge account.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
+          <div>
+            <span class="text-xs font-mono uppercase text-rose-400">NON-NEGOTIABLES</span>
+            <h3 class="text-lg font-bold text-white">What this desk will never do</h3>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs sm:text-sm text-slate-300">
+            <div class="p-3.5 rounded-xl bg-rose-950/25 border border-rose-500/25 flex items-start gap-2.5">
+              <i class="fa-solid fa-xmark text-rose-400 mt-0.5"></i>
+              <span>Open, close or reverse a position without your explicit order.</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-rose-950/25 border border-rose-500/25 flex items-start gap-2.5">
+              <i class="fa-solid fa-xmark text-rose-400 mt-0.5"></i>
+              <span>Run an EA on a prop-firm account. The prop-safe lock refuses opening orders.</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-rose-950/25 border border-rose-500/25 flex items-start gap-2.5">
+              <i class="fa-solid fa-xmark text-rose-400 mt-0.5"></i>
+              <span>Present a simulated fill as a broker fill. Simulation is labelled on every ticket and toast.</span>
+            </div>
+            <div class="p-3.5 rounded-xl bg-rose-950/25 border border-rose-500/25 flex items-start gap-2.5">
+              <i class="fa-solid fa-xmark text-rose-400 mt-0.5"></i>
+              <span>Hold, pool or custody your capital. Your money stays with your own broker.</span>
             </div>
           </div>
         </div>
@@ -758,17 +778,19 @@ import '../styles/global.css';
         <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <span class="text-xs font-mono uppercase text-rose-400">QUICK REFERENCE SNIPPET</span>
-              <h3 class="text-lg font-bold text-white">How to Replace Your Existing <code class="font-mono text-rose-400">index.html</code></h3>
+              <span class="text-xs font-mono uppercase text-rose-400">FIRST SESSION</span>
+              <h3 class="text-lg font-bold text-white">Your first ten minutes on the desk</h3>
             </div>
             <button onclick="switchTab('execution')" class="btn-primary-crimson px-4 py-2 rounded-xl text-xs font-semibold">
-              Test Live Execution Desk Now →
+              Open the Execution Desk →
             </button>
           </div>
           <ol class="text-xs sm:text-sm text-slate-300 space-y-2 list-decimal pl-5 leading-relaxed">
-            <li>Save this entire single-file HTML document as your root <code class="font-mono text-emerald-300">index.html</code> inside your Cloudflare Pages repository.</li>
-            <li>Delete dead sub-folders (<code class="font-mono text-rose-300">/news</code>, <code class="font-mono text-rose-300">/ai</code>, <code class="font-mono text-rose-300">/member</code>, and duplicate <code class="font-mono text-rose-300">/execution/index.html</code>) so users never hit 404s or broken navigation links.</li>
-            <li>If you want <code class="font-mono text-emerald-300">vaelor.pages.dev/execution</code> to still work as a direct URL on Cloudflare Pages, add a single <code class="font-mono text-emerald-300">_redirects</code> file containing <code class="font-mono text-amber-300">/* /index.html 200</code>.</li>
+            <li>Paste your bridge token in <strong>Account / Auth</strong>. The header pill goes green when your instance answers, and the preview banner disappears.</li>
+            <li>Set your gates in <strong>Section 04</strong> and sync them. Stay at 0.5% risk per trade until you have a sample of your own fills.</li>
+            <li>Choose the timeframe and the symbols the desk may trade in the <strong>Live Desk Profile</strong>.</li>
+            <li>Read the signal feed, then route your own ticket with a stop attached. No stop, no trade.</li>
+            <li>Review the blotter and the bridge audit log after every session. The log is the honest version of your day.</li>
           </ol>
         </div>
       </section>
@@ -783,37 +805,36 @@ import '../styles/global.css';
 
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-rose-600/20 border border-rose-500 flex items-center justify-center text-rose-400">
-            <i class="fa-solid fa-user-shield text-lg"></i>
+            <i class="fa-solid fa-link text-lg"></i>
           </div>
           <div>
-            <div class="text-[10px] font-mono uppercase tracking-widest text-rose-400">VAELOR OPERATOR AUTHENTICATION</div>
-            <h3 class="text-xl font-bold text-white">Operator Sign-In &amp; Bridge Token</h3>
+            <div class="text-[10px] font-mono uppercase tracking-widest text-rose-400">VAELOR CLOUD BRIDGE</div>
+            <h3 class="text-xl font-bold text-white">Pair Your Bridge Instance</h3>
           </div>
         </div>
 
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-mono uppercase text-slate-300 mb-1">Operator Handle</label>
-            <input id="modal-handle-input" type="text" value="@arthur.vance" class="w-full bg-[#090507] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
+            <label class="block text-xs font-mono uppercase text-slate-300 mb-1">Bridge Endpoint</label>
+            <input id="modal-endpoint-input" type="url" autocomplete="off" spellcheck="false" placeholder="https://mt5-yourname.vaelor.example" class="w-full bg-[#090507] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-emerald-400 outline-none" />
           </div>
 
           <div>
-            <label class="block text-xs font-mono uppercase text-slate-300 mb-1">Local MT5 Bridge Endpoint</label>
-            <input id="modal-endpoint-input" type="text" value="http://127.0.0.1:8899" class="w-full bg-[#090507] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-emerald-400 outline-none" />
+            <label class="block text-xs font-mono uppercase text-slate-300 mb-1">Instance Token</label>
+            <input id="modal-token-input" type="password" autocomplete="off" placeholder="token from your pairing email" class="w-full bg-[#090507] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
           </div>
 
-          <div>
-            <label class="block text-xs font-mono uppercase text-slate-300 mb-1">Session Passkey / Local Token</label>
-            <input id="modal-token-input" type="password" value="TLLC-OPS-SECRET-8899" class="w-full bg-[#090507] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
-          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            The token is kept in this browser only and sent to your own instance, never to ours.
+          </p>
         </div>
 
         <div class="flex items-center justify-between gap-3 pt-2">
-          <button type="button" onclick="signOutOperator()" class="btn-secondary-glass px-4 py-2.5 rounded-xl text-xs font-mono text-rose-300 hover:border-rose-500">
-            Sign Out
+          <button type="button" onclick="unpairBridge()" class="btn-secondary-glass px-4 py-2.5 rounded-xl text-xs font-mono text-rose-300 hover:border-rose-500">
+            Unpair
           </button>
-          <button type="button" onclick="saveOperatorAuth()" class="btn-primary-crimson flex-1 py-2.5 px-5 rounded-xl text-xs font-bold uppercase tracking-wider text-white">
-            Authenticate &amp; Connect Bridge
+          <button type="button" onclick="pairBridge()" class="btn-primary-crimson flex-1 py-2.5 px-5 rounded-xl text-xs font-bold uppercase tracking-wider text-white">
+            Pair &amp; Test Connection
           </button>
         </div>
       </div>
@@ -828,7 +849,7 @@ import '../styles/global.css';
           <button onclick="switchTab('overview')" class="hover:text-rose-400 transition">Overview</button>
           <button onclick="switchTab('execution')" class="hover:text-rose-400 transition">Execution Desk</button>
           <button onclick="switchTab('terminal')" class="hover:text-rose-400 transition">Terminal</button>
-          <button onclick="switchTab('guide')" class="text-amber-400 hover:underline">HTML Upgrade Instructions</button>
+          <button onclick="switchTab('playbook')" class="text-amber-400 hover:underline">Operations Playbook</button>
         </div>
       </div>
     </footer>
