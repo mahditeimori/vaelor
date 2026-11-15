@@ -19,21 +19,23 @@ import '../styles/global.css';
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="icon" type="image/png" href="/vaelor-mark.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/vaelor-icon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{pageTitle}</title>
   </head>
   <body class={variant}>
     {variant !== 'landing' && (
       <header class="site-header">
-        <a href="/" class="brand" aria-label="Vaelor Trading LLC home">
-          <span class="brand-mark" aria-hidden="true">
-            <img src="/vaelor-logo.png" alt="" width="30" height="30" />
-          </span>
-          <span>
-            <span style="display:block">Vaelor Trading LLC</span>
-            <span class="sub">OPS v2.0.1 · TLLC-OPS-V2.0.1-FINAL</span>
-          </span>
+        <a href="/" class="brand" aria-label="Vaelor Trading Intelligence — home">
+          <img
+            src="/vaelor-trading-intelligence.png"
+            alt="Vaelor Trading Intelligence"
+            width="640"
+            height="213"
+            decoding="async"
+          />
         </a>
         <nav class="nav-links" aria-label="Primary">
           <a href="/" class="nav-link" aria-current={Astro.url.pathname === '/' ? 'page' : undefined}>Overview</a>

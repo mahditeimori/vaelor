@@ -11,90 +11,14 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
   <main class="shell nw-page" id="newsPage">
     <!-- ================= LOGO LOCKUP + HERO ================= -->
     <section class="hero" style="padding-bottom:6px" aria-labelledby="newsHeroTitle">
-      <svg class="nw-logo" viewBox="0 0 720 190" role="img" aria-label="Vaelor Economic Intelligence" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <radialGradient id="nwIconGlow" cx="30%" cy="14%" r="90%">
-            <stop offset="0%" stop-color="#e2456c" stop-opacity="0.5"/>
-            <stop offset="38%" stop-color="#3a0d17" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
-          </radialGradient>
-          <radialGradient id="nwIconCore" cx="50%" cy="35%" r="75%">
-            <stop offset="0%" stop-color="#171a20"/>
-            <stop offset="100%" stop-color="#050608"/>
-          </radialGradient>
-          <linearGradient id="nwBorder" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="#f2f4f8" stop-opacity="0.95"/>
-            <stop offset="0.28" stop-color="#8d97a5" stop-opacity="0.6"/>
-            <stop offset="0.5" stop-color="#39414c"/>
-            <stop offset="0.72" stop-color="#12151a"/>
-            <stop offset="1" stop-color="#07080a"/>
-          </linearGradient>
-          <linearGradient id="nwChromeLeft" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#f4f6fa"/>
-            <stop offset="0.38" stop-color="#b9c2ce"/>
-            <stop offset="0.55" stop-color="#5f6a77"/>
-            <stop offset="0.72" stop-color="#dfe4ec"/>
-            <stop offset="1" stop-color="#59636f"/>
-          </linearGradient>
-          <linearGradient id="nwRedRight" x1="0" y1="1" x2="0.75" y2="0">
-            <stop offset="0" stop-color="#5c1220"/>
-            <stop offset="0.35" stop-color="#e2456c"/>
-            <stop offset="0.62" stop-color="#ff7288"/>
-            <stop offset="0.85" stop-color="#8d1b31"/>
-            <stop offset="1" stop-color="#380a13"/>
-          </linearGradient>
-          <radialGradient id="nwFlare" cx="68%" cy="50%" r="50%">
-            <stop offset="0" stop-color="#ff8fa0" stop-opacity="0.95"/>
-            <stop offset="0.18" stop-color="#e2456c" stop-opacity="0.85"/>
-            <stop offset="0.45" stop-color="#8d1b31" stop-opacity="0.35"/>
-            <stop offset="1" stop-color="#000000" stop-opacity="0"/>
-          </radialGradient>
-          <linearGradient id="nwFlareLine" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
-            <stop offset="0.3" stop-color="#ffffff" stop-opacity="0.25"/>
-            <stop offset="0.68" stop-color="#ff96a6"/>
-            <stop offset="0.72" stop-color="#ffffff"/>
-            <stop offset="0.76" stop-color="#ff96a6"/>
-            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-          </linearGradient>
-          <linearGradient id="nwWordChrome" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#f7f9fd"/>
-            <stop offset="0.34" stop-color="#cfd6df"/>
-            <stop offset="0.52" stop-color="#737f8d"/>
-            <stop offset="0.62" stop-color="#2f3640"/>
-            <stop offset="0.78" stop-color="#c7ced8"/>
-            <stop offset="1" stop-color="#5a6572"/>
-          </linearGradient>
-          <filter id="nwSoft" x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="9"/>
-          </filter>
-        </defs>
-
-        <!-- icon -->
-        <g>
-          <rect x="14" y="10" width="168" height="168" rx="38" fill="url(#nwIconCore)" stroke="url(#nwBorder)" stroke-width="2.5"/>
-          <rect x="14" y="10" width="168" height="168" rx="38" fill="url(#nwIconGlow)"/>
-          <!-- chrome left arm of the V -->
-          <polygon points="42,52 82,142 108,142 68,52" fill="url(#nwChromeLeft)"/>
-          <polygon points="48,56 54,64 88,138 82,138" fill="#ffffff" opacity="0.35"/>
-          <!-- red right arm of the V -->
-          <polygon points="118,142 158,52 132,52 108,142" fill="url(#nwRedRight)"/>
-          <polygon points="126,142 152,56 145,56 115,142" fill="#ffd6dc" opacity="0.4"/>
-          <!-- silver dot -->
-          <circle cx="150" cy="128" r="9.5" fill="url(#nwChromeLeft)" stroke="#05070a" stroke-width="1.5"/>
-        </g>
-
-        <!-- wordmark -->
-        <text x="212" y="102" font-family="Inter, 'Arial Black', Arial, sans-serif" font-size="86" font-weight="800" letter-spacing="2" fill="url(#nwWordChrome)">VAELOR</text>
-
-        <!-- red flare line -->
-        <line x1="214" y1="124" x2="712" y2="124" stroke="url(#nwFlareLine)" stroke-width="1.6"/>
-        <ellipse cx="556" cy="124" rx="150" ry="7" fill="url(#nwFlare)" filter="url(#nwSoft)" opacity="0.85"/>
-        <circle cx="556" cy="124" r="2" fill="#ffffff"/>
-
-        <!-- caption -->
-        <text x="214" y="158" font-family="Inter, Arial, sans-serif" font-size="15.5" font-weight="500" letter-spacing="12.5" fill="#98a4b3">ECONOMIC INTELLIGENCE</text>
-      </svg>
+      <img
+        class="nw-logo"
+        src="/vaelor-trading-intelligence.png"
+        alt="Vaelor Trading Intelligence"
+        width="640"
+        height="213"
+        decoding="async"
+      />
 
       <div class="kicker" style="margin-top:2px">Macro event monitor · weekly outlook</div>
       <h1 id="newsHeroTitle">News that moves markets.</h1>
@@ -302,7 +226,13 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     .nw-page { padding-top: 28px; padding-bottom: 64px; }
 
     /* logo lockup */
-    .nw-logo { width: min(560px, 100%); height: auto; display: block; margin: 4px 0 10px; }
+    .nw-logo {
+      width: min(520px, 100%);
+      height: auto;
+      display: block;
+      margin: 4px 0 10px;
+      border-radius: 6px;
+    }
     .kicker {
       font-family: var(--mono);
       font-size: 0.62rem;

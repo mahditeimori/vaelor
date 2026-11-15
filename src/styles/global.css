@@ -93,6 +93,13 @@ hr {
 
 .brand { display: flex; align-items: center; gap: 12px; font-weight: 600; letter-spacing: 0.02em; }
 
+.brand img {
+  height: 44px;
+  width: auto;
+  display: block;
+  border-radius: 4px;
+}
+
 .brand-mark {
   width: 30px; height: 30px;
   display: grid; place-items: center;
