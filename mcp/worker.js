@@ -40,6 +40,8 @@ import {
   customAnalysis,
   ensureNews,
   formatEventTimes,
+  getWeekEvents,
+  listWeeks,
   readNewsResource,
   recordNewsError,
   syncNews,
@@ -778,6 +780,33 @@ export default {
         await recordNewsError(env, String(err?.message ?? err));
         return jsonResponse({ error: String(err?.message ?? err) }, 502);
       }
+    }
+
+    if (path === "/api/news/week") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      const date = url.searchParams.get("date");
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return jsonResponse({ error: "date query param required as YYYY-MM-DD" }, 400);
+      }
+      try {
+        const pack = await getWeekEvents(env, `${date}T12:00:00Z`);
+        return jsonResponse({
+          weekStart: pack.weekStart,
+          weekEnd: pack.weekEnd,
+          fetchedAt: pack.fetchedAt ?? null,
+          source: pack.source ?? null,
+          count: pack.events.length,
+          events: pack.events,
+          availableWeeks: pack.availableWeeks ?? [],
+        });
+      } catch (err) {
+        return jsonResponse({ error: "week fetch failed", detail: String(err?.message ?? err) }, 500);
+      }
+    }
+
+    if (path === "/api/news/weeks") {
+      if (request.method !== "GET") return new Response(null, { status: 405, headers: corsHeaders() });
+      return jsonResponse({ weeks: await listWeeks(env), retentionWeeks: 12 });
     }
 
     if (path === "/api/news/status") {

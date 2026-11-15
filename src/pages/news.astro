@@ -6,44 +6,151 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
 
 <BaseLayout
   title="News · Economic Calendar"
-  description="Weekly macroeconomic calendar for USD, EUR, GBP and Gold with Iran Jalali dates, Tehran and New York release times, and a pre-release USD/XAU fundamental prediction engine."
+  description="Weekly macroeconomic calendar for USD, EUR, GBP, DXY and Gold with Iran Jalali dates, Tehran and New York release times, and a pre-release USD/DXY fundamental prediction engine."
 >
   <main class="shell nw-page" id="newsPage">
-    <section class="hero" style="padding-bottom:18px">
-      <div class="kicker">Macro event monitor · weekly outlook</div>
-      <h1>News that moves markets.</h1>
+    <!-- ================= LOGO LOCKUP + HERO ================= -->
+    <section class="hero" style="padding-bottom:6px" aria-labelledby="newsHeroTitle">
+      <svg class="nw-logo" viewBox="0 0 720 190" role="img" aria-label="Vaelor Economic Intelligence" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="nwIconGlow" cx="30%" cy="14%" r="90%">
+            <stop offset="0%" stop-color="#e2456c" stop-opacity="0.5"/>
+            <stop offset="38%" stop-color="#3a0d17" stop-opacity="0.35"/>
+            <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="nwIconCore" cx="50%" cy="35%" r="75%">
+            <stop offset="0%" stop-color="#171a20"/>
+            <stop offset="100%" stop-color="#050608"/>
+          </radialGradient>
+          <linearGradient id="nwBorder" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#f2f4f8" stop-opacity="0.95"/>
+            <stop offset="0.28" stop-color="#8d97a5" stop-opacity="0.6"/>
+            <stop offset="0.5" stop-color="#39414c"/>
+            <stop offset="0.72" stop-color="#12151a"/>
+            <stop offset="1" stop-color="#07080a"/>
+          </linearGradient>
+          <linearGradient id="nwChromeLeft" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f4f6fa"/>
+            <stop offset="0.38" stop-color="#b9c2ce"/>
+            <stop offset="0.55" stop-color="#5f6a77"/>
+            <stop offset="0.72" stop-color="#dfe4ec"/>
+            <stop offset="1" stop-color="#59636f"/>
+          </linearGradient>
+          <linearGradient id="nwRedRight" x1="0" y1="1" x2="0.75" y2="0">
+            <stop offset="0" stop-color="#5c1220"/>
+            <stop offset="0.35" stop-color="#e2456c"/>
+            <stop offset="0.62" stop-color="#ff7288"/>
+            <stop offset="0.85" stop-color="#8d1b31"/>
+            <stop offset="1" stop-color="#380a13"/>
+          </linearGradient>
+          <radialGradient id="nwFlare" cx="68%" cy="50%" r="50%">
+            <stop offset="0" stop-color="#ff8fa0" stop-opacity="0.95"/>
+            <stop offset="0.18" stop-color="#e2456c" stop-opacity="0.85"/>
+            <stop offset="0.45" stop-color="#8d1b31" stop-opacity="0.35"/>
+            <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="nwFlareLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+            <stop offset="0.3" stop-color="#ffffff" stop-opacity="0.25"/>
+            <stop offset="0.68" stop-color="#ff96a6"/>
+            <stop offset="0.72" stop-color="#ffffff"/>
+            <stop offset="0.76" stop-color="#ff96a6"/>
+            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="nwWordChrome" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f7f9fd"/>
+            <stop offset="0.34" stop-color="#cfd6df"/>
+            <stop offset="0.52" stop-color="#737f8d"/>
+            <stop offset="0.62" stop-color="#2f3640"/>
+            <stop offset="0.78" stop-color="#c7ced8"/>
+            <stop offset="1" stop-color="#5a6572"/>
+          </linearGradient>
+          <filter id="nwSoft" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="9"/>
+          </filter>
+        </defs>
+
+        <!-- icon -->
+        <g>
+          <rect x="14" y="10" width="168" height="168" rx="38" fill="url(#nwIconCore)" stroke="url(#nwBorder)" stroke-width="2.5"/>
+          <rect x="14" y="10" width="168" height="168" rx="38" fill="url(#nwIconGlow)"/>
+          <!-- chrome left arm of the V -->
+          <polygon points="42,52 82,142 108,142 68,52" fill="url(#nwChromeLeft)"/>
+          <polygon points="48,56 54,64 88,138 82,138" fill="#ffffff" opacity="0.35"/>
+          <!-- red right arm of the V -->
+          <polygon points="118,142 158,52 132,52 108,142" fill="url(#nwRedRight)"/>
+          <polygon points="126,142 152,56 145,56 115,142" fill="#ffd6dc" opacity="0.4"/>
+          <!-- silver dot -->
+          <circle cx="150" cy="128" r="9.5" fill="url(#nwChromeLeft)" stroke="#05070a" stroke-width="1.5"/>
+        </g>
+
+        <!-- wordmark -->
+        <text x="212" y="102" font-family="Inter, 'Arial Black', Arial, sans-serif" font-size="86" font-weight="800" letter-spacing="2" fill="url(#nwWordChrome)">VAELOR</text>
+
+        <!-- red flare line -->
+        <line x1="214" y1="124" x2="712" y2="124" stroke="url(#nwFlareLine)" stroke-width="1.6"/>
+        <ellipse cx="556" cy="124" rx="150" ry="7" fill="url(#nwFlare)" filter="url(#nwSoft)" opacity="0.85"/>
+        <circle cx="556" cy="124" r="2" fill="#ffffff"/>
+
+        <!-- caption -->
+        <text x="214" y="158" font-family="Inter, Arial, sans-serif" font-size="15.5" font-weight="500" letter-spacing="12.5" fill="#98a4b3">ECONOMIC INTELLIGENCE</text>
+      </svg>
+
+      <div class="kicker" style="margin-top:2px">Macro event monitor · weekly outlook</div>
+      <h1 id="newsHeroTitle">News that moves markets.</h1>
       <p class="lede">
-        High-impact and medium-impact economic releases for <b>USD</b>, <b>EUR</b>, <b>GBP</b> and
-        <b>Gold</b> — every event shown in <b>Tehran (IRST)</b> and <b>New York (EST/EDT)</b> time with
-        the <b>Iranian Jalali calendar</b> date, plus a rule-based pre-release engine that calls the
-        USD direction before the number drops.
+        High-impact and medium-impact economic releases for <b>USD</b>, <b>EUR</b>, <b>GBP</b>,
+        <b>DXY</b> and <b>Gold</b> — every event in <b>Tehran (IRST)</b> or <b>New York (EST/EDT)</b> time,
+        on the <b>Gregorian</b> or <b>Solar Hijri</b> calendar, plus a rule-based pre-release
+        engine that calls the USD direction before the number drops.
       </p>
-      <div class="nw-badges">
-        <span class="nw-badge-pill">ForexFactory weekly feed</span>
-        <span class="nw-badge-pill">Jalali · fa-IR calendar</span>
-        <span class="nw-badge-pill">Dual timezone</span>
-        <span class="nw-badge-pill">MCP tools exposed</span>
-      </div>
       <div class="nw-clockbox">
         <div class="nw-clock"><label>TEHRAN · ASIA/TEHRAN</label><strong id="tehranClock">--:--:--</strong></div>
         <div class="nw-clock"><label>NEW YORK · AMERICA/NEW_YORK</label><strong id="nyClock">--:--:--</strong></div>
       </div>
+
+      <!-- global mutually exclusive toggles -->
+      <div class="nw-togglebar" role="toolbar" aria-label="Display preferences">
+        <div class="nw-toggle-group">
+          <span class="nw-toggle-label" id="calendarToggleLabel">Calendar</span>
+          <div class="nw-seg" role="radiogroup" aria-labelledby="calendarToggleLabel">
+            <button type="button" role="radio" aria-checked="true" data-calendar="gregorian" class="is-active">Gregorian</button>
+            <button type="button" role="radio" aria-checked="false" data-calendar="jalali">Solar Hijri · Jalali</button>
+          </div>
+        </div>
+        <div class="nw-toggle-group">
+          <span class="nw-toggle-label" id="tzToggleLabel">Timezone</span>
+          <div class="nw-seg" role="radiogroup" aria-labelledby="tzToggleLabel">
+            <button type="button" role="radio" aria-checked="true" data-tz="Asia/Tehran" class="is-active">Tehran · IRST</button>
+            <button type="button" role="radio" aria-checked="false" data-tz="America/New_York">New York · EST/EDT</button>
+          </div>
+        </div>
+        <p class="nw-toggle-note">Both toggles re-render every date, time and day group on this page instantly.</p>
+      </div>
     </section>
 
-    <section class="nw-stats">
+    <!-- ================= STATS ================= -->
+    <section class="nw-stats" aria-label="Week statistics">
       <div class="nw-stat"><span>THIS WEEK · HIGH IMPACT</span><strong id="highCount">—</strong><em>Red-folder events</em></div>
       <div class="nw-stat"><span>THIS WEEK · MEDIUM IMPACT</span><strong id="mediumCount">—</strong><em>Orange-folder events</em></div>
-      <div class="nw-stat"><span>WATCHLIST</span><strong>4</strong><em>USD · EUR · GBP · XAU</em></div>
-      <div class="nw-stat"><span>NEXT HIGH-VISIBILITY EVENT</span><strong id="nextEvent">—</strong><em id="nextEventTime">Waiting for calendar data</em></div>
+      <div class="nw-stat"><span>WATCHLIST</span><strong>5</strong><em>USD · EUR · GBP · XAU · DXY</em></div>
+      <div class="nw-stat"><span>STORED WEEKS</span><strong id="storedWeeks">—</strong><em id="ledgerHint">Rolling weekly ledger · ~3-month retention</em></div>
+      <div class="nw-stat"><span>NEXT WATCH EVENT</span><strong id="nextEvent">—</strong><em id="nextEventTime">Waiting for calendar data</em></div>
     </section>
 
-    <!-- ================= CALENDAR ================= -->
-    <section class="nw-section" aria-labelledby="calendar-title">
+    <!-- ================= QUICK-ACTION TABS ================= -->
+    <div class="nw-tabs" role="tablist" aria-label="News sections">
+      <button type="button" role="tab" id="nw-tab-calendar" class="nw-tab is-active" aria-selected="true" aria-controls="nw-panel-calendar" data-tab="calendar" tabindex="0">01 · Calendar</button>
+      <button type="button" role="tab" id="nw-tab-engine" class="nw-tab" aria-selected="false" aria-controls="nw-panel-engine" data-tab="engine" tabindex="-1">02 · Automated AI Analysis</button>
+      <button type="button" role="tab" id="nw-tab-custom" class="nw-tab" aria-selected="false" aria-controls="nw-panel-custom" data-tab="custom" tabindex="-1">03 · Custom AI Analysis</button>
+    </div>
+
+    <!-- ================= PANEL 1 · CALENDAR ================= -->
+    <section class="nw-panel-section" role="tabpanel" id="nw-panel-calendar" aria-labelledby="nw-tab-calendar">
       <div class="nw-section-head">
         <div>
-          <div class="panel-kicker">01 · ECONOMIC CALENDAR</div>
-          <h2 id="calendar-title">Weekly release schedule</h2>
-          <p class="nw-weeklabel" id="weekLabel">Events are shown in Tehran and New York local time.</p>
+          <div class="panel-kicker">WEEKLY RELEASE SCHEDULE</div>
+          <div class="nw-weeklabel" id="weekLabel">Events are shown in Tehran and New York local time.</div>
         </div>
         <div class="nw-topright">
           <span class="nw-conn"><i class="nw-dot" id="statusDot"></i><span id="connectionStatus">CONNECTING…</span></span>
@@ -51,11 +158,27 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
         </div>
       </div>
 
+      <!-- weekly pagination -->
+      <div class="nw-pager" aria-label="Week navigation">
+        <button type="button" class="nw-pager-btn" id="prevWeekBtn" aria-label="Previous week">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10.5 2 5 8l5.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="nw-week-meta">
+          <span class="nw-week-big" id="weekBig">This Week</span>
+          <span class="nw-week-range" id="weekRange">—</span>
+        </div>
+        <button type="button" class="nw-pager-btn" id="nextWeekBtn" aria-label="Next week">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M5.5 2 11 8l-5.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" class="nw-thisweek" id="thisWeekBtn" hidden>This week</button>
+      </div>
+
       <div class="nw-filters">
         <label>Asset
           <select id="filterCurrency">
             <option value="all">All watched</option>
             <option value="USD">USD</option>
+            <option value="DXY">DXY · USD macro</option>
             <option value="EUR">EUR</option>
             <option value="GBP">GBP</option>
             <option value="XAU">XAU relevance</option>
@@ -95,17 +218,18 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
         </table>
       </div>
       <p class="nw-hint">
-        Low-impact (yellow/grey) noise is excluded by default. <b>XAU driver</b> tags mark USD releases
-        that directly move XAUUSD liquidity and volatility (CPI, NFP, FOMC, retail sales, ISM, claims…).
+        Low-impact noise is excluded by default. <b>XAU driver</b> tags mark USD releases that directly move XAUUSD
+        liquidity and volatility (CPI, PPI, NFP, FOMC, retail sales, ISM…). The same complex drives <b>DXY</b> —
+        a stronger print out of the engine means a stronger dollar index. Ledger keeps ~3 months and prunes beyond.
       </p>
     </section>
 
-    <!-- ================= PREDICTION ENGINE ================= -->
-    <section class="nw-section" aria-labelledby="engine-title">
+    <!-- ================= PANEL 2 · AUTOMATED AI ================= -->
+    <section class="nw-panel-section" role="tabpanel" id="nw-panel-engine" aria-labelledby="nw-tab-engine" hidden>
       <div class="nw-section-head">
         <div>
-          <div class="panel-kicker">02 · PRE-RELEASE PREDICTION ENGINE</div>
-          <h2 id="engine-title">Fundamental bias before the number drops</h2>
+          <div class="panel-kicker">AUTOMATED HISTORICAL ANALYSIS</div>
+          <p class="nw-weeklabel">System AI reads the tracked release ledger (previous prints + revision direction) alongside the consensus forecast.</p>
         </div>
         <label class="nw-daysel">Analyze day
           <select id="daySelect"><option value="">Loading…</option></select>
@@ -116,25 +240,19 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       </div>
     </section>
 
-    <!-- ================= CUSTOM AI ANALYSIS ================= -->
-    <section class="nw-section" aria-labelledby="custom-title">
+    <!-- ================= PANEL 3 · CUSTOM AI ================= -->
+    <section class="nw-panel-section" role="tabpanel" id="nw-panel-custom" aria-labelledby="nw-tab-custom" hidden>
       <div class="nw-section-head">
         <div>
-          <div class="panel-kicker">03 · CUSTOM AI ANALYSIS</div>
-          <h2 id="custom-title">Scenario workspace</h2>
+          <div class="panel-kicker">CUSTOM USER AI ANALYSIS · BYO-AI</div>
+          <p class="nw-weeklabel">Run the day's engine with your own parameters, or take the same workspace into your own AI client over MCP.</p>
         </div>
-        <a class="nw-link" href="/ai">Also available over MCP →</a>
+        <a class="nw-link" href="/ai">MCP endpoint docs →</a>
       </div>
-      <p class="nw-lede">
-        Run the day's engine with your own parameters: a custom instruction, a hypothetical actual
-        print, a target asset and your trading bias rules. The same workspace is exposed to any AI
-        client as the <code class="inline">custom_ai_news_analysis</code> MCP tool at
-        <code class="inline">{WORKER}/mcp</code>.
-      </p>
       <div class="nw-custom-grid">
         <div class="nw-form">
           <label>Custom prompt / instructions
-            <textarea id="customPrompt" placeholder="e.g. I trade XAUUSD only around CPI prints — focus on the release window reaction."></textarea>
+            <textarea id="customPrompt" placeholder="e.g. I trade XAUUSD only around CPI prints — focus on the release-window reaction."></textarea>
           </label>
           <div class="nw-form-row">
             <label>Hypothetical event (optional)
@@ -149,6 +267,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
               <select id="targetAsset">
                 <option value="all">All cross-asset</option>
                 <option value="XAUUSD">XAUUSD</option>
+                <option value="DXY">DXY</option>
                 <option value="EURUSD">EURUSD</option>
                 <option value="GBPUSD">GBPUSD</option>
               </select>
@@ -161,6 +280,11 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
             <textarea id="biasRules" placeholder="e.g. Never hold through FOMC. Risk 0.5% max. Flat after NFP Friday." style="min-height:64px"></textarea>
           </label>
           <button type="button" class="nw-btn nw-btn-primary" id="runCustomBtn">Run custom analysis</button>
+          <p class="nw-note" style="margin:0">
+            The same parameters are accepted by the MCP tool
+            <code class="inline">custom_ai_news_analysis</code> at
+            <code class="inline">{WORKER}/mcp</code> from your own AI client.
+          </p>
         </div>
         <div class="nw-panel nw-custom-result" id="customResult">
           <p class="nw-loading">The result renders here after you run the workspace.</p>
@@ -175,18 +299,16 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
   </script>
 
   <style>
-    .nw-page { padding-top: 32px; padding-bottom: 64px; }
-    .nw-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
-    .nw-badge-pill {
+    .nw-page { padding-top: 28px; padding-bottom: 64px; }
+
+    /* logo lockup */
+    .nw-logo { width: min(560px, 100%); height: auto; display: block; margin: 4px 0 10px; }
+    .kicker {
       font-family: var(--mono);
-      font-size: 0.68rem;
-      letter-spacing: 0.08em;
+      font-size: 0.62rem;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      color: var(--accent-warm);
-      border: 1px solid rgba(201, 162, 75, 0.35);
-      background: rgba(201, 162, 75, 0.07);
-      border-radius: 999px;
-      padding: 5px 12px;
+      color: var(--text-faint);
     }
 
     /* clocks */
@@ -214,25 +336,108 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       margin-top: 4px;
     }
 
+    /* global toggles */
+    .nw-togglebar {
+      display: flex;
+      gap: 18px 28px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-top: 22px;
+    }
+    .nw-toggle-group { display: flex; flex-direction: column; gap: 6px; }
+    .nw-toggle-label {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+    }
+    .nw-toggle-note {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      color: var(--text-faint);
+      margin: 0 0 2px auto;
+      max-width: 260px;
+      line-height: 1.6;
+    }
+    .nw-seg {
+      display: inline-flex;
+      background: var(--bg);
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      padding: 4px;
+      gap: 4px;
+    }
+    .nw-seg button {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      padding: 8px 14px;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .nw-seg button:hover { color: var(--text); }
+    .nw-seg button.is-active {
+      color: var(--accent-warm);
+      background: rgba(201, 162, 75, 0.09);
+      border-color: rgba(201, 162, 75, 0.45);
+    }
+    .nw-seg button:focus-visible { outline: 2px solid var(--accent-warm); outline-offset: 1px; }
+
     /* stats */
     .nw-stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 14px;
-      margin: 26px 0 6px;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin: 22px 0 6px;
     }
     .nw-stat {
       background: var(--bg-panel);
       border: 1px solid var(--border-soft);
       border-radius: 12px;
-      padding: 15px 17px;
+      padding: 13px 15px;
     }
-    .nw-stat span { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em; color: var(--text-faint); }
-    .nw-stat strong { display: block; font-family: var(--mono); font-size: 1.5rem; color: var(--text); margin-top: 5px; }
-    .nw-stat em { font-style: normal; font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); }
+    .nw-stat span { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.11em; color: var(--text-faint); }
+    .nw-stat strong { display: block; font-family: var(--mono); font-size: 1.4rem; color: var(--text); margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .nw-stat em { display: block; font-style: normal; font-family: var(--mono); font-size: 0.62rem; color: var(--text-faint); margin-top: 2px; line-height: 1.5; }
 
-    /* sections */
-    .nw-section { margin-top: 36px; }
+    /* tabs */
+    .nw-tabs {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border-soft);
+      margin: 22px 0 18px;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+    .nw-tab {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      color: var(--text-faint);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 12px 18px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .nw-tab:hover { color: var(--text-dim); }
+    .nw-tab.is-active { color: var(--text); border-bottom-color: var(--accent-warm); }
+    .nw-tab:focus-visible { outline: 2px solid var(--accent-warm); outline-offset: -2px; border-radius: 6px; }
+    .nw-panel-section[hidden] { display: none !important; }
+
+    /* section heads */
     .nw-section-head {
       display: flex;
       align-items: flex-end;
@@ -241,33 +446,25 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       flex-wrap: wrap;
       margin-bottom: 14px;
     }
-    .nw-section-head h2 {
+    .panel-kicker {
       font-family: var(--mono);
-      font-size: 1rem;
-      letter-spacing: 0.08em;
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      margin: 6px 0 0;
-      color: var(--text);
+      color: var(--text-faint);
     }
-    .nw-weeklabel { font-family: var(--mono); font-size: 0.72rem; color: var(--text-faint); margin: 6px 0 0; }
+    .nw-weeklabel { font-family: var(--mono); font-size: 0.7rem; color: var(--text-faint); margin: 6px 0 0; }
     .nw-topright { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .nw-link { font-family: var(--mono); font-size: 0.78rem; color: var(--accent); }
-    .nw-lede { max-width: 860px; color: var(--text-dim); line-height: 1.7; }
-    .nw-lede code.inline {
-      font-family: var(--mono); font-size: 0.72rem; color: var(--accent-warm);
-      background: var(--bg); border: 1px solid var(--border-soft); border-radius: 5px; padding: 1px 6px;
-    }
 
-    /* connection */
+    /* connection + buttons */
     .nw-conn {
       display: inline-flex; align-items: center; gap: 8px;
-      font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; color: var(--text-faint);
+      font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.1em; color: var(--text-faint);
       border: 1px solid var(--border-soft); border-radius: 999px; padding: 6px 12px; background: var(--bg-panel);
     }
     .nw-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-faint); }
     .nw-dot.on { background: var(--ok, #43d6a0); box-shadow: 0 0 10px rgba(67, 214, 160, 0.5); }
-
-    /* buttons */
     .nw-btn {
       font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
       background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
@@ -275,10 +472,42 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     }
     .nw-btn:hover { color: var(--text); border-color: var(--accent); }
     .nw-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .nw-btn-primary {
-      color: var(--bg); background: var(--accent-warm); border-color: var(--accent-warm); font-weight: 600;
-    }
+    .nw-btn-primary { color: var(--bg); background: var(--accent-warm); border-color: var(--accent-warm); font-weight: 600; }
     .nw-btn-primary:hover { color: var(--bg); filter: brightness(1.1); border-color: var(--accent-warm); }
+
+    /* week pager */
+    .nw-pager {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+    .nw-pager-btn {
+      width: 40px; height: 40px;
+      display: grid; place-items: center;
+      background: var(--bg); color: var(--text-dim);
+      border: 1px solid var(--border-soft); border-radius: 9px; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s, transform 0.12s;
+    }
+    .nw-pager-btn:hover { color: var(--accent-warm); border-color: rgba(201, 162, 75, 0.45); }
+    .nw-pager-btn:active { transform: scale(0.94); }
+    .nw-pager-btn:focus-visible { outline: 2px solid var(--accent-warm); outline-offset: 1px; }
+    .nw-week-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .nw-week-big { font-family: var(--mono); font-size: 0.95rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text); }
+    .nw-week-range { font-family: var(--mono); font-size: 0.7rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+    .nw-thisweek {
+      margin-left: auto;
+      font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em;
+      color: var(--accent-warm); background: rgba(201, 162, 75, 0.08);
+      border: 1px solid rgba(201, 162, 75, 0.4); border-radius: 999px;
+      padding: 8px 16px; cursor: pointer; transition: filter 0.15s;
+    }
+    .nw-thisweek:hover { filter: brightness(1.2); }
+    .nw-thisweek[hidden] { display: none !important; }
 
     /* filters */
     .nw-filters {
@@ -288,12 +517,13 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     }
     .nw-filters label {
       display: flex; flex-direction: column; gap: 4px;
-      font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint);
+      font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint);
     }
     .nw-filters select {
       background: var(--bg); color: var(--text); border: 1px solid var(--border-soft);
-      border-radius: 8px; padding: 8px 10px; font-family: var(--mono); font-size: 0.76rem; min-width: 140px;
+      border-radius: 8px; padding: 8px 10px; font-family: var(--mono); font-size: 0.76rem; min-width: 150px;
     }
+    .nw-filters select:focus-visible { outline: 2px solid var(--accent-warm); outline-offset: 1px; border-color: transparent; }
     .nw-count { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); margin-left: auto; }
 
     /* table */
@@ -301,9 +531,9 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       overflow-x: auto; border: 1px solid var(--border-soft);
       border-radius: 12px; background: var(--bg-panel);
     }
-    .nw-table { width: 100%; border-collapse: collapse; min-width: 820px; }
+    .nw-table { width: 100%; border-collapse: collapse; min-width: 760px; }
     .nw-table th {
-      text-align: left; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.12em;
+      text-align: left; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.12em;
       text-transform: uppercase; color: var(--text-faint); padding: 12px 16px;
       border-bottom: 1px solid var(--border);
     }
@@ -311,23 +541,22 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     .nw-table tr:last-child td { border-bottom: none; }
     .nw-dayrow td {
       background: var(--bg); border-bottom: 1px solid var(--border-soft);
-      font-family: var(--mono); font-size: 0.72rem; padding: 9px 16px;
+      font-family: var(--mono); font-size: 0.7rem; padding: 9px 16px;
     }
-    .nw-day-jalali { color: var(--accent-warm); font-size: 0.78rem; margin-right: 12px; }
+    .nw-day-jalali { color: var(--accent-warm); font-size: 0.75rem; margin-right: 12px; }
     .nw-day-en { color: var(--text-faint); }
     .nw-day-count { float: right; color: var(--text-faint); }
     .nw-time { white-space: nowrap; font-family: var(--mono); }
     .nw-t-main { display: block; color: var(--text); font-variant-numeric: tabular-nums; }
-    .nw-t-alt { display: block; color: var(--text-faint); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
-    .nw-t-main small, .nw-t-alt small { font-size: 0.58rem; letter-spacing: 0.08em; color: var(--text-faint); }
+    .nw-t-main small { font-size: 0.58rem; letter-spacing: 0.08em; color: var(--text-faint); }
     .nw-event-line { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
     .nw-event-line strong { color: var(--text); font-weight: 600; }
-    .nw-sub { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); margin-top: 3px; }
+    .nw-sub { font-family: var(--mono); font-size: 0.66rem; color: var(--text-faint); margin-top: 3px; }
     .nw-impact { width: 8px; height: 22px; border-radius: 5px; flex: none; }
     .nw-impact-high { background: #e2456c; box-shadow: 0 0 8px rgba(226, 69, 108, 0.5); }
     .nw-impact-medium { background: #ffb454; box-shadow: 0 0 8px rgba(255, 180, 84, 0.4); }
     .nw-goldtag {
-      font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase;
+      font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.08em; text-transform: uppercase;
       color: var(--accent-warm); border: 1px solid rgba(201, 162, 75, 0.4);
       background: rgba(201, 162, 75, 0.08); border-radius: 5px; padding: 2px 7px;
     }
@@ -336,31 +565,31 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     .nw-cur-usd { color: #78a9ff; }
     .nw-cur-eur { color: #43d6a0; }
     .nw-cur-gbp { color: #c792ea; }
-    .nw-badge { font-family: var(--mono); font-size: 0.62rem; border-radius: 6px; padding: 4px 8px; white-space: nowrap; }
+    .nw-badge { font-family: var(--mono); font-size: 0.6rem; border-radius: 6px; padding: 4px 8px; white-space: nowrap; }
     .nw-badge-high { background: rgba(226, 69, 108, 0.14); color: #ff9aa5; border: 1px solid rgba(226, 69, 108, 0.35); }
     .nw-badge-medium { background: rgba(255, 180, 84, 0.12); color: #ffc77c; border: 1px solid rgba(255, 180, 84, 0.3); }
     .nw-num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
     .nw-actual { color: var(--ok, #43d6a0); font-weight: 600; }
-    .nw-empty { text-align: center; color: var(--text-faint); font-family: var(--mono); padding: 30px !important; }
-    .nw-hint { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); margin: 10px 2px 0; line-height: 1.7; }
+    .nw-empty { text-align: center; color: var(--text-faint); font-family: var(--mono); padding: 30px !important; font-size: 0.72rem; line-height: 1.7; }
+    .nw-hint { font-family: var(--mono); font-size: 0.66rem; color: var(--text-faint); margin: 10px 2px 0; line-height: 1.7; }
 
     /* engine panel */
     .nw-daysel {
       display: flex; flex-direction: column; gap: 4px;
-      font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint);
+      font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint);
     }
     .nw-daysel select {
       background: var(--bg); color: var(--text); border: 1px solid var(--border-soft);
-      border-radius: 8px; padding: 8px 10px; font-family: var(--mono); font-size: 0.76rem; min-width: 230px;
+      border-radius: 8px; padding: 8px 10px; font-family: var(--mono); font-size: 0.74rem; min-width: 230px;
     }
     .nw-panel {
       background: var(--bg-panel); border: 1px solid var(--border-soft);
       border-radius: 12px; padding: 18px 20px;
     }
     .nw-dayhead { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
-    .nw-kicker { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
+    .nw-kicker { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint); }
     .nw-daytitle { font-size: 1.15rem; color: var(--text); margin: 6px 0 2px; }
-    .nw-daymeta { font-family: var(--mono); font-size: 0.7rem; color: var(--text-faint); margin: 0; }
+    .nw-daymeta { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); margin: 0; }
     .nw-verdict {
       background: var(--bg); border: 1px solid var(--border-soft); border-radius: 10px;
       padding: 12px 16px; min-width: 230px;
@@ -368,12 +597,12 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     .nw-verdict-bullish { border-color: rgba(67, 214, 160, 0.4); }
     .nw-verdict-bearish { border-color: rgba(226, 69, 108, 0.4); }
     .nw-verdict-neutral { border-color: rgba(255, 180, 84, 0.4); }
-    .nw-verdict-label { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em; color: var(--text-faint); }
-    .nw-verdict-value { font-family: var(--mono); font-size: 0.95rem; font-weight: 700; margin-top: 4px; }
+    .nw-verdict-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.14em; color: var(--text-faint); }
+    .nw-verdict-value { font-family: var(--mono); font-size: 0.92rem; font-weight: 700; margin-top: 4px; }
     .nw-verdict-bullish .nw-verdict-value { color: var(--ok, #43d6a0); }
     .nw-verdict-bearish .nw-verdict-value { color: #ff9aa5; }
     .nw-verdict-neutral .nw-verdict-value { color: #ffc77c; }
-    .nw-verdict-conf { font-family: var(--mono); font-size: 0.66rem; color: var(--text-faint); margin-top: 3px; }
+    .nw-verdict-conf { font-family: var(--mono); font-size: 0.64rem; color: var(--text-faint); margin-top: 3px; }
     .nw-verdict-conf b { color: var(--text); }
     .nw-confbar { height: 4px; background: var(--border-soft); border-radius: 3px; margin-top: 8px; overflow: hidden; }
     .nw-confbar-fill { display: block; height: 100%; border-radius: 3px; }
@@ -385,58 +614,63 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     .nw-pred { background: var(--bg); border: 1px solid var(--border-soft); border-radius: 10px; padding: 12px 14px; }
     .nw-pred-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .nw-pred-head strong { color: var(--text); }
-    .nw-fc { font-family: var(--mono); font-size: 0.7rem; color: var(--text-faint); }
-    .nw-outcome { font-family: var(--mono); font-size: 0.66rem; font-weight: 700; border-radius: 6px; padding: 3px 8px; }
+    .nw-fc { font-family: var(--mono); font-size: 0.68rem; color: var(--text-faint); }
+    .nw-outcome { font-family: var(--mono); font-size: 0.64rem; font-weight: 700; border-radius: 6px; padding: 3px 8px; }
     .nw-out-beat { color: #ff9aa5; background: rgba(226, 69, 108, 0.12); border: 1px solid rgba(226, 69, 108, 0.3); }
     .nw-out-miss { color: #43d6a0; background: rgba(67, 214, 160, 0.1); border: 1px solid rgba(67, 214, 160, 0.3); }
     .nw-out-inline { color: #ffc77c; background: rgba(255, 180, 84, 0.1); border: 1px solid rgba(255, 180, 84, 0.3); }
     .nw-out-none { color: var(--text-faint); border: 1px solid var(--border-soft); }
-    .nw-dir { font-family: var(--mono); font-size: 0.66rem; font-weight: 600; }
+    .nw-dir { font-family: var(--mono); font-size: 0.64rem; font-weight: 600; }
     .nw-bull { color: var(--ok, #43d6a0); }
     .nw-bear { color: #ff9aa5; }
     .nw-neutral { color: #ffc77c; }
     .nw-risk { color: var(--text-faint); }
-    .nw-conf { font-family: var(--mono); font-size: 0.7rem; font-weight: 700; margin-left: auto; }
+    .nw-conf { font-family: var(--mono); font-size: 0.68rem; font-weight: 700; margin-left: auto; }
     .nw-conf-high { color: var(--ok, #43d6a0); }
     .nw-conf-mid { color: #ffb454; }
     .nw-conf-low { color: #e2456c; }
-    .nw-why { color: var(--text-dim); font-size: 0.78rem; line-height: 1.6; margin: 8px 0 0; }
-    .nw-xau { font-family: var(--mono); font-size: 0.7rem; color: var(--accent-warm); margin: 6px 0 0; }
-    .nw-hist { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--mono); font-size: 0.66rem; color: var(--text-faint); margin-top: 8px; }
+    .nw-why { color: var(--text-dim); font-size: 0.76rem; line-height: 1.6; margin: 8px 0 0; }
+    .nw-xau { font-family: var(--mono); font-size: 0.68rem; color: var(--accent-warm); margin: 6px 0 0; }
+    .nw-hist { display: flex; gap: 12px; flex-wrap: wrap; font-family: var(--mono); font-size: 0.64rem; color: var(--text-faint); margin-top: 8px; }
     .nw-hist b { color: var(--text-dim); }
     .nw-conflictbox {
       background: rgba(255, 180, 84, 0.06); border: 1px solid rgba(255, 180, 84, 0.3);
-      border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 0.78rem; color: var(--text-dim);
+      border-radius: 10px; padding: 12px 14px; margin-top: 12px; font-size: 0.76rem; color: var(--text-dim);
     }
     .nw-conflictbox ul { margin: 6px 0 0; padding-left: 18px; }
     .nw-cross {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 10px; margin-top: 14px;
     }
     .nw-cross div {
       background: var(--bg); border: 1px solid var(--border-soft); border-radius: 8px;
-      padding: 10px 12px; font-family: var(--mono); font-size: 0.74rem; color: var(--text-dim);
+      padding: 10px 12px; font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
     }
-    .nw-cross span { display: block; font-size: 0.58rem; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 4px; }
-    .nw-disclaimer { font-family: var(--mono); font-size: 0.64rem; color: var(--text-faint); margin: 14px 0 0; line-height: 1.6; }
-    .nw-loading, .nw-error { font-family: var(--mono); font-size: 0.76rem; color: var(--text-faint); margin: 8px 0; }
+    .nw-cross span { display: block; font-size: 0.56rem; letter-spacing: 0.12em; color: var(--text-faint); margin-bottom: 4px; }
+    .nw-disclaimer { font-family: var(--mono); font-size: 0.62rem; color: var(--text-faint); margin: 14px 0 0; line-height: 1.6; }
+    .nw-loading, .nw-error { font-family: var(--mono); font-size: 0.74rem; color: var(--text-faint); margin: 8px 0; }
     .nw-error { color: #ff9aa5; }
-    .nw-note { font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim); }
+    .nw-note { font-family: var(--mono); font-size: 0.68rem; color: var(--text-dim); line-height: 1.6; }
+    .nw-note code.inline {
+      color: var(--accent-warm); background: var(--bg);
+      border: 1px solid var(--border-soft); border-radius: 4px; padding: 1px 5px; font-size: 0.66rem;
+      word-break: break-all;
+    }
 
     /* custom workspace */
     .nw-custom-grid { display: grid; grid-template-columns: minmax(280px, 0.9fr) 1.1fr; gap: 14px; align-items: start; }
     .nw-form { display: flex; flex-direction: column; gap: 12px; background: var(--bg-panel); border: 1px solid var(--border-soft); border-radius: 12px; padding: 16px 18px; }
-    .nw-form label { display: flex; flex-direction: column; gap: 5px; font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
+    .nw-form label { display: flex; flex-direction: column; gap: 5px; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
     .nw-form input, .nw-form textarea, .nw-form select {
       background: var(--bg); color: var(--text); border: 1px solid var(--border-soft);
-      border-radius: 8px; padding: 9px 11px; font-family: var(--mono); font-size: 0.76rem; width: 100%;
+      border-radius: 8px; padding: 9px 11px; font-family: var(--mono); font-size: 0.74rem; width: 100%;
     }
     .nw-form textarea { min-height: 84px; resize: vertical; }
     .nw-form input:focus, .nw-form textarea:focus, .nw-form select:focus { outline: none; border-color: var(--accent-warm); }
     .nw-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .nw-custom-result { min-height: 200px; }
     .nw-scenario {
-      font-family: var(--mono); font-size: 0.72rem; color: var(--text-dim);
+      font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim);
       background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 12px;
     }
     .nw-custom-result .nw-preds { margin-top: 12px; }
@@ -446,6 +680,8 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       .nw-custom-grid { grid-template-columns: 1fr; }
       .nw-form-row { grid-template-columns: 1fr; }
       .nw-dayhead { flex-direction: column; }
+      .nw-logo { width: 100%; }
+      .nw-toggle-note { display: none; }
     }
   </style>
 </BaseLayout>

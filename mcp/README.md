@@ -32,10 +32,12 @@ Base URL: **https://trading-llc-mcp.mahdi-t8256.workers.dev**
 | `GET`  | `/api/finviz?code=GC&p=w1` | Finviz COT chart proxy → `image/png` |
 | `GET`  | `/api/chart?id=gold&range=5d&interval=15m` | OHLCV bars for the on-site price chart (Yahoo proxy, TradingView fallback) |
 | `GET`  | `/api/news/calendar` | Weekly High/Medium macro calendar for USD/EUR/GBP (+ XAU tags) — Jalali date, Tehran + NY times, prev/fc/actual |
-| `GET`  | `/api/news/day?date=YYYY-MM-DD` | Pre-release prediction engine for one Tehran day (Beat/Inline/Miss + USD strengthen/weaken, confidence) |
+| `GET`  | `/api/news/week?date=YYYY-MM-DD` | Events for the ISO week containing the date (rolling KV ledger, ~3-month retention, merges every sync) |
+| `GET`  | `/api/news/weeks` | Index of stored weeks (oldest → newest) |
+| `GET`  | `/api/news/day?date=YYYY-MM-DD` | Pre-release prediction engine for one Tehran day (Beat/Inline/Miss + USD/DXY direction, confidence) |
 | `POST` | `/api/news/analyze` | Custom analysis: `custom_prompt`, `hypothetical_actual`, `target_asset`, `trading_bias_rules` |
-| `POST` | `/api/news/refresh` | Force a calendar re-sync (optional Bearer `MACRO_REFRESH_TOKEN`) |
-| `GET`  | `/api/news/status` | Calendar sync health (`fetchedAt`, `count`, `lastError`) |
+| `POST` | `/api/news/refresh` | Force a calendar re-sync — also backfills months of history when the optional `FMP_API_KEY` secret is bound (ForexFactory has no historical dump) |
+| `GET`  | `/api/news/status` | Calendar sync health (`fetchedAt`, `count`, `lastError`, `weeksStored`, `fmpBackfill`) |
 
 CORS is open (`*`), so browser apps and cloud AIs can call it directly.
 
@@ -133,9 +135,18 @@ https://trading-llc-mcp.mahdi-t8256.workers.dev/mcp
 
 | Source | Role | Cadence |
 |--------|------|---------|
-| `nfs.faireconomy.media/ff_calendar_thisweek.json` (ForexFactory) | Primary calendar (USD/EUR/GBP, High + Medium impact) | cached in KV `news:calendar`, refreshed at most every 3 h by the `*/5` cron |
-| Rolling `previous` ledger | Each sync stores every event's `previous` (the prior release's actual, revisions included) in KV `news:hist:<event>` (cap 24 points) | every sync |
-| FinancialModelingPrep (optional) | Released-actual enrichment — active only when the `FMP_API_KEY` secret is bound; failures degrade silently | on sync |
+| `nfs.faireconomy.media/ff_calendar_thisweek.json` (ForexFactory) | Live High+Medium calendar (USD/EUR/GBP, XAU relevance tagged) | cached in KV `news:calendar`, refreshed at most every 3 h by the `*/5` cron |
+| `news:week:<monday>` KV ledger | Rolling store of every synced week, ~3-month retention — this is what the week-pager reads | every sync merges the feed into the stored week |
+| FinancialModelingPrep (optional) | Historical + upcoming backfill — **the only way to get ≥1 month of past and future events now**: FF publishes no historical dump. Bind `FMP_API_KEY` as a worker secret (free tier at financialmodelingprep.com) and the next refresh backfills ~70 days back + 21 days ahead | on every sync |
+| Rolling `previous` ledger | Prior release actual (revisions included) per event in KV `news:hist:<event>` (cap 24 points) | every sync |
+
+To enable the full 1–3 month coverage:
+
+```powershell
+npx wrangler secret put FMP_API_KEY --config mcp/wrangler.toml
+# then hit refresh once
+curl.exe -X POST "https://trading-llc-mcp.mahdi-t8256.workers.dev/api/news/refresh"
+```
 
 Manual documents are fetched live from `https://vaelor.pages.dev/docs/<slug>`
 and HTML-stripped inside the Worker, so the AI always reads the deployed version.

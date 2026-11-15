@@ -52,6 +52,230 @@ const EVENT_RULES = [
 const GOLD_DRIVERS =
   /cpi|non-farm|payrolls|fomc|interest rate|retail sales|gdp|ism|ppi|unemployment claims|jobless|fed chair|powell/i;
 
+/* ------------------------------------------------------------------ */
+/* ISO week helpers + weekly ledger (KV)                               */
+/* ------------------------------------------------------------------ */
+
+/** Monday (UTC) of the ISO week containing the given ISO instant, YYYY-MM-DD. */
+export function isoWeekStartUTC(iso) {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return null;
+  const day = (d.getUTCDay() + 6) % 7; // Monday = 0
+  const start = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day));
+  return start.toISOString().slice(0, 10);
+}
+
+export function isoWeekEndUTC(weekStart) {
+  const start = new Date(`${weekStart}T00:00:00Z`);
+  if (!Number.isFinite(start.getTime())) return null;
+  const end = new Date(start.getTime() + 6 * 86400e3);
+  return end.toISOString().slice(0, 10);
+}
+
+const WEEKS_INDEX_KEY = "news:weeks";
+const WEEK_LEDGER_TTL_DAYS = 84; // ~3 months of rolling coverage
+
+async function readWeeksIndex(env) {
+  if (!env?.AI_STATE) return [];
+  const raw = await env.AI_STATE.get(WEEKS_INDEX_KEY);
+  return raw ? JSON.parse(raw) : [];
+}
+
+async function writeWeeksIndex(env, index) {
+  await env.AI_STATE.put(WEEKS_INDEX_KEY, JSON.stringify(index));
+}
+
+function mergeEvents(existing, fresh) {
+  const byId = new Map();
+  for (const ev of existing) byId.set(ev.id, ev);
+  for (const ev of fresh) {
+    // Prefer fresh rows (release actuals land as the week progresses), keep older otherwise.
+    const prev = byId.get(ev.id);
+    byId.set(ev.id, prev ? { ...prev, ...ev, actual: ev.actual ?? prev.actual ?? null } : ev);
+  }
+  return [...byId.values()].sort((a, b) => Date.parse(a.timeIso) - Date.parse(b.timeIso));
+}
+
+/** Write/refresh one week in the ledger and return its stored object. */
+export async function upsertWeek(env, weekStart, events) {
+  if (!env?.AI_STATE || !weekStart) return null;
+  const key = `news:week:${weekStart}`;
+  const raw = await env.AI_STATE.get(key);
+  const existing = raw ? JSON.parse(raw) : { weekStart, fetchedAt: null, events: [] };
+  const merged = mergeEvents(existing.events ?? [], events);
+  const weekEnd = isoWeekEndUTC(weekStart);
+  const record = {
+    weekStart,
+    weekEnd,
+    fetchedAt: new Date().toISOString(),
+    count: merged.length,
+    events: merged,
+  };
+  await env.AI_STATE.put(key, JSON.stringify(record));
+  // index maintenance
+  const index = await readWeeksIndex(env);
+  const without = index.filter((w) => w.weekStart !== weekStart);
+  without.push({ weekStart, weekEnd, fetchedAt: record.fetchedAt, count: record.count });
+  // prune beyond the retention window
+  const cutoff = new Date(Date.now() - WEEK_LEDGER_TTL_DAYS * 86400e3).getTime();
+  const kept = [];
+  for (const w of without) {
+    if (Date.parse(`${w.weekStart}T00:00:00Z`) >= cutoff) {
+      kept.push(w);
+    } else {
+      await env.AI_STATE.delete(`news:week:${w.weekStart}`).catch(() => {});
+      await env.AI_STATE.delete(`news:hist:` + w.weekStart).catch(() => {});
+    }
+  }
+  kept.sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
+  await writeWeeksIndex(env, kept);
+  return record;
+}
+
+/** All weeks currently stored, oldest first. */
+export async function listWeeks(env) {
+  return readWeeksIndex(env);
+}
+
+/** Events for the ISO week containing `dateIso` — empty when the ledger lacks it. */
+export async function getWeekEvents(env, dateIso) {
+  if (!env?.AI_STATE) return { weekStart: null, events: [], availableWeeks: [] };
+  const weekStart = isoWeekStartUTC(dateIso);
+  if (!weekStart) throw new Error(`bad date: ${dateIso}`);
+  const weekEnd = isoWeekEndUTC(weekStart);
+  const raw = await env.AI_STATE.get(`news:week:${weekStart}`);
+  const availableWeeks = await readWeeksIndex(env);
+  if (raw) {
+    const rec = JSON.parse(raw);
+    return { weekStart, weekEnd, fetchedAt: rec.fetchedAt, events: rec.events ?? [], source: "ledger", availableWeeks };
+  }
+  // Never "lose" the live feed — but only re-fetch it when the requested week
+  // could plausibly be the one the feed serves (thisweek / its immediate neighbour).
+  // Otherwise return the ledger state immediately: paging backwards must stay fast
+  // even when the feed is rate-limiting.
+  const todayWeek = isoWeekStartUTC(new Date().toISOString());
+  const newestStored = availableWeeks.reduce((max, w) => (w.weekStart > max ? w.weekStart : max), "");
+  const nextWeekFromStored = newestStored
+    ? new Date(Date.parse(`${newestStored}T00:00:00Z`) + 7 * 86400e3).toISOString().slice(0, 10)
+    : null;
+  const feedEligible = weekStart === todayWeek || weekStart === newestStored || weekStart === nextWeekFromStored;
+  if (feedEligible) {
+    try {
+      const feedEvents = filterCalendar(await fetchFeed({ quick: true }));
+      const todayPack = drainEventsIntoWeeks(feedEvents);
+      if (todayPack[weekStart]?.length) {
+        const rec = await upsertWeek(env, weekStart, todayPack[weekStart]);
+        return { weekStart, weekEnd, fetchedAt: rec?.fetchedAt ?? null, events: rec?.events ?? [], source: "forexfactory/faireconomy thisweek", availableWeeks: await readWeeksIndex(env) };
+      }
+    } catch {
+      /* feed unavailable — honest empty state */
+    }
+  }
+  return { weekStart, weekEnd, events: [], source: null, availableWeeks };
+}
+
+function drainEventsIntoWeeks(events) {
+  const byWeek = {};
+  for (const ev of events) {
+    const ws = isoWeekStartUTC(ev.timeIso);
+    if (!ws) continue;
+    (byWeek[ws] ??= []).push(ev);
+  }
+  return byWeek;
+}
+
+/* ------------------------------------------------------------------ */
+/* Month backfill via FinancialModelingPrep (optional FMP_API_KEY)      */
+/* ------------------------------------------------------------------ */
+
+const FMP_ECON_CAL = "https://financialmodelingprep.com/stable/economic-calendar";
+
+// FMP uses ISO country codes; map to the currencies we show.
+const FMP_COUNTRY_MAP = {
+  US: "USD",
+  UNITED_STATES: "USD",
+  USA: "USD",
+  GB: "GBP",
+  UNITED_KINGDOM: "GBP",
+  UK: "GBP",
+  EU: "EUR",
+  EUR: "EUR",
+  EUROZONE: "EUR",
+  DE: "EUR",
+  FR: "EUR",
+  IT: "EUR",
+  ES: "EUR",
+  NL: "EUR",
+  AT: "EUR",
+  BE: "EUR",
+  PT: "EUR",
+  GR: "EUR",
+  IE: "EUR",
+  FI: "EUR",
+};
+
+function normalizeFmpRow(row) {
+  const rawCountry = String(row.country ?? row.currency ?? row.countryCode ?? "").toUpperCase().replace(/\s+/g, "_");
+  const currency = FMP_COUNTRY_MAP[rawCountry];
+  if (!currency) return null;
+  const title = String(row.event ?? row.name ?? row.title ?? "").trim();
+  if (!title) return null;
+  const impactRaw = String(row.impact ?? row.importance ?? row.priority ?? "").toLowerCase();
+  const impact = impactRaw.includes("high") ? "high" : impactRaw.includes("medium") ? "medium" : null;
+  if (!impact) return null; // exclude low/noise from the backfill entirely
+  const ts = Date.parse(row.date ?? row.time ?? "");
+  if (!Number.isFinite(ts)) return null;
+  const rule = classifyEvent(title);
+  const actualRaw = row.actual ?? null;
+  const forecastRaw = row.estimate ?? row.forecast ?? row.consensus ?? null;
+  const previousRaw = row.previous ?? null;
+  const fmtNum = (v) => (v === null || v === undefined || v === "" ? null : String(v));
+  const goldRelevance = currency === "USD"
+    ? GOLD_DRIVERS.test(title)
+      ? "direct"
+      : impact === "high"
+        ? "indirect"
+        : "indirect"
+    : currency === "EUR" || currency === "GBP"
+      ? "cross"
+      : "none";
+  return {
+    id: eventKey(title, currency, ts),
+    title,
+    currency,
+    impact,
+    impactLabel: impact === "high" ? "High · Red" : "Medium · Orange",
+    timeIso: new Date(ts).toISOString(),
+    forecast: fmtNum(forecastRaw),
+    previous: fmtNum(previousRaw),
+    actual: fmtNum(actualRaw),
+    family: rule.family,
+    goldRelevance,
+  };
+}
+
+/** Backfill the ledger with FMP economic-calendar rows (requires FMP_API_KEY). */
+export async function backfillFromFmp(env) {
+  const key = env?.FMP_API_KEY;
+  if (!key || !env?.AI_STATE) return { ok: false, reason: "FMP_API_KEY not bound" };
+  try {
+    const to = new Date(Date.now() + 21 * 86400e3).toISOString().slice(0, 10);
+    const from = new Date(Date.now() - 70 * 86400e3).toISOString().slice(0, 10);
+    const res = await fetch(`${FMP_ECON_CAL}?from=${from}&to=${to}&apikey=${encodeURIComponent(key)}`);
+    if (!res.ok) return { ok: false, reason: `FMP HTTP ${res.status}` };
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return { ok: false, reason: "FMP non-array payload" };
+    const events = rows.map(normalizeFmpRow).filter(Boolean);
+    const byWeek = drainEventsIntoWeeks(events);
+    for (const [weekStart, weekEvents] of Object.entries(byWeek)) {
+      await upsertWeek(env, weekStart, weekEvents);
+    }
+    return { ok: true, rows: rows.length, events: events.length, weeksUpserted: Object.keys(byWeek).length };
+  } catch (e) {
+    return { ok: false, reason: String(e?.message ?? e) };
+  }
+}
+
 export function classifyEvent(title) {
   for (const rule of EVENT_RULES) {
     if (rule.re.test(title)) return rule;
@@ -284,10 +508,11 @@ const FF_URLS = [
   "https://cdn-nfs.faireconomy.media/ff_calendar_thisweek.json",
 ];
 
-/** Fetch the weekly feed with mirror + backoff fallbacks. Throws on total failure. */
-async function fetchFeed() {
+/** Fetch the weekly feed with mirror + backoff. `quick` skips retries (paging path). */
+async function fetchFeed({ quick = false } = {}) {
+  const attempts = quick ? 1 : 3;
   let lastErr = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < attempts; attempt++) {
     for (const url of attempt === 0 ? FF_URLS : [FF_URLS[0]]) {
       try {
         const res = await fetch(url, {
@@ -304,8 +529,7 @@ async function fetchFeed() {
         lastErr = e;
       }
     }
-    // linear backoff between attempts (0.75s, 1.5s)
-    await new Promise((r) => setTimeout(r, 750 * (attempt + 1)));
+    if (!quick) await new Promise((r) => setTimeout(r, 750 * (attempt + 1)));
   }
   throw lastErr ?? new Error("feed fetch failed");
 }
@@ -341,12 +565,36 @@ export async function syncNews(env) {
     /* history roll-up is best-effort */
   }
 
+  // Merge thisweek's events into the rolling weekly ledger, then optionally
+  // backfill the surrounding months via FMP when an API key is configured.
+  try {
+    const byWeek = drainEventsIntoWeeks(events);
+    for (const [weekStart, weekEvents] of Object.entries(byWeek)) {
+      await upsertWeek(env, weekStart, weekEvents);
+    }
+  } catch {
+    /* ledger roll-up is best-effort — the thisweek payload is still served */
+  }
+  let backfill = null;
+  try {
+    backfill = await backfillFromFmp(env);
+  } catch {
+    backfill = null;
+  }
+
   // Status record.
   await env.AI_STATE.put(
     "news:status",
-    JSON.stringify({ fetchedAt: generatedAt, count: events.length, source: payload.source, lastError: null }),
+    JSON.stringify({
+      fetchedAt: generatedAt,
+      count: events.length,
+      source: payload.source,
+      lastError: null,
+      weeksStored: (await readWeeksIndex(env)).length,
+      fmpBackfill: backfill,
+    }),
   );
-  return { ok: true, ...payload };
+  return { ok: true, weeksStored: (await readWeeksIndex(env)).length, ...payload };
 }
 
 /** Ensure the calendar exists and is fresh; refresh in the background when stale. */
@@ -627,6 +875,7 @@ export async function analyzeDay(env, dateIso /* event time anchor or YYYY-MM-DD
       xauusd: xauImpact,
       eurusd: dominant === "bullish" ? "Bearish EURUSD" : dominant === "bearish" ? "Bullish EURUSD" : "mixed",
       gbpusd: dominant === "bullish" ? "Bearish GBPUSD" : dominant === "bearish" ? "Bullish GBPUSD" : "mixed",
+      dxy: dominant === "bullish" ? "Bullish DXY" : dominant === "bearish" ? "Bearish DXY" : "Neutral DXY",
     },
     disclaimer:
       "Rule-based fundamental heuristic on consensus, previous prints and the tracked release ledger — not investment advice.",
@@ -771,6 +1020,7 @@ function aggregate(predictions) {
       xauusd: dominant === "bullish" ? "Bearish XAUUSD" : dominant === "bearish" ? "Bullish XAUUSD" : "Neutral",
       eurusd: dominant === "bullish" ? "Bearish EURUSD" : dominant === "bearish" ? "Bullish EURUSD" : "mixed",
       gbpusd: dominant === "bullish" ? "Bearish GBPUSD" : dominant === "bearish" ? "Bullish GBPUSD" : "mixed",
+      dxy: dominant === "bullish" ? "Bullish DXY" : dominant === "bearish" ? "Bearish DXY" : "Neutral DXY",
     },
   };
 }
