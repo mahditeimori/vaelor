@@ -25,7 +25,7 @@
   --serif: "Playfair Display", Georgia, "Times New Roman", serif;
   --radius: 12px;
   --radius-sm: 7px;
-  --header-h: 58px;
+  --header-h: 66px;
   --font-code: var(--mono);
 }
 
@@ -94,11 +94,15 @@ hr {
 .brand { display: flex; align-items: center; gap: 12px; font-weight: 600; letter-spacing: 0.02em; }
 
 .brand img {
-  height: 44px;
+  height: 50px;
   width: auto;
   display: block;
-  border-radius: 4px;
+  border-radius: 6px;
+  filter: brightness(1.06) saturate(1.04);
+  transition: filter 0.2s ease;
 }
+
+.brand:hover img { filter: brightness(1.16) saturate(1.08); }
 
 .brand-mark {
   width: 30px; height: 30px;

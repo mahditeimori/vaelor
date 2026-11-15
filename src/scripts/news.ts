@@ -344,26 +344,21 @@ function eventRow(e: NewsEvent): string {
       : e.goldRelevance === 'indirect' && e.currency === 'USD'
         ? '<span class="nw-goldtag nw-goldtag-soft" title="High-impact USD event — indirect gold pressure">XAU·indirect</span>'
         : '';
-  const actual = e.actual ? `<span class="nw-actual">act ${esc(e.actual)}</span>` : '';
+  const impact = e.impact === 'high' ? 'High' : 'Medium';
   return `
-  <tr>
-    <td class="nw-time">
-      <span class="nw-t-main">${esc(timeLabel(e.timeIso))} <small>${esc(tzShort())}</small></span>
-    </td>
+  <tr class="nw-row">
+    <td class="nw-time"><span class="nw-t-main">${esc(timeLabel(e.timeIso))}</span><span class="nw-t-tz">${esc(tzShort())}</span></td>
     <td class="nw-event">
-      <div class="nw-event-line">
-        <span class="nw-impact nw-impact-${esc(e.impact)}" title="${
-          e.impact === 'high' ? 'High impact · Red folder' : 'Medium impact · Orange folder'
-        }" role="img" aria-label="${e.impact === 'high' ? 'High impact' : 'Medium impact'}"></span>
+      <span class="nw-impact nw-impact-${esc(e.impact)}" role="img" aria-label="${impact} impact"></span>
+      <span class="nw-event-text">
         <strong>${esc(e.title)}</strong>${goldTag}
-      </div>
-      <div class="nw-sub">${esc(weekdayLabel(e.timeIso))} · ${esc(dateLabel(e.timeIso))}</div>
+      </span>
     </td>
-    <td><span class="nw-cur nw-cur-${esc(e.currency.toLowerCase())}">${esc(e.currency)}</span></td>
-    <td><span class="nw-badge nw-badge-${esc(e.impact)}">${e.impact === 'high' ? 'High · Red' : 'Medium · Orange'}</span></td>
+    <td class="nw-curcell"><span class="nw-cur nw-cur-${esc(e.currency.toLowerCase())}">${esc(e.currency)}</span></td>
+    <td class="nw-impactcell"><span class="nw-pill nw-pill-${esc(e.impact)}">${impact}</span></td>
     <td class="nw-num">${esc(e.previous ?? '—')}</td>
     <td class="nw-num">${esc(e.forecast ?? '—')}</td>
-    <td class="nw-num">${e.actual ? esc(e.actual) : '—'}</td>
+    <td class="nw-num nw-num-actual">${e.actual ? esc(e.actual) : '—'}</td>
   </tr>`;
 }
 
@@ -383,9 +378,10 @@ function renderCalendar(): void {
     const first = rows[0];
     html.push(
       `<tr class="nw-dayrow"><td colspan="7">` +
-        `<span class="nw-day-jalali">${esc(weekdayLabel(first.timeIso))}, ${esc(dateLabel(first.timeIso))}</span>` +
-        `<span class="nw-day-en">${esc(day)}</span>` +
-        `<span class="nw-day-count">${rows.length} event${rows.length === 1 ? '' : 's'}</span>` +
+        `<span class="nw-day-bar"></span>` +
+        `<span class="nw-day-label">${esc(weekdayLabel(first.timeIso))} · ${esc(dateLabel(first.timeIso))}</span>` +
+        `<span class="nw-day-meta">${esc(day)}</span>` +
+        `<span class="nw-day-count">${rows.length} release${rows.length === 1 ? '' : 's'}</span>` +
       `</td></tr>`,
     );
     html.push(...rows.map(eventRow));
