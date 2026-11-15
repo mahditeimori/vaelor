@@ -3,670 +3,839 @@ import '../styles/global.css';
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Vaelor member dashboard — plan, capabilities, AI copilot and notifications." />
+    <meta name="description" content="Vaelor member dashboard — precision execution desk, risk gates, live terminal and guide." />
     <meta name="color-scheme" content="dark" />
-    <title>Member dashboard — Vaelor Trading LLC</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <title>Vaelor Trading LLC — Operational Protocol & Execution Desk</title>
+    <!-- Tailwind CSS (design system v2) -->
+    <script is:inline src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts matching the original aesthetic: Playfair Display, Inter, JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet" />
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <script is:inline>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['Playfair Display', 'serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              vaelor: {
+                bg: '#090507',
+                card: '#130b0f',
+                cardHover: '#1c1016',
+                border: '#331d27',
+                borderBright: '#592e42',
+                crimson: '#e11d48',
+                crimsonGlow: '#f43f5e',
+                emerald: '#10b981',
+                emeraldGlow: '#34d399',
+                amber: '#f59e0b',
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <style is:global>
+      body {
+        background-color: #090507;
+        color: #f8fafc;
+        overflow-x: hidden;
+      }
+
+      ::selection {
+        background: #e11d48;
+        color: #ffffff;
+      }
+
+      /* Design-system v2 custom colors (old-money lux / operator preview) */
+      .positions-tbody > tr + tr > td {
+        border-top: 1px solid rgba(51, 29, 39, 0.6);
+      }
+
+      /* Ambient Crimson/Dark Matrix Rain Background Effect */
+      .bg-vaelor-mesh {
+        background:
+          radial-gradient(circle at 20% 25%, rgba(225, 29, 72, 0.14) 0%, transparent 45%),
+          radial-gradient(circle at 80% 65%, rgba(159, 18, 57, 0.12) 0%, transparent 50%),
+          radial-gradient(circle at 50% 95%, rgba(180, 83, 9, 0.08) 0%, transparent 45%),
+          #090507;
+      }
+
+      /* Vertical subtle light streaks */
+      .matrix-streaks {
+        background-image: repeating-linear-gradient(
+          90deg,
+          transparent,
+          transparent 78px,
+          rgba(244, 63, 94, 0.04) 79px,
+          rgba(244, 63, 94, 0.04) 80px
+        );
+      }
+
+      /* High-visibility button styles */
+      .btn-primary-crimson {
+        background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+        border: 1px solid #fb7185;
+        box-shadow: 0 0 20px rgba(225, 29, 72, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .btn-primary-crimson:hover:not(:disabled) {
+        background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+        box-shadow: 0 0 28px rgba(244, 63, 94, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        transform: translateY(-1px);
+      }
+      .btn-primary-crimson:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+
+      .btn-secondary-glass {
+        background: rgba(35, 19, 27, 0.85);
+        border: 1px solid #64364b;
+        color: #f1f5f9;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        transition: all 0.2s ease;
+      }
+      .btn-secondary-glass:hover {
+        background: rgba(56, 29, 42, 0.95);
+        border-color: #fb7185;
+        color: #ffffff;
+        box-shadow: 0 0 18px rgba(244, 63, 94, 0.3);
+        transform: translateY(-1px);
+      }
+
+      /* Buy / Sell Order Action Buttons */
+      .btn-buy-active {
+        background: linear-gradient(180deg, rgba(16, 185, 129, 0.28) 0%, rgba(5, 150, 105, 0.45) 100%);
+        border: 2px solid #34d399;
+        color: #ecfdf5;
+        box-shadow: 0 0 22px rgba(16, 185, 129, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      }
+      .btn-buy-inactive {
+        background: rgba(16, 185, 129, 0.07);
+        border: 1px solid rgba(52, 211, 153, 0.35);
+        color: #6ee7b7;
+      }
+      .btn-buy-inactive:hover {
+        background: rgba(16, 185, 129, 0.16);
+        border-color: #34d399;
+        color: #ecfdf5;
+      }
+
+      .btn-sell-active {
+        background: linear-gradient(180deg, rgba(225, 29, 72, 0.32) 0%, rgba(159, 18, 57, 0.5) 100%);
+        border: 2px solid #fb7185;
+        color: #fff1f2;
+        box-shadow: 0 0 22px rgba(244, 63, 94, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      }
+      .btn-sell-inactive {
+        background: rgba(225, 29, 72, 0.08);
+        border: 1px solid rgba(251, 113, 133, 0.35);
+        color: #fda4af;
+      }
+      .btn-sell-inactive:hover {
+        background: rgba(225, 29, 72, 0.18);
+        border-color: #fb7185;
+        color: #fff1f2;
+      }
+
+      /* Accordion smooth transitions */
+      .accordion-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+        opacity: 0;
+      }
+      .accordion-content.open {
+        max-height: 900px;
+        opacity: 1;
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #090507;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #3d202d;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #e11d48;
+      }
+
+      /* Nav pill base (Tailwind utilities can't be extended from config here) */
+      .nav-pill-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.85rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        transition-property: all;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 150ms;
+      }
+
+      /* Design-system v2 custom colors (old-money lux / operator preview) */
+      .vaelor-card {
+        background: #130b0f;
+        border: 1px solid #331d27;
+        border-radius: 14px;
+      }
+      .vaelor-card\/90 {
+        background: rgba(19, 11, 15, 0.9);
+      }
+      .vaelor-card\/95 {
+        background: rgba(19, 11, 15, 0.95);
+      }
+      .vaelor-border {
+        border-color: #331d27;
+      }
+      .vaelor-border-bright {
+        border-color: #592e42;
+      }
+    </style>
   </head>
-  <body class="member-body">
-    <div id="memberPage" class="m-shell">
-      <!-- ===================== SIDEBAR ===================== -->
-      <aside class="m-side" aria-label="Member navigation">
-        <a class="m-brand" href="/" aria-label="Vaelor Trading Intelligence — home">
-          <img src="/vaelor-trading-intelligence.png" alt="Vaelor Trading Intelligence" width="760" height="253" />
-        </a>
-
-        <div class="m-profile">
-          <div class="m-avatar" id="mAvatar">—</div>
-          <div class="m-profile-txt">
-            <b id="mName">Member</b>
-            <span id="mHandle">@member</span>
-          </div>
-          <span class="m-tier" id="mTierBadge" data-tier="free">FREE</span>
-        </div>
-
-        <nav class="m-nav" aria-label="Dashboard sections">
-          <button type="button" class="m-nav-btn active" data-view-link="overview" aria-current="page">
-            <span class="m-nav-ic" aria-hidden="true">I.</span> Overview
+  <body class="bg-vaelor-mesh matrix-streaks min-h-screen font-sans selection:bg-rose-600 selection:text-white flex flex-col">
+    <!-- TOP NAVIGATION BAR -->
+    <header class="sticky top-0 z-40 backdrop-blur-xl bg-[#090507]/85 border-b border-[#331d27] px-4 lg:px-8 py-3">
+      <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3 bg-[#140b10]/95 border border-[#592e42] rounded-full px-3 py-1.5 shadow-lg">
+          <button onclick="switchTab('overview')" class="flex items-center gap-2.5 pr-3 border-r border-[#331d27] group text-left">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-600 to-rose-900 border border-rose-400/60 flex items-center justify-center shadow-md group-hover:scale-105 transition">
+              <span class="font-serif font-bold text-white text-base tracking-tighter">V</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold tracking-widest text-white flex items-center gap-1">
+                VAELOR <span class="text-[9px] text-rose-400 font-mono font-normal">LLC</span>
+              </div>
+              <div class="text-[9px] font-mono tracking-widest text-slate-400 uppercase">Trading Intelligence</div>
+            </div>
           </button>
-          <button type="button" class="m-nav-btn" data-view-link="capabilities">
-            <span class="m-nav-ic" aria-hidden="true">II.</span> Capabilities
-          </button>
-          <button type="button" class="m-nav-btn" data-view-link="copilot">
-            <span class="m-nav-ic" aria-hidden="true">III.</span> AI Copilot
-          </button>
-          <button type="button" class="m-nav-btn" data-view-link="notifications">
-            <span class="m-nav-ic" aria-hidden="true">IV.</span> Notifications
-            <span class="m-nav-badge" data-notif-count hidden></span>
-          </button>
-          <button type="button" class="m-nav-btn" data-view-link="account">
-            <span class="m-nav-ic" aria-hidden="true">V.</span> Account &amp; plan
-          </button>
-        </nav>
 
-        <div class="m-side-plan">
-          <div class="m-side-plan-head">
-            <span>Plan</span>
-            <b id="mPlanName">Free tier</b>
-          </div>
-          <div class="m-side-plan-time" id="mPlanTime">No expiry</div>
-          <div class="m-meter" aria-hidden="true"><i id="mPlanBar"></i></div>
-        </div>
-
-        <div class="m-side-foot">
-          <a href="/">← Return to the house</a>
-          <button type="button" id="mSignOut">Sign out</button>
-        </div>
-      </aside>
-
-      <!-- ===================== MAIN ===================== -->
-      <main class="m-main">
-        <header class="m-top">
-          <div>
-            <div class="m-kicker">Member Terminal · Private</div>
-            <h1 id="mViewTitle">Overview</h1>
-            <p class="m-greeting" id="mGreeting">Welcome back.</p>
-          </div>
-          <div class="m-top-right">
-            <button type="button" class="m-bell" data-view-link="notifications" aria-label="Notifications">
-              <span aria-hidden="true">◎</span>
-              <span class="m-bell-dot" data-notif-count hidden></span>
+          <nav class="flex items-center gap-1 overflow-x-auto py-0.5" aria-label="Main Navigation">
+            <button onclick="switchTab('overview')" id="nav-overview" class="nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent">
+              <i class="fa-solid fa-compass text-[11px]"></i> Overview
             </button>
-            <span class="m-chip" id="mTierStat">Free</span>
-          </div>
-        </header>
+            <button onclick="switchTab('execution')" id="nav-execution" class="nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent">
+              <i class="fa-solid fa-bolt text-[11px]"></i> Execution Desk
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            </button>
+            <button onclick="switchTab('terminal')" id="nav-terminal" class="nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent">
+              <i class="fa-solid fa-chart-line text-[11px]"></i> Live Terminal
+              <span id="nav-pos-count" class="px-1.5 py-0.2 bg-rose-500/20 border border-rose-500/40 text-rose-300 rounded-full text-[10px] font-mono">2</span>
+            </button>
+            <button onclick="switchTab('guide')" id="nav-guide" class="nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent">
+              <i class="fa-solid fa-wand-magic-sparkles text-[11px] text-amber-400"></i> Guide
+            </button>
+          </nav>
+        </div>
 
-        <!-- ============ OVERVIEW ============ -->
-        <section data-view-panel="overview" aria-label="Overview">
-          <div class="m-stats">
-            <div class="m-stat">
-              <span>Membership</span>
-              <b id="mTierStat2">—</b>
+        <div class="flex items-center gap-3">
+          <button onclick="toggleBridgeState()" id="bridge-status-pill" title="Click to toggle simulated local MT5 bridge connection" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs font-mono hover:bg-emerald-900/70 transition cursor-pointer">
+            <span id="bridge-dot" class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
+            <span id="bridge-text">BRIDGE: 127.0.0.1:8899</span>
+          </button>
+
+          <div class="flex items-center gap-2 bg-[#160c11] border border-[#592e42] rounded-full p-1 pl-3.5 shadow-inner">
+            <div class="flex items-center gap-2">
+              <span id="auth-indicator" class="w-2 h-2 rounded-full bg-rose-400"></span>
+              <span id="member-handle" class="text-xs font-mono text-slate-200 tracking-tight">MEMBER · @arthur.vance</span>
             </div>
-            <div class="m-stat">
-              <span>Time remaining</span>
-              <b id="mTimeStat">—</b>
-            </div>
-            <div class="m-stat">
-              <span>Features unlocked</span>
-              <b><span id="mUnlockedCount">0</span> <em>/ <span id="mCapTotal">13</span></em></b>
-            </div>
-            <div class="m-stat">
-              <span>Locked by plan</span>
-              <b id="mLockedCount">0</b>
-            </div>
+            <button onclick="openSignInModal()" id="header-signin-btn" class="btn-primary-crimson text-white text-xs font-semibold px-4 py-1.5 rounded-full flex items-center gap-1.5 ml-1">
+              <i class="fa-solid fa-key text-[11px]"></i>
+              <span id="signin-btn-label">Sign In / Auth</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-8">
+      <!-- TAB 1: OVERVIEW -->
+      <section id="view-overview" class="tab-view space-y-12 py-6">
+        <div class="max-w-4xl mx-auto pt-4 lg:pt-12">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-950/60 border border-rose-500/40 text-rose-300 font-mono text-[11px] uppercase tracking-[0.2em] mb-6">
+            <span class="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping"></span>
+            Algorithmic Futures Trading · Operational Protocol
           </div>
 
-          <div class="m-panel">
-            <div class="m-panel-head">
-              <h2>Quick actions</h2>
-              <span class="m-mono">MCP · LIVE DATA</span>
-            </div>
-            <div class="m-quick">
-              <button type="button" data-prompt="What is in the signal queue right now?">Signal queue</button>
-              <button type="button" data-prompt="Show this week's high impact macro releases.">This week's news</button>
-              <button type="button" data-prompt="How is measured performance across strategies?">Measured performance</button>
-              <button type="button" data-view-link="capabilities">Open capabilities</button>
-            </div>
-          </div>
+          <h1 class="font-serif text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight text-white leading-[1.03] mb-6">
+            Precision<br />
+            that <span class="italic font-normal text-rose-500 drop-shadow-[0_0_25px_rgba(244,63,94,0.35)]">thinks.</span>
+          </h1>
 
-          <div class="m-panel">
-            <div class="m-panel-head">
-              <h2>Recent notifications</h2>
-              <button type="button" class="m-link" data-view-link="notifications">View all →</button>
-            </div>
-            <div id="mNotifPreview" class="m-notif-preview">
-              <p class="m-empty">Notifications appear as signals, AI results and plan updates arrive.</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- ============ CAPABILITIES ============ -->
-        <section data-view-panel="capabilities" aria-label="Capabilities" hidden>
-          <p class="m-lede">
-            Every workspace on the platform is listed here. Free members keep the backtest and the
-            operating manual — the rest opens with a subscription. Documentation and source are never
-            exposed to members.
+          <p class="text-slate-300 text-base sm:text-lg max-w-2xl leading-relaxed mb-8 font-normal">
+            Master Operational Manual &amp; Autonomous Execution Specification — macro analysis, bounded autonomous execution, real-time risk gates, and futures market structure analytics.
           </p>
-          <div class="m-cap-grid" id="mCapGrid"></div>
-        </section>
 
-        <!-- ============ COPILOT ============ -->
-        <section data-view-panel="copilot" aria-label="AI Copilot" hidden>
-          <div class="m-panel m-chat-panel">
-            <div class="m-panel-head">
-              <h2>MCP copilot</h2>
-              <div class="m-chat-tools">
-                <code class="m-mono">/mcp</code>
-                <button type="button" class="m-link" id="mChatClear">Clear</button>
+          <div class="flex flex-wrap items-center gap-2.5 mb-9 font-mono text-xs">
+            <span class="px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-check text-[10px]"></i> Version 2.0.1
+            </span>
+            <span class="px-3 py-1 rounded-full bg-[#1a0f15] border border-[#592e42] text-slate-200">
+              TLLC-OPS-V2.0.1-FINAL
+            </span>
+            <span class="px-3 py-1 rounded-full bg-amber-950/70 border border-amber-500/50 text-amber-300">
+              <i class="fa-solid fa-shield-halved text-[10px] mr-1"></i> Confirmed · Deployment Ready
+            </span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-4">
+            <button onclick="switchTab('execution')" class="btn-primary-crimson px-7 py-3.5 rounded-full font-semibold text-sm text-white flex items-center gap-2.5">
+              <i class="fa-solid fa-terminal"></i>
+              <span>Launch Execution Desk</span>
+              <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+
+            <button onclick="switchTab('terminal')" class="btn-secondary-glass px-7 py-3.5 rounded-full font-semibold text-sm text-white flex items-center gap-2.5">
+              <i class="fa-solid fa-chart-candlestick text-rose-400"></i>
+              <span>Open Live Terminal</span>
+            </button>
+
+            <button onclick="switchTab('guide')" class="btn-secondary-glass px-6 py-3.5 rounded-full font-medium text-sm flex items-center gap-2 border-amber-500/50 text-amber-200 hover:border-amber-400">
+              <i class="fa-solid fa-book-open text-amber-400"></i>
+              <span>View HTML Button &amp; Cleanup Guide</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="max-w-4xl mx-auto pt-8 border-t border-[#331d27]/80">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xs font-mono uppercase tracking-widest text-rose-400">Expandable Operational Specifications (Click to Expand)</h2>
+            <span class="text-xs text-slate-400 font-mono">2 Core Modules</span>
+          </div>
+
+          <div class="space-y-3">
+            <div class="bg-[#130b0f]/90 border border-[#592e42] rounded-xl overflow-hidden">
+              <button onclick="toggleAccordion('acc-macro')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-[#1c1016] transition">
+                <div class="flex items-center gap-3">
+                  <span class="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono text-xs">MOD 01</span>
+                  <span class="font-semibold text-white text-sm sm:text-base">Bounded Autonomous Execution &amp; Kill-Switch Architecture</span>
+                </div>
+                <i id="icon-acc-macro" class="fa-solid fa-chevron-down text-rose-400 transition-transform duration-300"></i>
+              </button>
+              <div id="acc-macro" class="accordion-content px-5 border-t border-[#331d27]/60 bg-[#0d070a]">
+                <div class="py-4 text-sm text-slate-300 space-y-2 leading-relaxed">
+                  <p>Every order routed through Vaelor's local MetaTrader 5 bridge passes through deterministic pre-trade checks: Max Risk Per Trade %, Daily Drawdown Lockout, and Symbol Whitelisting.</p>
+                  <div class="flex flex-wrap gap-2 pt-2">
+                    <button onclick="switchTab('execution')" class="px-3 py-1.5 rounded-lg bg-rose-600/20 border border-rose-500/50 text-rose-300 text-xs font-mono hover:bg-rose-600/30 transition">Configure Risk Gates →</button>
+                  </div>
+                </div>
               </div>
             </div>
-            <div class="m-chat-log" id="mChatLog" aria-live="polite"></div>
-            <form class="m-chat-form" id="mChatForm">
-              <textarea id="mChatInput" rows="2" placeholder="Ask about signals, COT, this week's releases, performance…" aria-label="Message the copilot"></textarea>
-              <button type="submit" class="m-send">Send</button>
-            </form>
-            <div class="m-chat-chips">
-              <button type="button" data-prompt="Show pending signals.">Pending signals</button>
-              <button type="button" data-prompt="Summarize CFTC positioning and open interest.">COT / OI</button>
-              <button type="button" data-prompt="What did the desk publish most recently?">Latest analysis</button>
-            </div>
-          </div>
-        </section>
 
-        <!-- ============ NOTIFICATIONS ============ -->
-        <section data-view-panel="notifications" aria-label="Notifications" hidden>
-          <div class="m-panel">
-            <div class="m-panel-head">
-              <h2>Notification centre</h2>
-              <button type="button" class="m-link" id="mMarkRead">Mark all read</button>
-            </div>
-            <div id="mNotifList" class="m-notif-list"></div>
-          </div>
-        </section>
-
-        <!-- ============ ACCOUNT ============ -->
-        <section data-view-panel="account" aria-label="Account and plan" hidden>
-          <div class="m-grid-2">
-            <div class="m-panel">
-              <div class="m-panel-head"><h2>Profile</h2></div>
-              <dl class="m-dl">
-                <div><dt>Name</dt><dd id="mName2">—</dd></div>
-                <div><dt>Username</dt><dd id="mHandle2">—</dd></div>
-                <div><dt>Email</dt><dd id="mEmail2">—</dd></div>
-                <div><dt>Session</dt><dd class="m-ok">Active · private</dd></div>
-                <div><dt>MCP endpoint</dt><dd class="m-inline"><code class="m-mono" id="mMcpEndpoint">https://trading-llc-mcp.mahdi-t8256.workers.dev/mcp</code><button type="button" class="m-link" id="mMcpCopy">copy</button></dd></div>
-              </dl>
-            </div>
-
-            <div class="m-panel">
-              <div class="m-panel-head"><h2>Plan</h2></div>
-              <p class="m-member-note" id="mMemberNote" hidden>
-                Your subscription is active. The full toolkit — live desk, signals, indicator export,
-                OI/COT, analytical engine and custom news AI — is unlocked.
-              </p>
-              <button type="button" class="m-cta" id="mTrialBtn">Start 7-day trial</button>
-              <div class="m-plan-grid" id="mPlanGrid">
-                <article class="m-plan">
-                  <span class="m-mono">Monthly</span>
-                  <b>$149</b>
-                  <span class="m-plan-cad">per month</span>
-                  <p>Full toolkit, one cloud bridge instance.</p>
-                  <button type="button" class="m-plan-btn" data-plan="monthly">Request monthly</button>
-                </article>
-                <article class="m-plan m-plan-best">
-                  <span class="m-mono">Annual · Best</span>
-                  <b>$1,290</b>
-                  <span class="m-plan-cad">per year</span>
-                  <p>Two months free, priority provisioning.</p>
-                  <button type="button" class="m-plan-btn" data-plan="annual">Request annual</button>
-                </article>
+            <div class="bg-[#130b0f]/90 border border-[#592e42] rounded-xl overflow-hidden">
+              <button onclick="toggleAccordion('acc-bridge-overview')" class="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-[#1c1016] transition">
+                <div class="flex items-center gap-3">
+                  <span class="px-2 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-mono text-xs">MOD 02</span>
+                  <span class="font-semibold text-white text-sm sm:text-base">Zero-Custody Localhost MT5 Bridge (127.0.0.1:8899)</span>
+                </div>
+                <i id="icon-acc-bridge-overview" class="fa-solid fa-chevron-down text-rose-400 transition-transform duration-300"></i>
+              </button>
+              <div id="acc-bridge-overview" class="accordion-content px-5 border-t border-[#331d27]/60 bg-[#0d070a]">
+                <div class="py-4 text-sm text-slate-300 space-y-2 leading-relaxed">
+                  <p>Your broker credentials and API tokens never leave your local machine. The browser communicates directly with your local Python/PowerShell MT5 bridge over loopback port <code class="text-emerald-300 font-mono">127.0.0.1:8899</code> — “this computer”. This website talks to the bridge directly from your browser; your account, token and orders never touch our servers.</p>
+                </div>
               </div>
-              <p class="m-fine">
-                Activation is performed by the desk after payment. Requests appear in the owner console
-                immediately; nothing is charged from this page.
-              </p>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
+
+      <!-- TAB 2: EXECUTION DESK -->
+      <section id="view-execution" class="tab-view hidden space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#130b0f]/90 border border-[#592e42] rounded-2xl p-5 shadow-xl">
+          <div>
+            <div class="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-rose-400 mb-1">
+              <span>EXECUTION DESK · METATRADER 5 DIRECT ROUTING</span>
+            </div>
+            <h2 class="font-serif text-2xl sm:text-3xl font-bold text-white tracking-tight mt-0.5">Manual Order Ticket &amp; Safety Gates</h2>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <button onclick="toggleAllExecutionAccordions()" class="btn-secondary-glass px-4 py-2 rounded-xl text-xs font-mono flex items-center gap-2">
+              <i class="fa-solid fa-layer-group text-rose-400"></i>
+              <span>Toggle Setup Drawers</span>
+            </button>
+
+            <button onclick="toggleKillSwitch()" id="kill-switch-btn" class="px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border-2 border-emerald-400 bg-emerald-950/80 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:bg-emerald-900 transition flex items-center gap-2">
+              <i class="fa-solid fa-shield-check"></i>
+              <span id="kill-switch-label">SAFETY GATES: ARMED</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl overflow-hidden shadow-lg">
+          <button onclick="toggleAccordion('acc-bridge-setup')" class="w-full px-6 py-4 flex flex-wrap items-center justify-between gap-4 text-left hover:bg-[#1c1016] transition">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/40 flex items-center justify-center text-rose-400">
+                <i class="fa-solid fa-network-wired"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-mono uppercase tracking-wider text-rose-400">SECTION 01 &amp; 02 · EXPANDABLE DRAWER</span>
+                  <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40">127.0.0.1:8899 READY</span>
+                </div>
+                <h3 class="text-base font-semibold text-white">Local MT5 Bridge PowerShell Setup &amp; Security FAQs (Click to Expand/Hide)</h3>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-mono text-rose-300 bg-rose-950/60 border border-rose-500/40 px-3 py-1.5 rounded-lg">
+              <span id="label-acc-bridge-setup">Show Setup &amp; Notes</span>
+              <i id="icon-acc-bridge-setup" class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+            </div>
+          </button>
+
+          <div id="acc-bridge-setup" class="accordion-content px-6 border-t border-[#331d27] bg-[#0c0609]">
+            <div class="p-6 space-y-4">
+              <div class="bg-[#070305] border border-[#592e42] rounded-xl p-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs font-mono text-slate-400"># Run headless in Windows PowerShell to start the local MT5 bridge:</span>
+                  <button onclick="copyCommand('ps-cmd')" class="btn-secondary-glass px-3 py-1 rounded-lg text-xs font-mono flex items-center gap-1.5">
+                    <i class="fa-regular fa-copy text-rose-400"></i>
+                    <span id="copy-btn-text">Copy Command</span>
+                  </button>
+                </div>
+                <pre id="ps-cmd" class="font-mono text-xs sm:text-sm text-emerald-300 overflow-x-auto py-1">powershell -ExecutionPolicy Bypass -File .\install_and_run_bridge.ps1 -Port 8899 -Headless</pre>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 rounded-xl bg-amber-950/25 border-l-4 border-amber-500 border border-amber-500/30 text-xs sm:text-sm text-slate-200 leading-relaxed">
+                  <strong class="text-amber-300 block mb-1"><i class="fa-solid fa-lock mr-1"></i> Why is the URL local? That is correct and safe.</strong>
+                  The bridge runs on your own PC, so its address is always <code class="font-mono text-amber-200">http://127.0.0.1:8899</code> — “this computer”. This website talks to the bridge directly from your browser; your account, token and orders never touch our servers.
+                </div>
+                <div class="p-4 rounded-xl bg-amber-950/25 border-l-4 border-amber-500 border border-amber-500/30 text-xs sm:text-sm text-slate-200 leading-relaxed">
+                  <strong class="text-amber-300 block mb-1"><i class="fa-brands fa-windows mr-1"></i> Any Windows PC works.</strong>
+                  The bridge auto-detects every MetaTrader 5 terminal installed for your user, including broker-branded and portable copies. Open MetaTrader 5, sign in to a demo or live account, then connect.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <!-- LEFT: SECTION 03 · MANUAL ROUTING -->
+          <div class="lg:col-span-6 bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-5">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <div class="text-[11px] font-mono uppercase tracking-widest text-amber-400">SECTION 03 · MANUAL ROUTING</div>
+                  <h3 class="text-xl font-bold text-white tracking-tight mt-0.5">ORDER TICKET</h3>
+                </div>
+                <button onclick="toggleExecutionMode()" id="exec-mode-badge" class="px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold bg-amber-950/80 border border-amber-400/60 text-amber-200 hover:border-amber-300 transition flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                  <span id="exec-mode-text">MODE: SIMULATION</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-4 gap-2.5 mb-5">
+                <div class="bg-[#0b0608] border border-[#592e42] rounded-xl p-3">
+                  <div class="text-[10px] font-mono uppercase text-slate-400">BID</div>
+                  <div id="quote-bid" class="text-base sm:text-lg font-mono font-bold text-emerald-400 mt-0.5">5,892.25</div>
+                </div>
+                <div class="bg-[#0b0608] border border-[#592e42] rounded-xl p-3">
+                  <div class="text-[10px] font-mono uppercase text-slate-400">ASK</div>
+                  <div id="quote-ask" class="text-base sm:text-lg font-mono font-bold text-rose-400 mt-0.5">5,892.50</div>
+                </div>
+                <div class="bg-[#0b0608] border border-[#592e42] rounded-xl p-3">
+                  <div class="text-[10px] font-mono uppercase text-slate-400">SPREAD</div>
+                  <div id="quote-spread" class="text-base sm:text-lg font-mono font-bold text-white mt-0.5">0.25</div>
+                </div>
+                <div class="bg-[#0b0608] border border-[#592e42] rounded-xl p-3">
+                  <div class="text-[10px] font-mono uppercase text-slate-400">DAY CHG</div>
+                  <div id="quote-day" class="text-base sm:text-lg font-mono font-bold text-emerald-400 mt-0.5">+0.84%</div>
+                </div>
+              </div>
+
+              <div class="mb-5">
+                <label for="ticket-symbol" class="block text-[11px] font-mono uppercase tracking-wider text-slate-300 mb-2">SYMBOL (FUTURES &amp; FX)</label>
+                <select id="ticket-symbol" onchange="updateSymbolQuotes()" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-4 py-3 text-sm font-mono text-white outline-none transition">
+                  <option value="ESZ6">ESZ6 — E-Mini S&amp;P 500 Futures (CME)</option>
+                  <option value="NQZ6">NQZ6 — E-Mini Nasdaq-100 Futures (CME)</option>
+                  <option value="XAUUSD">XAUUSD — Spot Gold / US Dollar</option>
+                  <option value="CLZ6">CLZ6 — Crude Oil WTI Futures (NYMEX)</option>
+                  <option value="BTCUSD">BTCUSD — Bitcoin Perpetual Institutional</option>
+                </select>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3.5 mb-5">
+                <button type="button" id="btn-side-buy" onclick="selectOrderSide('BUY')" class="btn-buy-active py-3.5 px-4 rounded-xl font-mono font-bold text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-arrow-trend-up"></i>
+                  <span>BUY / LONG</span>
+                </button>
+                <button type="button" id="btn-side-sell" onclick="selectOrderSide('SELL')" class="btn-sell-inactive py-3.5 px-4 rounded-xl font-mono font-bold text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-arrow-trend-down"></i>
+                  <span>SELL / SHORT</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+                <div>
+                  <label for="ticket-volume" class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">VOLUME (LOTS)</label>
+                  <input id="ticket-volume" type="number" step="0.01" min="0.01" value="0.10" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
+                </div>
+                <div>
+                  <label for="ticket-sl" class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">STOP LOSS (PTS)</label>
+                  <input id="ticket-sl" type="number" step="0.25" placeholder="e.g. 5875.00" value="5880.00" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
+                </div>
+                <div>
+                  <label for="ticket-tp" class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">TAKE PROFIT (PTS)</label>
+                  <input id="ticket-tp" type="number" step="0.25" placeholder="e.g. 5920.00" value="5915.00" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                <div>
+                  <label for="ticket-strategy" class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">ATTACH TO STRATEGY</label>
+                  <select id="ticket-strategy" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none">
+                    <option value="manual trade">manual trade</option>
+                    <option value="vwap-mean-reversion">VWAP Mean Reversion v2</option>
+                    <option value="opening-range-breakout">NY Opening Range Breakout</option>
+                    <option value="macro-liquidity-sweep">Macro Liquidity Sweep AI</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="ticket-comment" class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">ORDER COMMENT</label>
+                  <input id="ticket-comment" type="text" value="execution desk" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-[#331d27] space-y-4">
+              <label class="flex items-center gap-3 cursor-pointer select-none group">
+                <input id="confirm-broker-checkbox" type="checkbox" checked class="w-4 h-4 rounded accent-rose-600 cursor-pointer" />
+                <span class="text-xs sm:text-sm text-slate-300 group-hover:text-white transition">I confirm this order routes to <strong class="text-white underline decoration-rose-500">my connected broker account</strong> via local bridge.</span>
+              </label>
+
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <button type="button" id="place-order-btn" onclick="submitOrderTicket()" class="btn-primary-crimson flex-1 py-3.5 px-6 rounded-xl font-bold text-sm text-white tracking-wide flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-paper-plane"></i>
+                  <span id="place-order-label">Place BUY Order (0.10 Lots ESZ6)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: SECTION 04 · SAFETY -->
+          <div class="lg:col-span-6 bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 shadow-2xl flex flex-col justify-between space-y-5">
+            <div>
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <div class="text-[11px] font-mono uppercase tracking-widest text-amber-400">SECTION 04 · SAFETY</div>
+                  <h3 class="text-xl font-bold text-white tracking-tight mt-0.5">RISK GATES &amp; KILL SWITCH</h3>
+                </div>
+                <span id="safety-pill-badge" class="px-3.5 py-1 rounded-full text-xs font-mono font-semibold bg-emerald-950/90 border border-emerald-400/60 text-emerald-300">armed</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                <div>
+                  <label class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">RISK PER TRADE %</label>
+                  <input id="risk-per-trade" type="number" step="0.1" value="0.50" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-emerald-300 font-bold outline-none" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">MAX LOTS / TRADE</label>
+                  <input id="risk-max-lots" type="number" step="0.5" value="2.50" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">MAX OPEN POSITIONS</label>
+                  <input id="risk-max-pos" type="number" step="1" value="4" class="w-full bg-[#0b0608] border border-amber-500/70 focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-amber-300 font-bold outline-none" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+                <div>
+                  <label class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">MAX DAILY LOSS %</label>
+                  <input id="risk-daily-loss" type="number" step="0.5" value="2.00" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-rose-400 font-bold outline-none" />
+                </div>
+                <div>
+                  <label class="block text-[11px] font-mono uppercase text-slate-300 mb-1.5">MAX DRAWDOWN %</label>
+                  <input id="risk-max-dd" type="number" step="0.5" value="6.00" class="w-full bg-[#0b0608] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-rose-400 font-bold outline-none" />
+                </div>
+              </div>
+
+              <div class="border border-[#592e42] rounded-xl overflow-hidden bg-[#0c0609]">
+                <button type="button" onclick="toggleAccordion('acc-desk-profile')" class="w-full px-4 py-3.5 flex items-center justify-between text-left hover:bg-[#1c1016] transition">
+                  <div>
+                    <div class="text-xs font-mono uppercase text-rose-400 font-semibold">LIVE DESK PROFILE (EXPANDABLE CONFIG)</div>
+                    <div class="text-xs text-slate-400 mt-0.5">Timeframes, automated strategy routing &amp; allowed broker symbols</div>
+                  </div>
+                  <i id="icon-acc-desk-profile" class="fa-solid fa-chevron-down text-rose-400 transition-transform duration-300 rotate-180"></i>
+                </button>
+
+                <div id="acc-desk-profile" class="accordion-content open px-4 pb-4 pt-2 border-t border-[#331d27]/70 space-y-4">
+                  <p class="text-xs text-slate-300 leading-relaxed">
+                    Configure what the live connection trades: the timeframe, the broker symbols you tick, and the strategy whose tickets drive orders.
+                  </p>
+
+                  <div>
+                    <label class="block text-[10px] font-mono uppercase text-slate-400 mb-2">TIMEFRAME FOR LIVE TRADING</label>
+                    <div class="flex flex-wrap gap-2" id="timeframe-group">
+                      <button type="button" onclick="selectTimeframe('1m')" data-tf="1m" class="tf-btn px-3.5 py-1.5 rounded-lg text-xs font-mono border border-[#592e42] bg-[#160c12] text-slate-300 hover:border-rose-400 transition">1m</button>
+                      <button type="button" onclick="selectTimeframe('5m')" data-tf="5m" class="tf-btn px-3.5 py-1.5 rounded-lg text-xs font-mono border border-[#592e42] bg-[#160c12] text-slate-300 hover:border-rose-400 transition">5m</button>
+                      <button type="button" onclick="selectTimeframe('15m')" data-tf="15m" class="tf-btn px-3.5 py-1.5 rounded-lg text-xs font-mono border border-[#592e42] bg-[#160c12] text-slate-300 hover:border-rose-400 transition">15m</button>
+                      <button type="button" onclick="selectTimeframe('1H')" data-tf="1H" class="tf-btn px-3.5 py-1.5 rounded-lg text-xs font-mono border-2 border-amber-400 bg-amber-950/70 text-amber-200 font-bold shadow-[0_0_10px_rgba(245,158,11,0.3)] transition">1H</button>
+                      <button type="button" onclick="selectTimeframe('4H')" data-tf="4H" class="tf-btn px-3.5 py-1.5 rounded-lg text-xs font-mono border border-[#592e42] bg-[#160c12] text-slate-300 hover:border-rose-400 transition">4H</button>
+                      <button type="button" onclick="selectTimeframe('1D')" data-tf="1D" class="tf-btn px-3.5 py-1.5 rounded-lg text-xs font-mono border border-[#592e42] bg-[#160c12] text-slate-300 hover:border-rose-400 transition">1D</button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1.5">STRATEGY FOR LIVE TRADING</label>
+                    <select class="w-full bg-[#090507] border border-[#592e42] rounded-xl px-3.5 py-2.5 text-xs font-mono text-white outline-none">
+                      <option value="">manual / choose a strategy</option>
+                      <option value="">Vaelor Autonomous Macro v2.0.1 (Bounded)</option>
+                      <option value="">Orderflow Delta Imbalance Scalper</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="block text-[10px] font-mono uppercase text-slate-400 mb-2">SYMBOLS THE LIVE DESK MAY TRADE</label>
+                    <div class="flex flex-wrap gap-2">
+                      <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#160c12] border border-[#592e42] text-xs font-mono text-white cursor-pointer hover:border-rose-400">
+                        <input type="checkbox" checked class="accent-rose-500" /> ESZ6
+                      </label>
+                      <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#160c12] border border-[#592e42] text-xs font-mono text-white cursor-pointer hover:border-rose-400">
+                        <input type="checkbox" checked class="accent-rose-500" /> NQZ6
+                      </label>
+                      <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#160c12] border border-[#592e42] text-xs font-mono text-white cursor-pointer hover:border-rose-400">
+                        <input type="checkbox" checked class="accent-rose-500" /> XAUUSD
+                      </label>
+                      <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#160c12] border border-[#592e42] text-xs font-mono text-white cursor-pointer hover:border-rose-400">
+                        <input type="checkbox" class="accent-rose-500" /> BTCUSD
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-[#331d27] flex items-center justify-between gap-3">
+              <button type="button" onclick="saveRiskGates()" class="btn-secondary-glass flex-1 py-3 px-5 rounded-xl font-mono text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2">
+                <i class="fa-solid fa-floppy-disk text-emerald-400"></i>
+                <span>Sync Risk Gates to Local Bridge</span>
+              </button>
+              <button type="button" onclick="flattenAllPositions()" class="px-4 py-3 rounded-xl bg-rose-950/90 hover:bg-rose-800 border border-rose-500 text-rose-200 font-mono text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5">
+                <i class="fa-solid fa-skull-crossbones"></i>
+                <span>Flatten All</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: LIVE TERMINAL -->
+      <section id="view-terminal" class="tab-view hidden space-y-6">
+        <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 shadow-xl">
+          <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div>
+              <span class="text-xs font-mono uppercase tracking-widest text-emerald-400">REAL-TIME TELEMETRY · ZERO DEAD ROUTES</span>
+              <h2 class="font-serif text-2xl sm:text-3xl font-bold text-white mt-0.5">Active Positions &amp; Execution Blotter</h2>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="px-4 py-2 rounded-xl bg-[#0b0608] border border-[#592e42] font-mono text-xs">
+                <span class="text-slate-400 mr-2">OPEN P&amp;L:</span>
+                <span id="total-pnl-badge" class="text-emerald-400 font-bold text-sm">+$2,420.25</span>
+              </div>
+              <button onclick="switchTab('execution')" class="btn-primary-crimson px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> New Order Ticket
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse font-mono text-xs sm:text-sm">
+              <thead>
+                <tr class="border-b border-[#592e42] text-slate-400 text-[11px] uppercase">
+                  <th class="py-3 px-4">Ticket #</th>
+                  <th class="py-3 px-4">Symbol</th>
+                  <th class="py-3 px-4">Side</th>
+                  <th class="py-3 px-4">Lots</th>
+                  <th class="py-3 px-4">Entry</th>
+                  <th class="py-3 px-4">SL / TP</th>
+                  <th class="py-3 px-4">Strategy</th>
+                  <th class="py-3 px-4">Floating P&amp;L</th>
+                  <th class="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="positions-table-body" class="positions-tbody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: GUIDE -->
+      <section id="view-guide" class="tab-view hidden space-y-8">
+        <div class="bg-gradient-to-r from-rose-950/80 via-[#170b12] to-[#12090e] border border-rose-500/50 rounded-2xl p-6 sm:p-8 shadow-2xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-300 font-mono text-xs mb-3">
+            <i class="fa-solid fa-screwdriver-wrench"></i> STEP-BY-STEP WEBSITE UPGRADE MANUAL
+          </div>
+          <h2 class="font-serif text-3xl sm:text-4xl font-bold text-white mb-3">
+            How to Upgrade Your <code class="text-rose-400 font-mono text-2xl sm:text-3xl">vaelor.pages.dev</code> HTML
+          </h2>
+          <p class="text-slate-300 text-sm sm:text-base max-w-3xl leading-relaxed">
+            Below are the exact instructions and copy-pasteable patterns explaining how your new high-visibility buttons work, how the expandable sections keep your Execution Desk clean, and which dead files to delete from your repository.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
+            <div class="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/50 flex items-center justify-center text-rose-400 text-lg">
+              <i class="fa-solid fa-eye"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">1. Making Buttons Highly Visible &amp; Tactile</h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              In your original site, secondary buttons like <strong>“Launch Dashboard”</strong>, <strong>“SELL”</strong>, and timeframe pills (<code class="text-rose-300">1m, 5m, 15m</code>) used a very dark border (<code class="text-slate-400">#22151c</code>) that blended into the dark background.
+            </p>
+            <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+              <li><strong>Sign-In Button:</strong> Placed inside the top-right header pill next to <code class="text-rose-300">@arthur.vance</code> with a high-contrast crimson gradient (<code class="text-rose-300">.btn-primary-crimson</code>) and a key icon. Clicking it opens the Bridge Auth &amp; Sign-In modal.</li>
+              <li><strong>BUY &amp; SELL Toggle Buttons:</strong> Uses explicit active classes (<code class="text-emerald-300">.btn-buy-active</code> with a <code class="text-emerald-300">2px solid #34d399</code> border and neon glow, and <code class="text-rose-300">.btn-sell-active</code> with <code class="text-rose-300">2px solid #fb7185</code>).</li>
+              <li><strong>Secondary Glass Buttons:</strong> Upgraded border contrast to <code class="text-rose-300">#64364b</code> with inner top-edge highlights (<code class="text-rose-300">inset 0 1px 0 rgba(255,255,255,0.12)</code>).</li>
+            </ul>
+          </div>
+
+          <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 text-lg">
+              <i class="fa-solid fa-bars-staggered"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">2. Putting Relatable Items in Expandable Drawers</h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              In your second screenshot, the PowerShell commands and long yellow warning boxes pushed the <strong>Order Ticket</strong> below the fold.
+            </p>
+            <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+              <li><strong>Grouped Bridge Setup &amp; FAQs:</strong> The PowerShell snippet and the two <code class="text-amber-300">127.0.0.1:8899</code> explanations are now inside an expandable drawer (<code class="text-rose-300">#acc-bridge-setup</code>) at the top of the Execution Desk.</li>
+              <li><strong>Grouped Live Desk Strategy Profile:</strong> Timeframes, strategy dropdown, and symbol checkboxes are grouped inside <code class="text-rose-300">#acc-desk-profile</code> so traders can collapse it when placing manual trades.</li>
+              <li><strong>How it works:</strong> Clicking the header triggers <code class="text-emerald-300">toggleAccordion(id)</code>, smoothly animating <code class="text-rose-300">max-height</code> and rotating the chevron icon.</li>
+            </ul>
+          </div>
+
+          <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400 text-lg">
+              <i class="fa-solid fa-trash-can-arrow-up"></i>
+            </div>
+            <h3 class="text-lg font-bold text-white">3. Removing Files That Have No Work on Your Website</h3>
+            <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Static Cloudflare Pages deployments (<code class="text-rose-300">vaelor.pages.dev</code>) cannot execute backend scripts or empty placeholder tabs. Remove these unused files from your project folder:
+            </p>
+            <div class="space-y-2 text-xs font-mono">
+              <div class="p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 text-rose-200 flex items-center justify-between">
+                <span><i class="fa-solid fa-xmark text-rose-400 mr-1.5"></i> /news/index.html</span>
+                <span class="text-[10px] uppercase bg-rose-500/30 px-2 py-0.5 rounded">Delete (Empty Stub)</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 text-rose-200 flex items-center justify-between">
+                <span><i class="fa-solid fa-xmark text-rose-400 mr-1.5"></i> /ai/index.html</span>
+                <span class="text-[10px] uppercase bg-rose-500/30 px-2 py-0.5 rounded">Delete (Empty Stub)</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 text-rose-200 flex items-center justify-between">
+                <span><i class="fa-solid fa-xmark text-rose-400 mr-1.5"></i> *.py / *.ps1 in web root</span>
+                <span class="text-[10px] uppercase bg-rose-500/30 px-2 py-0.5 rounded">Move to /dist-zip</span>
+              </div>
+              <div class="p-2.5 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-emerald-200 flex items-center justify-between">
+                <span><i class="fa-solid fa-check text-emerald-400 mr-1.5"></i> /index.html (Unified SPA)</span>
+                <span class="text-[10px] uppercase bg-emerald-500/30 px-2 py-0.5 rounded">Keep (All-In-One)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span class="text-xs font-mono uppercase text-rose-400">QUICK REFERENCE SNIPPET</span>
+              <h3 class="text-lg font-bold text-white">How to Replace Your Existing <code class="font-mono text-rose-400">index.html</code></h3>
+            </div>
+            <button onclick="switchTab('execution')" class="btn-primary-crimson px-4 py-2 rounded-xl text-xs font-semibold">
+              Test Live Execution Desk Now →
+            </button>
+          </div>
+          <ol class="text-xs sm:text-sm text-slate-300 space-y-2 list-decimal pl-5 leading-relaxed">
+            <li>Save this entire single-file HTML document as your root <code class="font-mono text-emerald-300">index.html</code> inside your Cloudflare Pages repository.</li>
+            <li>Delete dead sub-folders (<code class="font-mono text-rose-300">/news</code>, <code class="font-mono text-rose-300">/ai</code>, <code class="font-mono text-rose-300">/member</code>, and duplicate <code class="font-mono text-rose-300">/execution/index.html</code>) so users never hit 404s or broken navigation links.</li>
+            <li>If you want <code class="font-mono text-emerald-300">vaelor.pages.dev/execution</code> to still work as a direct URL on Cloudflare Pages, add a single <code class="font-mono text-emerald-300">_redirects</code> file containing <code class="font-mono text-amber-300">/* /index.html 200</code>.</li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <!-- SIGN-IN & BRIDGE AUTH MODAL -->
+    <div id="signin-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+      <div class="bg-[#140b10] border-2 border-[#592e42] rounded-2xl max-w-md w-full p-6 shadow-[0_0_50px_rgba(225,29,72,0.35)] space-y-5 relative">
+        <button onclick="closeSignInModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#331d27]/60 hover:bg-rose-600 text-slate-300 hover:text-white flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-rose-600/20 border border-rose-500 flex items-center justify-center text-rose-400">
+            <i class="fa-solid fa-user-shield text-lg"></i>
+          </div>
+          <div>
+            <div class="text-[10px] font-mono uppercase tracking-widest text-rose-400">VAELOR OPERATOR AUTHENTICATION</div>
+            <h3 class="text-xl font-bold text-white">Operator Sign-In &amp; Bridge Token</h3>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-mono uppercase text-slate-300 mb-1">Operator Handle</label>
+            <input id="modal-handle-input" type="text" value="@arthur.vance" class="w-full bg-[#090507] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono uppercase text-slate-300 mb-1">Local MT5 Bridge Endpoint</label>
+            <input id="modal-endpoint-input" type="text" value="http://127.0.0.1:8899" class="w-full bg-[#090507] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-emerald-400 outline-none" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono uppercase text-slate-300 mb-1">Session Passkey / Local Token</label>
+            <input id="modal-token-input" type="password" value="TLLC-OPS-SECRET-8899" class="w-full bg-[#090507] border border-[#592e42] focus:border-rose-500 rounded-xl px-3.5 py-2.5 text-sm font-mono text-white outline-none" />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-3 pt-2">
+          <button type="button" onclick="signOutOperator()" class="btn-secondary-glass px-4 py-2.5 rounded-xl text-xs font-mono text-rose-300 hover:border-rose-500">
+            Sign Out
+          </button>
+          <button type="button" onclick="saveOperatorAuth()" class="btn-primary-crimson flex-1 py-2.5 px-5 rounded-xl text-xs font-bold uppercase tracking-wider text-white">
+            Authenticate &amp; Connect Bridge
+          </button>
+        </div>
+      </div>
     </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none"></div>
+
+    <footer class="border-t border-[#331d27]/70 py-5 px-4 lg:px-8 mt-12 text-xs font-mono text-slate-400">
+      <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+        <div>VAELOR TRADING LLC · OPERATIONAL PROTOCOL V2.0.1 · ZERO DEAD ROUTES SPA</div>
+        <div class="flex items-center gap-4">
+          <button onclick="switchTab('overview')" class="hover:text-rose-400 transition">Overview</button>
+          <button onclick="switchTab('execution')" class="hover:text-rose-400 transition">Execution Desk</button>
+          <button onclick="switchTab('terminal')" class="hover:text-rose-400 transition">Terminal</button>
+          <button onclick="switchTab('guide')" class="text-amber-400 hover:underline">HTML Upgrade Instructions</button>
+        </div>
+      </div>
+    </footer>
 
     <script>
       import { mountMember } from '../scripts/member.ts';
       mountMember();
     </script>
-
-    <style>
-      /* ────────────────────────────────────────────────────────────
-         Vaelor member terminal · old-money luxury
-         Warm black · oxblood · ivory · antique gold · serif numerals
-         ──────────────────────────────────────────────────────────── */
-      .member-body {
-        margin: 0;
-        min-height: 100vh;
-        background:
-          radial-gradient(1100px 600px at 88% -12%, rgba(142, 42, 56, 0.20), transparent 60%),
-          radial-gradient(800px 600px at -10% 110%, rgba(60, 44, 16, 0.16), transparent 60%),
-          #0b0907;
-        color: #efe7d8;
-        font-family: Inter, system-ui, sans-serif;
-      }
-      .m-shell {
-        display: grid;
-        grid-template-columns: 272px minmax(0, 1fr);
-        min-height: 100vh;
-      }
-      .m-side {
-        position: sticky;
-        top: 0;
-        align-self: start;
-        height: 100vh;
-        display: flex;
-        flex-direction: column;
-        gap: 18px;
-        padding: 24px 20px;
-        border-right: 1px solid rgba(239, 231, 216, 0.09);
-        background: linear-gradient(180deg, rgba(24, 17, 13, 0.98), rgba(12, 9, 7, 0.98));
-      }
-      .m-brand img { width: 150px; height: auto; display: block; opacity: 0.9; }
-      .m-profile {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 13px 14px;
-        border: 1px solid rgba(239, 231, 216, 0.11);
-        border-radius: 13px;
-        background: rgba(255, 255, 255, 0.028);
-      }
-      .m-avatar {
-        width: 42px;
-        height: 42px;
-        flex: 0 0 42px;
-        border-radius: 50%;
-        display: grid;
-        place-items: center;
-        border: 1px solid rgba(201, 162, 75, 0.45);
-        background: radial-gradient(circle at 30% 30%, #8e2a38, #4a131c);
-        color: #f3e7cf;
-        font-family: 'Playfair Display', serif;
-        font-size: 16px;
-        font-weight: 700;
-      }
-      .m-profile-txt { display: flex; flex-direction: column; min-width: 0; }
-      .m-profile-txt b { font-family: 'Playfair Display', serif; font-size: 14.5px; color: #f6efdf; }
-      .m-profile-txt span { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #9a8d78; }
-      .m-tier {
-        margin-left: auto;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 8.5px;
-        letter-spacing: 0.14em;
-        padding: 5px 8px;
-        border-radius: 999px;
-        border: 1px solid rgba(201, 162, 75, 0.4);
-        color: #e3c98f;
-        background: rgba(201, 162, 75, 0.07);
-      }
-      .m-nav { display: flex; flex-direction: column; gap: 2px; }
-      .m-nav-btn {
-        display: flex;
-        align-items: center;
-        gap: 11px;
-        width: 100%;
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 1px solid transparent;
-        background: none;
-        color: #b7ab97;
-        font-family: 'Inter', sans-serif;
-        font-size: 12.5px;
-        font-weight: 500;
-        text-align: left;
-        cursor: pointer;
-        transition: background 0.18s, color 0.18s;
-      }
-      .m-nav-btn:hover { background: rgba(239, 231, 216, 0.045); color: #f6efdf; }
-      .m-nav-btn.active {
-        background: rgba(142, 42, 56, 0.14);
-        border-color: rgba(142, 42, 56, 0.4);
-        color: #f6efdf;
-      }
-      .m-nav-ic { font-family: 'Playfair Display', serif; font-size: 12px; color: #c9a24b; }
-      .m-nav-badge {
-        margin-left: auto;
-        min-width: 18px;
-        height: 18px;
-        padding: 0 5px;
-        border-radius: 999px;
-        background: #8e2a38;
-        color: #f6efdf;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 10px;
-        display: grid;
-        place-items: center;
-      }
-      .m-side-plan {
-        margin-top: auto;
-        padding: 14px;
-        border-radius: 13px;
-        border: 1px solid rgba(239, 231, 216, 0.1);
-        background: rgba(255, 255, 255, 0.025);
-      }
-      .m-side-plan-head { display: flex; justify-content: space-between; align-items: baseline; }
-      .m-side-plan-head span {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 8.5px;
-        letter-spacing: 0.2em;
-        text-transform: uppercase;
-        color: #8d8170;
-      }
-      .m-side-plan-head b { font-family: 'Playfair Display', serif; font-size: 14px; color: #f6efdf; }
-      .m-side-plan-time { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #9a8d78; margin-top: 5px; }
-      .m-meter { height: 3px; border-radius: 999px; background: rgba(239, 231, 216, 0.1); margin-top: 11px; overflow: hidden; }
-      .m-meter i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #c9a24b, #e6cf9a); transition: width 0.5s; }
-      .m-side-foot { display: flex; justify-content: space-between; align-items: center; }
-      .m-side-foot a, .m-side-foot button {
-        background: none;
-        border: none;
-        color: #8d8170;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 9px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        cursor: pointer;
-        text-decoration: none;
-      }
-      .m-side-foot a:hover, .m-side-foot button:hover { color: #c9a24b; }
-
-      .m-main { padding: 34px clamp(20px, 4vw, 46px) 70px; min-width: 0; }
-      .m-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 28px; }
-      .m-kicker {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 9.5px;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        color: #c9a24b;
-      }
-      .m-top h1 {
-        font-family: 'Playfair Display', serif;
-        font-size: clamp(30px, 4vw, 42px);
-        margin: 10px 0 6px;
-        color: #f6efdf;
-        font-weight: 600;
-      }
-      .m-greeting { margin: 0; color: #9a8d78; font-size: 12.5px; font-style: italic; font-family: 'Playfair Display', serif; }
-      .m-top-right { display: flex; align-items: center; gap: 10px; }
-      .m-bell {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: 1px solid rgba(239, 231, 216, 0.16);
-        background: rgba(255, 255, 255, 0.03);
-        color: #efe7d8;
-        cursor: pointer;
-        font-size: 14px;
-      }
-      .m-bell-dot {
-        position: absolute;
-        top: 9px;
-        right: 10px;
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: #8e2a38;
-        border: 1px solid #efe7d8;
-      }
-      .m-chip {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 9px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        padding: 9px 12px;
-        border-radius: 999px;
-        border: 1px solid rgba(201, 162, 75, 0.35);
-        color: #e3c98f;
-        background: rgba(201, 162, 75, 0.06);
-      }
-
-      .m-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
-      .m-stat {
-        padding: 17px 18px;
-        border-radius: 14px;
-        border: 1px solid rgba(239, 231, 216, 0.1);
-        border-top: 2px solid rgba(201, 162, 75, 0.5);
-        background: linear-gradient(165deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.008));
-      }
-      .m-stat span {
-        display: block;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 8.5px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
-        color: #8d8170;
-        margin-bottom: 10px;
-      }
-      .m-stat b { font-size: 22px; color: #f6efdf; font-family: 'Playfair Display', serif; font-weight: 600; }
-      .m-stat b em { font-style: normal; font-size: 13px; color: #8d8170; }
-
-      .m-panel {
-        border: 1px solid rgba(239, 231, 216, 0.1);
-        border-radius: 15px;
-        background: linear-gradient(180deg, rgba(28, 21, 16, 0.55), rgba(17, 13, 10, 0.55));
-        padding: 20px;
-        margin-bottom: 16px;
-      }
-      .m-panel::before {
-        content: '';
-        display: block;
-        width: 34px;
-        height: 2px;
-        background: linear-gradient(90deg, #8e2a38, #c9a24b);
-        border-radius: 2px;
-        margin-bottom: 14px;
-      }
-      .m-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 15px; }
-      .m-panel-head h2 { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 600; margin: 0; color: #f6efdf; }
-      .m-mono { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #8d8170; }
-      .m-link {
-        background: none;
-        border: none;
-        color: #c9a24b;
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 9.5px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        cursor: pointer;
-        padding: 0;
-      }
-      .m-link:hover { color: #e6cf9a; }
-      .m-quick { display: flex; flex-wrap: wrap; gap: 9px; }
-      .m-quick button {
-        padding: 11px 16px;
-        border-radius: 999px;
-        border: 1px solid rgba(239, 231, 216, 0.14);
-        background: rgba(255, 255, 255, 0.03);
-        color: #e9dfc9;
-        font-family: 'Inter', sans-serif;
-        font-size: 12px;
-        cursor: pointer;
-        transition: 0.18s;
-      }
-      .m-quick button:hover { border-color: rgba(201, 162, 75, 0.55); color: #f6efdf; background: rgba(201, 162, 75, 0.06); }
-      .m-empty { color: #8d8170; font-size: 12.5px; margin: 0; font-style: italic; font-family: 'Playfair Display', serif; }
-
-      .m-lede { color: #b7ab97; font-size: 13.5px; line-height: 1.8; max-width: 760px; margin: 0 0 20px; font-family: 'Inter', sans-serif; }
-      .m-cap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
-      .m-cap {
-        text-align: left;
-        padding: 17px 18px;
-        border-radius: 13px;
-        border: 1px solid rgba(239, 231, 216, 0.11);
-        border-left: 3px solid rgba(142, 42, 56, 0.65);
-        background: rgba(255, 255, 255, 0.025);
-        color: inherit;
-        font: inherit;
-        cursor: pointer;
-        transition: 0.18s;
-      }
-      .m-cap.open { border-left-color: #c9a24b; }
-      .m-cap:hover { transform: translateY(-2px); border-color: rgba(201, 162, 75, 0.45); }
-      .m-cap.locked { opacity: 0.8; }
-      .m-cap-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 11px; }
-      .m-cap-state { font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: #8d8170; }
-      .m-cap.open .m-cap-state { color: #c9a24b; }
-      .m-cap-ic { font-size: 11px; color: #c9a24b; }
-      .m-cap h3 { font-family: 'Playfair Display', serif; font-size: 16.5px; margin: 0 0 6px; color: #f6efdf; font-weight: 600; }
-      .m-cap p { font-size: 12px; line-height: 1.65; color: #a89c87; margin: 0; }
-
-      .m-notif-list { display: flex; flex-direction: column; gap: 10px; }
-      .m-notif {
-        display: grid;
-        grid-template-columns: 96px 1fr;
-        gap: 12px;
-        padding: 13px 15px;
-        border-radius: 12px;
-        border: 1px solid rgba(239, 231, 216, 0.09);
-        background: rgba(255, 255, 255, 0.02);
-      }
-      .m-notif.unread { border-color: rgba(142, 42, 56, 0.55); background: rgba(142, 42, 56, 0.07); }
-      .m-notif-k {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 8.5px;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: #c9a24b;
-        padding-top: 3px;
-      }
-      .m-notif-body b { font-size: 13px; color: #f6efdf; font-weight: 600; }
-      .m-notif-body p { font-size: 12px; color: #b7ab97; margin: 4px 0; line-height: 1.6; }
-      .m-notif-body time { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: #8d8170; }
-      .m-notif-preview { display: flex; flex-direction: column; gap: 10px; }
-
-      .m-chat-log {
-        height: min(52vh, 440px);
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 11px;
-        padding: 4px 2px 14px;
-      }
-      .m-msg { max-width: min(780px, 92%); padding: 13px 15px; border-radius: 12px; border: 1px solid rgba(239, 231, 216, 0.1); border-left: 3px solid rgba(201, 162, 75, 0.55); background: rgba(255, 255, 255, 0.028); }
-      .m-msg.user { align-self: flex-end; border-left: none; border-right: 3px solid rgba(142, 42, 56, 0.7); background: rgba(142, 42, 56, 0.1); }
-      .m-msg-k { font-family: 'JetBrains Mono', monospace; font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: #8d8170; margin-bottom: 6px; }
-      .m-msg-text { font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; color: #ede4cf; font-family: 'Inter', sans-serif; }
-      .m-msg-meta { font-family: 'JetBrains Mono', monospace; font-size: 8px; color: #8d8170; margin-top: 6px; letter-spacing: 0.08em; }
-      .m-chat-form { display: flex; gap: 9px; align-items: flex-end; }
-      .m-chat-form textarea {
-        flex: 1;
-        resize: none;
-        padding: 12px 14px;
-        border-radius: 12px;
-        border: 1px solid rgba(239, 231, 216, 0.14);
-        background: rgba(10, 8, 6, 0.6);
-        color: #f6efdf;
-        font-family: 'Inter', sans-serif;
-        font-size: 13px;
-        outline: none;
-      }
-      .m-chat-form textarea:focus { border-color: rgba(201, 162, 75, 0.55); }
-      .m-send {
-        padding: 11px 20px;
-        border-radius: 12px;
-        border: 1px solid rgba(201, 162, 75, 0.5);
-        background: linear-gradient(180deg, #9a1f2d, #6e1520);
-        color: #f6efdf;
-        font-family: 'Inter', sans-serif;
-        font-size: 11.5px;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        cursor: pointer;
-      }
-      .m-chat-chips, .m-chat-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-      .m-chat-chips button {
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid rgba(239, 231, 216, 0.14);
-        background: none;
-        color: #b7ab97;
-        font-family: 'Inter', sans-serif;
-        font-size: 11px;
-        cursor: pointer;
-      }
-      .m-chat-chips button:hover { color: #f6efdf; border-color: rgba(201, 162, 75, 0.55); }
-
-      .m-grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
-      .m-grid-2 .m-panel { margin-bottom: 0; }
-      .m-dl { margin: 0; display: flex; flex-direction: column; }
-      .m-dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; border-bottom: 1px solid rgba(239, 231, 216, 0.08); padding-bottom: 10px; }
-      .m-dl dt {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 8.5px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: #8d8170;
-      }
-      .m-dl dd { margin: 0; font-size: 12.5px; color: #ece2c8; text-align: right; overflow-wrap: anywhere; font-family: 'Inter', sans-serif; }
-      .m-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-      .m-ok { color: #c9a24b !important; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase; }
-      .m-cta {
-        width: 100%;
-        padding: 13px;
-        border-radius: 12px;
-        border: 1px solid rgba(201, 162, 75, 0.5);
-        background: linear-gradient(180deg, #9a1f2d, #6e1520);
-        color: #f6efdf;
-        font-family: 'Inter', sans-serif;
-        font-size: 11.5px;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        cursor: pointer;
-        margin-bottom: 12px;
-      }
-      .m-plan-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-      .m-plan {
-        padding: 16px;
-        border-radius: 13px;
-        border: 1px solid rgba(239, 231, 216, 0.12);
-        border-top: 2px solid rgba(239, 231, 216, 0.28);
-        background: rgba(255, 255, 255, 0.025);
-        display: flex;
-        flex-direction: column;
-        gap: 5px;
-      }
-      .m-plan.m-plan-best { border-top-color: #8e2a38; background: rgba(142, 42, 56, 0.07); }
-      .m-plan b { font-family: 'Playfair Display', serif; font-size: 25px; color: #f6efdf; }
-      .m-plan-cad { font-family: 'JetBrains Mono', monospace; font-size: 8.5px; color: #8d8170; letter-spacing: 0.12em; text-transform: uppercase; }
-      .m-plan p { font-size: 11.5px; color: #a89c87; line-height: 1.55; margin: 8px 0 12px; }
-      .m-plan-btn {
-        margin-top: auto;
-        padding: 10px;
-        border-radius: 10px;
-        border: 1px solid rgba(239, 231, 216, 0.18);
-        background: rgba(255, 255, 255, 0.03);
-        color: #ece2c8;
-        font-family: 'Inter', sans-serif;
-        font-size: 11.5px;
-        cursor: pointer;
-      }
-      .m-plan-btn:hover { background: rgba(201, 162, 75, 0.12); border-color: rgba(201, 162, 75, 0.55); color: #f6efdf; }
-      .m-member-note { font-size: 12.5px; line-height: 1.75; color: #d8cbae; margin: 0 0 14px; font-family: 'Inter', sans-serif; }
-      .m-fine { font-size: 10px; line-height: 1.7; color: #8d8170; margin: 12px 0 0; }
-
-      #memberToast {
-        position: fixed;
-        left: 50%;
-        bottom: 24px;
-        transform: translate(-50%, 16px);
-        padding: 12px 18px;
-        border-radius: 12px;
-        border: 1px solid rgba(201, 162, 75, 0.45);
-        background: rgba(22, 17, 13, 0.98);
-        color: #f6efdf;
-        font-size: 12.5px;
-        opacity: 0;
-        pointer-events: none;
-        transition: 0.22s;
-        z-index: 60;
-      }
-      #memberToast.show { opacity: 1; transform: translate(-50%, 0); }
-
-      @media (max-width: 900px) {
-        .m-shell { grid-template-columns: 1fr; }
-        .m-side { position: relative; height: auto; flex-direction: column; border-right: none; border-bottom: 1px solid rgba(239, 231, 216, 0.09); }
-        .m-nav { flex-direction: row; overflow-x: auto; }
-        .m-nav-btn { white-space: nowrap; width: auto; }
-        .m-side-plan, .m-side-foot { display: none; }
-        .m-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      }
-    </style>
   </body>
 </html>

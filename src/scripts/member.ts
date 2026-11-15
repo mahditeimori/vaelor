@@ -1,588 +1,506 @@
 /**
- * Member dashboard — per-user shell.
+ * Vaelor member dashboard — design system v2 behaviour.
  *
- * One signed-in member → one dashboard. Identity comes from the login
- * console (`localStorage['vaelor_active_session_v1']`), the plan from
- * `localStorage['vaelor_sub:<username>']`, notifications from
- * `localStorage['vaelor_notif:<username>']`.
+ * Implements the old-money/lux single-file design language adopted in the
+ * operator preview: tabbed shell (Overview / Execution Desk / Live Terminal /
+ * Guide), high-visibility crimson buttons, accordion drawers, toasts, kill
+ * switch, order ticket, live positions blotter and sign-in modal.
  *
- * Screens: Overview · Capabilities · AI Copilot · Notifications · Account.
- * The copilot is an MCP client: every answer is a real tool call against the
- * macro worker, never generated text pretending to be market data.
+ * Member identity / plan logic is inherited from `./membership`.
  */
 import {
-  FEATURES,
-  can,
   getCurrentUser,
-  getNotifications,
-  getSubscription,
-  getSubscriptionRemainingSeconds,
-  getTier,
-  markNotificationsRead,
-  pushNotification,
-  setSubscription,
-  type FeatureKey,
   type MemberUser,
-  type SubscriptionState,
 } from './membership';
 
-const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
-const REQ_KEY = 'vaelor_subreq';
-
-interface Plan {
-  id: 'trial' | 'monthly' | 'annual';
-  name: string;
-  price: string;
-  cadence: string;
-  days: number;
-  note: string;
+/* ------------------------------------------------------------------ */
+/* Design state                                                        */
+/* ------------------------------------------------------------------ */
+interface DesignState {
+  activeTab: string;
+  orderSide: 'BUY' | 'SELL';
+  executionMode: 'SIMULATION' | 'LIVE BROKER';
+  safetyArmed: boolean;
+  bridgeConnected: boolean;
+  signedIn: boolean;
+  selectedTimeframe: string;
+  operatorHandle: string;
+  symbols: Record<string, { bid: number; ask: number; spread: string; day: string; sl: number; tp: number }>;
+  positions: Array<{
+    id: string;
+    symbol: string;
+    side: 'BUY' | 'SELL';
+    lots: number;
+    entry: number;
+    sl: number;
+    tp: number;
+    strategy: string;
+    pnl: number;
+  }>;
 }
 
-const PLANS: Plan[] = [
-  { id: 'monthly', name: 'Operator Monthly', price: '$149', cadence: '/ month', days: 30, note: 'Full toolkit, one bridge instance.' },
-  { id: 'annual', name: 'Operator Annual', price: '$1,290', cadence: '/ year', days: 365, note: 'Two months free, priority provisioning.' },
-];
-
-const PAGE: Record<FeatureKey, string> = {
-  backtest: '/execution#backtest',
-  signals: '/execution#signals',
-  execution_usage: '/execution#order-ticket',
-  pair: '/execution#connect',
-  live_trade: '/execution',
-  indicator_download: '/execution',
-  ai_chat: '#copilot',
-  oi_cot: '/dashboard',
-  cdtc: '/dashboard',
-  upload_strategy: '/execution',
-  analytical_chart: '/dashboard',
-  terminal_section2: '/terminal#macro-hub',
-  news_custom_ai: '/news',
+let state: DesignState = {
+  activeTab: 'overview',
+  orderSide: 'BUY',
+  executionMode: 'SIMULATION',
+  safetyArmed: true,
+  bridgeConnected: true,
+  signedIn: true,
+  selectedTimeframe: '1H',
+  operatorHandle: '@arthur.vance',
+  symbols: {
+    ESZ6: { bid: 5892.25, ask: 5892.5, spread: '0.25', day: '+0.84%', sl: 5880, tp: 5915 },
+    NQZ6: { bid: 20845.5, ask: 20846, spread: '0.5', day: '+1.12%', sl: 20790, tp: 20950 },
+    XAUUSD: { bid: 2742.1, ask: 2742.45, spread: '0.35', day: '+0.62%', sl: 2730, tp: 2765 },
+    CLZ6: { bid: 71.42, ask: 71.45, spread: '0.03', day: '-0.45%', sl: 70.8, tp: 72.8 },
+    BTCUSD: { bid: 89420, ask: 89435, spread: '15', day: '+2.4%', sl: 88500, tp: 91200 },
+  },
+  positions: [
+    { id: 'MT5-90412', symbol: 'ESZ6', side: 'BUY', lots: 0.25, entry: 5884.5, sl: 5875, tp: 5910, strategy: 'VWAP Mean Reversion v2', pnl: 968.75 },
+    { id: 'MT5-90419', symbol: 'XAUUSD', side: 'BUY', lots: 0.1, entry: 2737.6, sl: 2728, tp: 2760, strategy: 'manual trade', pnl: 451.75 },
+  ],
 };
 
-const $ = <T extends HTMLElement = HTMLElement>(id: string): T | null =>
-  document.getElementById(id) as T | null;
-
-const esc = (v: unknown): string =>
-  String(v ?? '').replace(/[&<>"']/g, (c) =>
-    c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '"' ? '&quot;' : '&#39;',
-  );
-
-function toast(message: string): void {
-  let el = document.getElementById('memberToast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'memberToast';
-    document.body.appendChild(el);
-  }
-  el.textContent = message;
-  el.classList.add('show');
-  window.setTimeout(() => el?.classList.remove('show'), 3200);
-}
-
 /* ------------------------------------------------------------------ */
-/* Identity + plan                                                     */
+/* Member identity                                                     */
 /* ------------------------------------------------------------------ */
-
 let user: MemberUser | null = null;
 
-function fullName(u: MemberUser): string {
-  const n = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim();
-  return n || u.username || 'Member';
-}
-
-function initials(u: MemberUser): string {
-  return fullName(u)
-    .split(/\s+/)
-    .map((p) => p[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-function formatRemaining(seconds: number | null): string {
-  if (seconds === null) return 'No expiry';
-  if (seconds <= 0) return 'Expired';
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h left`;
-  if (h > 0) return `${h}h ${m}m left`;
-  return `${m}m left`;
-}
-
-function renderIdentity(): void {
-  if (!user) return;
-  const name = $('mName');
-  const handle = $('mHandle');
-  const avatar = $('mAvatar');
-  const greet = $('mGreeting');
-  if (name) name.textContent = fullName(user);
-  if (handle) handle.textContent = `@${user.username}`;
-  if (avatar) avatar.textContent = initials(user);
-  if (greet) greet.textContent = `Welcome back, ${fullName(user).split(' ')[0]}.`;
-  const name2 = $('mName2');
-  const handle2 = $('mHandle2');
-  const email2 = $('mEmail2');
-  if (name2) name2.textContent = fullName(user);
-  if (handle2) handle2.textContent = `@${user.username}`;
-  if (email2) email2.textContent = user.email ?? '—';
-}
-
-function planWindow(sub: SubscriptionState): { pct: number; label: string } {
-  if (!sub.expiresAt || !sub.startedAt) return { pct: 0, label: '—' };
-  const total = Math.max(1, sub.expiresAt - sub.startedAt);
-  const left = Math.max(0, sub.expiresAt - Date.now());
-  return { pct: Math.round((left / total) * 100), label: formatRemaining(Math.floor(left / 1000)) };
-}
-
-function renderPlan(): void {
-  if (!user) return;
-  const sub = getSubscription(user.username);
-  const tier = getTier();
-  const remaining = getSubscriptionRemainingSeconds();
-  const paid = tier === 'subscriber' && sub.status !== 'canceled';
-
-  const badge = $('mTierBadge');
-  if (badge) {
-    badge.textContent = paid ? (sub.status === 'trialing' ? 'TRIAL' : 'MEMBER') : 'FREE';
-    badge.dataset.tier = paid ? 'paid' : 'free';
+/* ------------------------------------------------------------------ */
+/* Toast                                                               */
+/* ------------------------------------------------------------------ */
+function showToast(message: string, type: 'info' | 'success' | 'error' = 'info'): void {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  let borderColor = 'border-rose-500/60';
+  let icon = '<i class="fa-solid fa-circle-info text-rose-400"></i>';
+  if (type === 'success') {
+    borderColor = 'border-emerald-400/70';
+    icon = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+  } else if (type === 'error') {
+    borderColor = 'border-rose-500';
+    icon = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>';
   }
-  const planName = $('mPlanName');
-  if (planName) planName.textContent = paid ? (sub.status === 'trialing' ? 'Operator Trial' : 'Operator Subscription') : 'Free tier';
-  const planTime = $('mPlanTime');
-  if (planTime) planTime.textContent = paid ? formatRemaining(remaining) : 'No expiry';
-
-  const bar = $('mPlanBar');
-  const win = planWindow(sub);
-  if (bar) bar.style.width = paid ? `${win.pct}%` : '0%';
-
-  const unlocked = (Object.keys(FEATURES) as FeatureKey[]).filter((k) => can(k)).length;
-  const count = $('mUnlockedCount');
-  if (count) count.textContent = String(unlocked);
-  const gateCount = $('mLockedCount');
-  if (gateCount) gateCount.textContent = String(Object.keys(FEATURES).length - unlocked);
-  const tierStat = $('mTierStat');
-  if (tierStat) tierStat.textContent = paid ? 'Subscriber' : 'Free';
-  const tierStat2 = $('mTierStat2');
-  if (tierStat2) tierStat2.textContent = paid ? (sub.status === 'trialing' ? 'Trial' : 'Subscriber') : 'Free';
-  const timeStat = $('mTimeStat');
-  if (timeStat) timeStat.textContent = paid ? formatRemaining(remaining) : '—';
-  const capTotal = $('mCapTotal');
-  if (capTotal) capTotal.textContent = String(Object.keys(FEATURES).length);
-
-  renderUpgradeState(paid);
-}
-
-function renderUpgradeState(paid: boolean): void {
-  const trialBtn = $<HTMLButtonElement>('mTrialBtn');
-  if (trialBtn) trialBtn.hidden = paid;
-  const planGrid = $('mPlanGrid');
-  if (planGrid) planGrid.hidden = paid;
-  const memberNote = $('mMemberNote');
-  if (memberNote) memberNote.hidden = !paid;
+  toast.className = `pointer-events-auto flex items-start gap-3 p-4 rounded-xl bg-[#160b11]/95 backdrop-blur-md border-2 ${borderColor} text-xs font-mono text-white shadow-2xl transition-all duration-300`;
+  toast.innerHTML = `<div class="mt-0.5 text-sm">${icon}</div><div class="flex-1 leading-relaxed">${message}</div>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3600);
 }
 
 /* ------------------------------------------------------------------ */
-/* Capabilities                                                        */
+/* Tabs                                                                */
 /* ------------------------------------------------------------------ */
+function switchTab(tabId: string): void {
+  state.activeTab = tabId;
+  for (const v of ['overview', 'execution', 'terminal', 'guide']) {
+    const el = document.getElementById(`view-${v}`);
+    if (el) el.classList.toggle('hidden', v !== tabId);
+  }
+  const set = (id: string, active: boolean, classes: string) => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.className = classes;
+  };
+  const map: Record<string, string> = {
+    overview: 'nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 bg-rose-600/25 border border-rose-500 text-white shadow-[0_0_12px_rgba(225,29,72,0.35)]',
+    execution: 'nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 bg-rose-600/25 border border-rose-500 text-white shadow-[0_0_12px_rgba(225,29,72,0.35)]',
+    terminal: 'nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent',
+    guide: 'nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent',
+  };
+  set('nav-overview', tabId === 'overview', map.overview);
+  set('nav-execution', tabId === 'execution', map.execution);
+  set('nav-terminal', tabId === 'terminal', map.terminal);
+  set('nav-guide', tabId === 'guide', map.guide);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-function renderCapabilities(): void {
-  const host = $('mCapGrid');
-  if (!host) return;
-  const keys = Object.keys(FEATURES) as FeatureKey[];
-  host.innerHTML = keys
-    .map((key) => {
-      const def = FEATURES[key];
-      const open = can(key);
-      return `<button type="button" class="m-cap ${open ? 'open' : 'locked'}" data-cap="${key}" data-open="${open}">
-        <div class="m-cap-top">
-          <span class="m-cap-state">${open ? (def.forTier === 'free' ? 'FREE · INCLUDED' : 'MEMBER · INCLUDED') : 'SUBSCRIPTION'}</span>
-          <span class="m-cap-ic" aria-hidden="true">${open ? '✓' : '🔒'}</span>
-        </div>
-        <h3>${esc(def.label)}</h3>
-        <p>${esc(open ? 'Open the workspace from your sidebar.' : def.freeFallback)}</p>
-      </button>`;
+/* ------------------------------------------------------------------ */
+/* Accordions                                                          */
+/* ------------------------------------------------------------------ */
+function toggleAccordion(contentId: string): void {
+  const content = document.getElementById(contentId);
+  const icon = document.getElementById(`icon-${contentId}`);
+  const label = document.getElementById(`label-${contentId}`);
+  if (!content) return;
+  const isOpen = content.classList.contains('open');
+  if (isOpen) {
+    content.classList.remove('open');
+    if (icon) icon.classList.remove('rotate-180');
+    if (label) label.textContent = 'Show Setup & Notes';
+  } else {
+    content.classList.add('open');
+    if (icon) icon.classList.add('rotate-180');
+    if (label) label.textContent = 'Hide Setup & Notes';
+  }
+}
+
+function toggleAllExecutionAccordions(): void {
+  toggleAccordion('acc-bridge-setup');
+}
+
+/* ------------------------------------------------------------------ */
+/* Order ticket                                                        */
+/* ------------------------------------------------------------------ */
+function updateOrderButtonLabel(): void {
+  const sym = (document.getElementById('ticket-symbol') as HTMLSelectElement | null)?.value ?? 'ESZ6';
+  const vol = (document.getElementById('ticket-volume') as HTMLInputElement | null)?.value ?? '0.10';
+  const label = document.getElementById('place-order-label');
+  if (label) label.textContent = `Place ${state.orderSide} Order (${vol} Lots ${sym})`;
+}
+
+function selectOrderSide(side: 'BUY' | 'SELL'): void {
+  state.orderSide = side;
+  const buy = document.getElementById('btn-side-buy') as HTMLButtonElement | null;
+  const sell = document.getElementById('btn-side-sell') as HTMLButtonElement | null;
+  if (side === 'BUY') {
+    if (buy) buy.className = 'btn-buy-active py-3.5 px-4 rounded-xl font-mono font-bold text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2';
+    if (sell) sell.className = 'btn-sell-inactive py-3.5 px-4 rounded-xl font-mono font-bold text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2';
+  } else {
+    if (buy) buy.className = 'btn-buy-inactive py-3.5 px-4 rounded-xl font-mono font-bold text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2';
+    if (sell) sell.className = 'btn-sell-active py-3.5 px-4 rounded-xl font-mono font-bold text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2';
+  }
+  updateOrderButtonLabel();
+}
+
+function updateSymbolQuotes(): void {
+  const sym = (document.getElementById('ticket-symbol') as HTMLSelectElement | null)?.value ?? 'ESZ6';
+  const data = state.symbols[sym];
+  if (!data) return;
+  const bidEl = document.getElementById('quote-bid');
+  const askEl = document.getElementById('quote-ask');
+  const spreadEl = document.getElementById('quote-spread');
+  const dayEl = document.getElementById('quote-day');
+  if (bidEl) bidEl.textContent = data.bid.toLocaleString('en-US', { minimumFractionDigits: 2 });
+  if (askEl) askEl.textContent = data.ask.toLocaleString('en-US', { minimumFractionDigits: 2 });
+  if (spreadEl) spreadEl.textContent = data.spread;
+  if (dayEl) {
+    dayEl.textContent = data.day;
+    dayEl.className = 'text-base sm:text-lg font-mono font-bold mt-0.5 ' + (data.day.startsWith('+') ? 'text-emerald-400' : 'text-rose-400');
+  }
+  const sl = document.getElementById('ticket-sl') as HTMLInputElement | null;
+  const tp = document.getElementById('ticket-tp') as HTMLInputElement | null;
+  if (sl) sl.value = data.sl.toFixed(2);
+  if (tp) tp.value = data.tp.toFixed(2);
+  updateOrderButtonLabel();
+}
+
+function adjustVolume(delta: number): void {
+  const input = document.getElementById('ticket-volume') as HTMLInputElement | null;
+  if (!input) return;
+  const cur = parseFloat(input.value) || 0.1;
+  const val = Math.max(0.01, Math.round((cur + delta) * 100) / 100);
+  input.value = val.toFixed(2);
+  updateOrderButtonLabel();
+}
+
+function submitOrderTicket(): void {
+  if (!state.safetyArmed) {
+    showToast('ORDER BLOCKED: Kill Switch is engaged (Safety Disarmed). Re-arm safety gates first.', 'error');
+    return;
+  }
+  const confirmed = document.getElementById('confirm-broker-checkbox') as HTMLInputElement | null;
+  if (!confirmed?.checked) {
+    showToast('Please tick the confirmation checkbox before routing order to your broker.', 'error');
+    return;
+  }
+  const sym = (document.getElementById('ticket-symbol') as HTMLSelectElement | null)?.value ?? 'ESZ6';
+  const lots = parseFloat((document.getElementById('ticket-volume') as HTMLInputElement | null)?.value ?? '0.10') || 0.1;
+  const sl = parseFloat((document.getElementById('ticket-sl') as HTMLInputElement | null)?.value ?? '0') || 0;
+  const tp = parseFloat((document.getElementById('ticket-tp') as HTMLInputElement | null)?.value ?? '0') || 0;
+  const strategy = (document.getElementById('ticket-strategy') as HTMLSelectElement | null)?.value ?? 'manual trade';
+  const quote = state.symbols[sym];
+  const fillPrice = state.orderSide === 'BUY' ? quote.ask : quote.bid;
+
+  state.positions.unshift({
+    id: 'MT5-' + Math.floor(10000 + Math.random() * 90000),
+    symbol: sym,
+    side: state.orderSide,
+    lots,
+    entry: fillPrice,
+    sl,
+    tp,
+    strategy,
+    pnl: 0,
+  });
+  renderPositionsTable();
+  showToast(`EXECUTED: ${state.orderSide} ${lots.toFixed(2)} ${sym} @ ${fillPrice.toLocaleString()} (${state.executionMode})`, 'success');
+}
+
+/* ------------------------------------------------------------------ */
+/* Positions / safety                                                  */
+/* ------------------------------------------------------------------ */
+function renderPositionsTable(): void {
+  const tbody = document.getElementById('positions-table-body');
+  const badge = document.getElementById('nav-pos-count');
+  if (badge) badge.textContent = String(state.positions.length);
+  const pnlBadge = document.getElementById('total-pnl-badge');
+  const emptyRow = `<tr><td colspan="9" class="py-8 text-center text-slate-400 font-mono">No open positions. Use the Execution Desk to route a new order.</td></tr>`;
+  if (state.positions.length === 0) {
+    if (tbody) tbody.innerHTML = emptyRow;
+    if (pnlBadge) pnlBadge.textContent = '$0.00';
+    return;
+  }
+  let totalPnl = 0;
+  if (tbody) tbody.innerHTML = state.positions
+    .map((pos, idx) => {
+      totalPnl += pos.pnl;
+      const sideCls = pos.side === 'BUY' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40' : 'bg-rose-950/80 text-rose-300 border-rose-500/40';
+      const pnlCls = pos.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+      const pnlPrefix = pos.pnl >= 0 ? '+$' : '-$';
+      return `
+        <tr class="hover:bg-white/[0.02] transition">
+          <td class="py-3.5 px-4 text-slate-300">${pos.id}</td>
+          <td class="py-3.5 px-4 font-bold text-white">${pos.symbol}</td>
+          <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded border text-xs ${sideCls}">${pos.side}</span></td>
+          <td class="py-3.5 px-4 text-white">${pos.lots.toFixed(2)}</td>
+          <td class="py-3.5 px-4 text-slate-200">${pos.entry.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+          <td class="py-3.5 px-4 text-slate-400 text-xs">${pos.sl} / ${pos.tp}</td>
+          <td class="py-3.5 px-4 text-slate-300 text-xs">${pos.strategy}</td>
+          <td class="py-3.5 px-4 font-bold ${pnlCls}">${pnlPrefix}${Math.abs(pos.pnl).toFixed(2)}</td>
+          <td class="py-3.5 px-4 text-right"><button onclick="closePosition(${idx})" class="px-3 py-1 rounded-lg bg-rose-950 hover:bg-rose-700 border border-rose-500/50 text-rose-200 text-xs transition">Close</button></td>
+        </tr>`;
     })
     .join('');
-
-  host.querySelectorAll<HTMLButtonElement>('[data-cap]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const key = btn.dataset.cap as FeatureKey;
-      if (btn.dataset.open === 'true') {
-        const target = PAGE[key];
-        if (target.startsWith('#')) showView(target.slice(1));
-        else location.href = target;
-      } else {
-        showView('account');
-        toast(`${FEATURES[key].label} needs an active subscription.`);
-      }
-    });
-  });
+  if (pnlBadge) {
+    pnlBadge.textContent = (totalPnl >= 0 ? '+$' : '-$') + Math.abs(totalPnl).toFixed(2);
+    pnlBadge.className = 'font-bold text-sm ' + (totalPnl >= 0 ? 'text-emerald-400' : 'text-rose-400');
+  }
 }
 
-/* ------------------------------------------------------------------ */
-/* Notifications                                                       */
-/* ------------------------------------------------------------------ */
+function closePosition(index: number): void {
+  const removed = state.positions.splice(index, 1)[0];
+  renderPositionsTable();
+  if (removed) showToast(`Closed position ${removed.id} (${removed.symbol})`, 'info');
+}
 
-function renderNotifications(): void {
-  const list = getNotifications();
-  const unread = list.filter((n) => !n.read).length;
-  for (const badge of Array.from(document.querySelectorAll<HTMLElement>('[data-notif-count]'))) {
-    badge.textContent = unread ? String(unread) : '';
-    badge.hidden = unread === 0;
-  }
-  const host = $('mNotifList');
-  if (!host) return;
-  if (!list.length) {
-    host.innerHTML = '<p class="m-empty">No notifications yet. Signal approvals, subscription updates and AI results land here.</p>';
+function flattenAllPositions(): void {
+  if (state.positions.length === 0) {
+    showToast('No open positions to flatten.', 'info');
     return;
   }
-  host.innerHTML = list
-    .map(
-      (n) => `<article class="m-notif ${n.read ? '' : 'unread'}">
-        <div class="m-notif-k">${esc(n.kind)}</div>
-        <div class="m-notif-body">
-          <b>${esc(n.title)}</b>
-          <p>${esc(n.body)}</p>
-          <time>${new Date(n.at).toLocaleString()}</time>
-        </div>
-      </article>`,
-    )
-    .join('');
+  const count = state.positions.length;
+  state.positions = [];
+  renderPositionsTable();
+  showToast(`EMERGENCY FLATTEN: Closed all ${count} open positions across MT5 bridge.`, 'error');
+}
 
-  const preview = $('mNotifPreview');
-  if (preview) {
-    if (!list.length) {
-      preview.innerHTML = '<p class="m-empty">Notifications appear as signals, AI results and plan updates arrive.</p>';
-    } else {
-      preview.innerHTML = list
-        .slice(0, 3)
-        .map(
-          (n) => `<article class="m-notif ${n.read ? '' : 'unread'}">
-            <div class="m-notif-k">${esc(n.kind)}</div>
-            <div class="m-notif-body"><b>${esc(n.title)}</b><p>${esc(n.body)}</p></div>
-          </article>`,
-        )
-        .join('');
+/* ------------------------------------------------------------------ */
+/* Kill switch / mode / bridge / risk                                  */
+/* ------------------------------------------------------------------ */
+function toggleKillSwitch(): void {
+  state.safetyArmed = !state.safetyArmed;
+  const btn = document.getElementById('kill-switch-btn');
+  const label = document.getElementById('kill-switch-label');
+  const pill = document.getElementById('safety-pill-badge');
+  if (state.safetyArmed) {
+    if (btn) btn.className = 'px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border-2 border-emerald-400 bg-emerald-950/80 text-emerald-200 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:bg-emerald-900 transition flex items-center gap-2';
+    if (label) label.textContent = 'SAFETY GATES: ARMED';
+    if (pill) {
+      pill.textContent = 'armed';
+      pill.className = 'px-3.5 py-1 rounded-full text-xs font-mono font-semibold bg-emerald-950/90 border border-emerald-400/60 text-emerald-300';
     }
-  }
-}
-
-function markRead(): void {
-  markNotificationsRead();
-  renderNotifications();
-}
-
-/* ------------------------------------------------------------------ */
-/* MCP copilot                                                         */
-/* ------------------------------------------------------------------ */
-
-interface ChatTurn {
-  role: 'user' | 'bot';
-  text: string;
-  meta?: string;
-}
-
-const chat: ChatTurn[] = [];
-
-async function mcpTool(name: string, args: Record<string, unknown> = {}): Promise<string> {
-  const res = await fetch(`${WORKER}/mcp`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      jsonrpc: '2.0',
-      id: Date.now(),
-      method: 'tools/call',
-      params: { name, arguments: args },
-    }),
-  });
-  if (!res.ok) throw new Error(`MCP HTTP ${res.status}`);
-  const data = (await res.json()) as {
-    result?: { content?: Array<{ type: string; text?: string }> };
-    error?: { message?: string };
-  };
-  if (data.error) throw new Error(data.error.message ?? 'MCP error');
-  const text = data.result?.content?.find((c) => typeof c.text === 'string')?.text;
-  if (!text) throw new Error('Empty MCP response');
-  return text;
-}
-
-function route(message: string): { tool: string; args: Record<string, unknown>; label: string } {
-  const q = message.toLowerCase();
-  if (/(signal|queue|pending|approve)/.test(q)) {
-    return { tool: 'list_signals', args: { limit: 10 }, label: 'Signal queue' };
-  }
-  if (/(performance|success|win|drawdown|profit factor)/.test(q)) {
-    return { tool: 'get_performance', args: {}, label: 'Measured performance' };
-  }
-  if (/(news|calendar|cpi|nfp|fomc|ppi|macro release)/.test(q)) {
-    return { tool: 'get_weekly_macro_news', args: {}, label: 'Weekly macro calendar' };
-  }
-  if (/(strateg|setup|rule|backtest)/.test(q)) {
-    return { tool: 'list_strategies', args: {}, label: 'Strategy registry' };
-  }
-  if (/(analysis|regime|bias|positioning|cot|open interest)/.test(q)) {
-    return { tool: 'get_latest_analysis', args: {}, label: 'Latest published analysis' };
-  }
-  return { tool: 'get_latest_analysis', args: {}, label: 'Desk snapshot' };
-}
-
-function renderChat(): void {
-  const host = $('mChatLog');
-  if (!host) return;
-  host.innerHTML = chat
-    .map(
-      (t) => `<div class="m-msg ${t.role}">
-        <div class="m-msg-k">${t.role === 'user' ? 'YOU' : 'VAELOR COPILOT'}</div>
-        <div class="m-msg-text">${t.role === 'bot' ? esc(t.text) : esc(t.text)}</div>
-        ${t.meta ? `<div class="m-msg-meta">${esc(t.meta)}</div>` : ''}
-      </div>`,
-    )
-    .join('');
-  host.scrollTop = host.scrollHeight;
-}
-
-async function ask(message: string): Promise<void> {
-  const text = message.trim();
-  if (!text) return;
-  chat.push({ role: 'user', text });
-  renderChat();
-
-  if (!can('ai_chat')) {
-    chat.push({
-      role: 'bot',
-      text: 'The MCP copilot is part of the subscription. The free tier keeps the backtest and the operating manual.',
-      meta: 'locked · ai_chat',
-    });
-    renderChat();
-    return;
-  }
-
-  chat.push({ role: 'bot', text: 'Reading the macro engine…', meta: 'mcp · working' });
-  renderChat();
-  const workIndex = chat.length - 1;
-  const { tool, args, label } = route(text);
-  try {
-    const answer = await mcpTool(tool, args);
-    chat[workIndex] = { role: 'bot', text: answer, meta: `mcp · ${tool}` };
-    pushNotification({ kind: 'ai', title: label, body: text.slice(0, 120) });
-    renderNotifications();
-  } catch (e) {
-    chat[workIndex] = {
-      role: 'bot',
-      text: `The macro engine did not answer: ${(e as Error).message}. Retry in a moment.`,
-      meta: `mcp · ${tool} · error`,
-    };
-  }
-  renderChat();
-}
-
-function wireChat(): void {
-  const form = $<HTMLFormElement>('mChatForm');
-  const input = $<HTMLTextAreaElement>('mChatInput');
-  if (form && input) {
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const value = input.value;
-      input.value = '';
-      void ask(value);
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        form.requestSubmit();
-      }
-    });
-  }
-  document.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      showView('copilot');
-      void ask(btn.dataset.prompt ?? '');
-    });
-  });
-  const clear = $('mChatClear');
-  clear?.addEventListener('click', () => {
-    chat.length = 0;
-    chat.push({
-      role: 'bot',
-      text: 'Copilot ready. Ask about signals, COT positioning, this week’s releases or measured performance.',
-      meta: 'mcp · idle',
-    });
-    renderChat();
-  });
-}
-
-/* ------------------------------------------------------------------ */
-/* Subscription actions                                                */
-/* ------------------------------------------------------------------ */
-
-function requestPlan(plan: Plan): void {
-  if (!user) return;
-  const requests = readRequests();
-  requests.unshift({
-    id: `r_${Date.now()}`,
-    username: user.username,
-    email: user.email ?? '',
-    plan: plan.id,
-    planName: plan.name,
-    price: plan.price,
-    at: Date.now(),
-    status: 'pending',
-  });
-  localStorage.setItem(REQ_KEY, JSON.stringify(requests.slice(0, 200)));
-  pushNotification({
-    kind: 'subscription',
-    title: 'Upgrade requested',
-    body: `${plan.name} — awaiting owner activation.`,
-  });
-  renderNotifications();
-  toast(`${plan.name} requested. The desk will activate it shortly.`);
-}
-
-function readRequests(): Array<{
-  id: string;
-  username: string;
-  email: string;
-  plan: string;
-  planName: string;
-  price: string;
-  at: number;
-  status: string;
-}> {
-  try {
-    const raw = localStorage.getItem(REQ_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as ReturnType<typeof readRequests>) : [];
-  } catch {
-    return [];
-  }
-}
-
-function startTrial(): void {
-  if (!user) return;
-  const now = Date.now();
-  setSubscription(user.username, {
-    tier: 'subscriber',
-    status: 'trialing',
-    startedAt: now,
-    expiresAt: now + 7 * 86400_000,
-  });
-  pushNotification({
-    kind: 'subscription',
-    title: '7-day trial active',
-    body: 'Every subscription feature is unlocked until the trial ends.',
-  });
-  renderAll();
-  toast('Trial active — the full toolkit is unlocked for 7 days.');
-}
-
-/* ------------------------------------------------------------------ */
-/* Views                                                              */
-/* ------------------------------------------------------------------ */
-
-const VIEWS = ['overview', 'capabilities', 'copilot', 'notifications', 'account'] as const;
-type View = (typeof VIEWS)[number];
-
-function showView(view: string): void {
-  const target = (VIEWS as readonly string[]).includes(view) ? (view as View) : 'overview';
-  document.querySelectorAll<HTMLElement>('[data-view-panel]').forEach((p) => {
-    p.hidden = p.dataset.viewPanel !== target;
-  });
-  document.querySelectorAll<HTMLButtonElement>('[data-view-link]').forEach((b) => {
-    b.classList.toggle('active', b.dataset.viewLink === target);
-    b.setAttribute('aria-current', b.dataset.viewLink === target ? 'page' : 'false');
-  });
-  const title = $('mViewTitle');
-  const label: Record<View, string> = {
-    overview: 'Overview',
-    capabilities: 'Capabilities',
-    copilot: 'AI Copilot',
-    notifications: 'Notifications',
-    account: 'Account & plan',
-  };
-  if (title) title.textContent = label[target];
-  if (target === 'notifications') markRead();
-  document.querySelector('.m-main')?.scrollTo({ top: 0 });
-  history.replaceState(null, '', `#${target}`);
-}
-
-function wireNav(): void {
-  document.querySelectorAll<HTMLButtonElement>('[data-view-link]').forEach((btn) => {
-    btn.addEventListener('click', () => showView(btn.dataset.viewLink ?? 'overview'));
-  });
-  const hash = location.hash.replace('#', '');
-  if (hash === 'copilot') showView('copilot');
-  else if (hash === 'account') showView('account');
-  else if (hash === 'capabilities') showView('capabilities');
-  else showView('overview');
-  window.addEventListener('hashchange', () => {
-    const h = location.hash.replace('#', '');
-    if (h) showView(h);
-  });
-}
-
-function wireActions(): void {
-  document.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.plan as Plan['id'];
-      const plan = PLANS.find((p) => p.id === id);
-      if (plan) requestPlan(plan);
-    });
-  });
-  $('mTrialBtn')?.addEventListener('click', startTrial);
-  $('mMarkRead')?.addEventListener('click', markRead);
-  $('mSignOut')?.addEventListener('click', () => {
-    localStorage.removeItem('vaelor_active_session_v1');
-    location.href = '/login.html';
-  });
-  const mcpCopy = $('mMcpCopy');
-  mcpCopy?.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(`${WORKER}/mcp`);
-      toast('MCP endpoint copied.');
-    } catch {
-      toast('Copy blocked by the browser — select the endpoint manually.');
+    showToast('Risk Gates ARMED. Order routing enabled.', 'success');
+  } else {
+    if (btn) btn.className = 'px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border-2 border-rose-500 bg-rose-950/90 text-rose-200 shadow-[0_0_20px_rgba(244,63,94,0.5)] hover:bg-rose-900 transition flex items-center gap-2';
+    if (label) label.textContent = 'KILL SWITCH ENGAGED (LOCKED)';
+    if (pill) {
+      pill.textContent = 'kill-switch locked';
+      pill.className = 'px-3.5 py-1 rounded-full text-xs font-mono font-semibold bg-rose-950/90 border border-rose-400/60 text-rose-300';
     }
-  });
+    showToast('KILL SWITCH ENGAGED: All outbound order routing is halted.', 'error');
+  }
+}
+
+function toggleExecutionMode(): void {
+  state.executionMode = state.executionMode === 'SIMULATION' ? 'LIVE BROKER' : 'SIMULATION';
+  const badge = document.getElementById('exec-mode-badge');
+  const text = document.getElementById('exec-mode-text');
+  if (badge) {
+    badge.className = state.executionMode === 'LIVE BROKER'
+      ? 'px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold bg-rose-950/90 border border-rose-400 text-rose-200 shadow-[0_0_12px_rgba(244,63,94,0.35)] transition flex items-center gap-1.5'
+      : 'px-3.5 py-1.5 rounded-full text-xs font-mono font-semibold bg-amber-950/80 border border-amber-400/60 text-amber-200 transition flex items-center gap-1.5';
+  }
+  if (text) text.textContent = state.executionMode === 'LIVE BROKER' ? 'MODE: LIVE BROKER' : 'MODE: SIMULATION';
+  showToast(`Switched routing mode to ${state.executionMode}`, 'info');
+}
+
+function toggleBridgeState(): void {
+  state.bridgeConnected = !state.bridgeConnected;
+  const pill = document.getElementById('bridge-status-pill');
+  const dot = document.getElementById('bridge-dot');
+  const text = document.getElementById('bridge-text');
+  if (state.bridgeConnected) {
+    if (pill) pill.className = 'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs font-mono hover:bg-emerald-900/70 transition cursor-pointer';
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+    if (text) text.textContent = 'BRIDGE: 127.0.0.1:8899';
+    showToast('Connected to local MetaTrader 5 bridge (127.0.0.1:8899)', 'success');
+  } else {
+    if (pill) pill.className = 'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-950/70 border border-rose-500/60 text-rose-300 text-xs font-mono hover:bg-rose-900/70 transition cursor-pointer';
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-rose-400';
+    if (text) text.textContent = 'BRIDGE OFFLINE (RUN.CMD)';
+    showToast('Local MT5 Bridge disconnected. Expand Section 01 for PowerShell command.', 'error');
+  }
+}
+
+function saveRiskGates(): void {
+  const rpt = (document.getElementById('risk-per-trade') as HTMLInputElement | null)?.value ?? '0';
+  const dl = (document.getElementById('risk-daily-loss') as HTMLInputElement | null)?.value ?? '0';
+  showToast(`Synced Risk Gates: ${rpt}% per trade / ${dl}% max daily loss.`, 'success');
+}
+
+function selectTimeframe(tf: string): void {
+  state.selectedTimeframe = tf;
+  for (const btn of Array.from(document.querySelectorAll<HTMLButtonElement>('.tf-btn'))) {
+    const id = btn.getAttribute('data-tf') ?? '';
+    const isActive = id === tf;
+    btn.className = isActive
+      ? 'tf-btn px-3.5 py-1.5 rounded-lg text-xs font-mono border-2 border-amber-400 bg-amber-950/70 text-amber-200 font-bold shadow-[0_0_10px_rgba(245,158,11,0.3)] transition'
+      : 'tf-btn px-3.5 py-1.5 rounded-lg text-xs font-mono border border-[#331d27] bg-[#160c12] text-slate-300 hover:border-rose-400 transition';
+  }
+  showToast(`Live trading timeframe updated to ${tf}`, 'info');
 }
 
 /* ------------------------------------------------------------------ */
-/* Mount                                                              */
+/* Sign-in modal                                                      */
 /* ------------------------------------------------------------------ */
-
-function renderAll(): void {
-  renderIdentity();
-  renderPlan();
-  renderCapabilities();
-  renderNotifications();
+function openSignInModal(): void {
+  const modal = document.getElementById('signin-modal');
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  }
 }
 
-export function mountMember(): void {
-  const root = document.getElementById('memberPage');
-  if (!root) return;
+function closeSignInModal(): void {
+  const modal = document.getElementById('signin-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+function saveOperatorAuth(): void {
+  const handle = (document.getElementById('modal-handle-input') as HTMLInputElement | null)?.value?.trim() || '@operator';
+  state.signedIn = true;
+  state.operatorHandle = handle;
+  const memberHandle = document.getElementById('member-handle');
+  if (memberHandle) memberHandle.textContent = `MEMBER · ${handle}`;
+  const indicator = document.getElementById('auth-indicator');
+  if (indicator) {
+    indicator.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+  }
+  const signinBtn = document.getElementById('signin-btn-label');
+  if (signinBtn) signinBtn.textContent = 'Account / Auth';
+  closeSignInModal();
+  showToast(`Signed in as ${handle} & authenticated local MT5 bridge token.`, 'success');
+}
+
+function signOutOperator(): void {
+  state.signedIn = false;
+  const memberHandle = document.getElementById('member-handle');
+  if (memberHandle) memberHandle.textContent = 'GUEST · UNVERIFIED';
+  const indicator = document.getElementById('auth-indicator');
+  if (indicator) indicator.className = 'w-2 h-2 rounded-full bg-amber-400';
+  const signinBtn = document.getElementById('signin-btn-label');
+  if (signinBtn) signinBtn.textContent = 'Sign In Now';
+  closeSignInModal();
+  showToast('Signed out of operator session.', 'info');
+}
+
+function copyCommand(elementId: string): void {
+  const text = document.getElementById(elementId)?.innerText ?? '';
+  const tempInput = document.createElement('textarea');
+  tempInput.value = text;
+  document.body.appendChild(tempInput);
+  tempInput.select();
+  document.execCommand('copy');
+  document.body.removeChild(tempInput);
+  const btnText = document.getElementById('copy-btn-text');
+  if (btnText) {
+    btnText.textContent = 'Copied!';
+    setTimeout(() => {
+      btnText.textContent = 'Copy Command';
+    }, 2000);
+  }
+  showToast('Copied PowerShell MT5 bridge command to clipboard.', 'success');
+}
+
+/* ------------------------------------------------------------------ */
+/* Live quote ticker                                                    */
+/* ------------------------------------------------------------------ */
+setInterval(() => {
+  const sym = (document.getElementById('ticket-symbol') as HTMLSelectElement | null)?.value ?? 'ESZ6';
+  const data = state.symbols[sym];
+  if (!data) return;
+  const tick = (Math.random() - 0.48) * 0.5;
+  data.bid = Math.round((data.bid + tick) * 100) / 100;
+  data.ask = Math.round((data.bid + parseFloat(data.spread)) * 100) / 100;
+  const bidEl = document.getElementById('quote-bid');
+  const askEl = document.getElementById('quote-ask');
+  if (bidEl && askEl) {
+    bidEl.textContent = data.bid.toLocaleString('en-US', { minimumFractionDigits: 2 });
+    askEl.textContent = data.ask.toLocaleString('en-US', { minimumFractionDigits: 2 });
+  }
+}, 2400);
+
+/* ------------------------------------------------------------------ */
+/* Global exposure (Astro bundles <script> as an ES module — inline   */
+/* onclick / onchange handlers need real globals on window)            */
+/* ------------------------------------------------------------------ */
+const g = window as unknown as Record<string, unknown>;
+g.switchTab = switchTab;
+g.toggleAccordion = toggleAccordion;
+g.toggleAllExecutionAccordions = toggleAllExecutionAccordions;
+g.toggleExecutionMode = toggleExecutionMode;
+g.toggleKillSwitch = toggleKillSwitch;
+g.toggleBridgeState = toggleBridgeState;
+g.copyCommand = copyCommand;
+g.selectOrderSide = selectOrderSide;
+g.updateSymbolQuotes = updateSymbolQuotes;
+g.adjustVolume = adjustVolume;
+g.updateOrderButtonLabel = updateOrderButtonLabel;
+g.submitOrderTicket = submitOrderTicket;
+g.saveRiskGates = saveRiskGates;
+g.flattenAllPositions = flattenAllPositions;
+g.selectTimeframe = selectTimeframe;
+g.openSignInModal = openSignInModal;
+g.closeSignInModal = closeSignInModal;
+g.saveOperatorAuth = saveOperatorAuth;
+g.signOutOperator = signOutOperator;
+g.closePosition = closePosition;
+g.showToast = showToast;
+
+/* ------------------------------------------------------------------ */
+/* Mount                                                               */
+/* ------------------------------------------------------------------ */
+function mountDesign(): void {
   user = getCurrentUser();
   if (!user?.username) {
     location.replace('/login.html');
     return;
   }
-  renderAll();
-  wireNav();
-  wireActions();
-  wireChat();
-  chat.push({
-    role: 'bot',
-    text: 'Copilot ready. Ask about signals, COT positioning, this week’s releases or measured performance.',
-    meta: 'mcp · idle',
-  });
-  renderChat();
+  const memberHandle = document.getElementById('member-handle');
+  if (memberHandle) memberHandle.textContent = `MEMBER · @${user.username}`;
+  const indicator = document.getElementById('auth-indicator');
+  if (indicator) {
+    indicator.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+  }
 
-  window.setInterval(() => {
-    const paid = getTier() === 'subscriber';
-    if (paid) {
-      const time = $('mPlanTime');
-      if (time) time.textContent = formatRemaining(getSubscriptionRemainingSeconds());
-      const stat = $('mTimeStat');
-      if (stat) stat.textContent = formatRemaining(getSubscriptionRemainingSeconds());
-    }
-  }, 30_000);
+  const bridgePill = document.getElementById('bridge-status-pill');
+  if (bridgePill) bridgePill.className = 'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs font-mono hover:bg-emerald-900/70 transition cursor-pointer';
+
+  document.getElementById('ticket-volume')?.addEventListener('input', updateOrderButtonLabel);
+  document.getElementById('ticket-symbol')?.addEventListener('change', updateSymbolQuotes);
+  switchTab('overview');
+  renderPositionsTable();
+}
+
+export function mountMember(): void {
+  if (typeof document === 'undefined') return;
+  mountDesign();
 }
