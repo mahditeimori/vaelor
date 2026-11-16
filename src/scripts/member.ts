@@ -15,6 +15,7 @@
  *     (`vaelor.bridge.pairing` → { url, token }).
  */
 import { getCurrentUser, type MemberUser } from './membership';
+import { signOut, syncSession } from './auth-client';
 
 const PAIRING_KEY = 'vaelor.bridge.pairing';
 const PROFILE_KEY = 'vaelor.desk.profile';
@@ -1130,11 +1131,24 @@ g.pairBridge = pairBridge;
 g.unpairBridge = unpairBridge;
 g.closePosition = closePosition;
 g.showToast = showToast;
+g.signOutMember = signOutMember;
+
+async function signOutMember(): Promise<void> {
+  await signOut();
+  location.replace('/login.html');
+}
 
 /* ------------------------------------------------------------------ */
 /* Mount                                                               */
 /* ------------------------------------------------------------------ */
 async function mountDesign(): Promise<void> {
+  // Ask the server first: the HttpOnly cookie is the real session. The local
+  // mirror is only a cache, so it is refreshed before any identity is read.
+  const synced = await syncSession();
+  if (synced === 'signed-out') {
+    location.replace('/login.html?next=%2Fmember');
+    return;
+  }
   user = getCurrentUser();
   if (!user?.username) {
     location.replace('/login.html');

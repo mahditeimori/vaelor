@@ -1,0 +1,27 @@
+# Cloudflare Pages project for vaelor.pages.dev.
+#
+# The static site is built by Astro into `dist/`; the Pages Functions that
+# implement real authentication live in `functions/`.
+#
+# KV binding `AUTH` stores user records, PBKDF2 password hashes, opaque
+# sessions, OAuth state tokens and rate-limit counters. Keys are prefixed
+# (`u:`, `un:`, `sid:`, `oauth:`, `rl:`, `s:`, `rst:`) so they do not collide
+# with the MCP worker's AI_STATE data in the same namespace.
+#
+# Secrets (set with `npx wrangler pages secret put <NAME> --project-name vaelor`
+# or in the dashboard under Settings → Environment variables):
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+#   GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+#   OWNER_EMAILS           comma-separated owner addresses
+#   PUBLIC_ORIGIN          optional, defaults to the request host
+#   RESEND_API_KEY         optional, enables password-reset email
+#   MAIL_FROM              optional, e.g. "Vaelor Trading <no-reply@yourdomain>"
+
+name = "vaelor"
+compatibility_date = "2026-11-10"
+pages_build_output_dir = "dist"
+account_id = "3cd600058fe97fbab666f060a2037044"
+
+[[kv_namespaces]]
+binding = "AUTH"
+id = "a1776533b5cb4299accd800aac8d2256"

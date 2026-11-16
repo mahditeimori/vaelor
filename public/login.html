@@ -103,10 +103,10 @@
           </div>
         </div>
 
-        <!-- Auto-filled / Saved Credentials Badge -->
-        <div id="savedBadge" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-[11px] font-mono text-emerald-400">
+        <!-- Session transport badge -->
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/60 border border-emerald-500/30 text-[11px] font-mono text-emerald-400">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          Remembered
+          Server auth
         </div>
       </div>
 
@@ -130,32 +130,9 @@
           <p id="authSubtext" class="text-xs sm:text-sm text-neutral-400">Sign in to your autonomous trading dashboard.</p>
         </div>
 
-        <!-- Saved Account Quick-Login Bar -->
-        <div id="quickLoginCard" class="hidden mb-4 p-3 rounded-xl bg-rose-950/20 border border-rose-500/30 items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div id="quickAvatar" class="w-8 h-8 rounded-full bg-rose-600/30 border border-rose-400/40 flex items-center justify-center font-mono text-xs font-bold text-rose-200">
-              OP
-            </div>
-            <div>
-              <p class="text-xs font-medium text-white" id="quickName">Saved Operator</p>
-              <p class="font-mono text-[10px] text-rose-300/80" id="quickEmail">operator@vaelor.trading</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <button type="button" onclick="oneClickSavedLogin()" class="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-[11px] font-medium text-white transition-colors">
-              Instant Login
-            </button>
-            <button type="button" onclick="clearRememberedAccount()" title="Forget saved account" class="p-1 text-neutral-500 hover:text-rose-400 transition-colors">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
         <!-- OAuth Buttons (Google & GitHub) -->
-        <div class="grid grid-cols-2 gap-3 mb-4">
-          <button onclick="startOAuthFlow('Google')" type="button" class="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#120b0f] hover:bg-[#1a1016] border border-white/10 hover:border-rose-500/40 text-xs font-medium text-neutral-200 transition-all group">
+        <div class="grid grid-cols-2 gap-3 mb-2">
+          <button id="oauthGoogleBtn" onclick="startOAuth('google')" type="button" class="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#120b0f] hover:bg-[#1a1016] border border-white/10 hover:border-rose-500/40 text-xs font-medium text-neutral-200 transition-all group">
             <svg class="w-4 h-4 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
               <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"/>
               <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"/>
@@ -165,13 +142,16 @@
             <span>Continue with Google</span>
           </button>
 
-          <button onclick="startOAuthFlow('GitHub')" type="button" class="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#120b0f] hover:bg-[#1a1016] border border-white/10 hover:border-rose-500/40 text-xs font-medium text-neutral-200 transition-all group">
+          <button id="oauthGithubBtn" onclick="startOAuth('github')" type="button" class="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#120b0f] hover:bg-[#1a1016] border border-white/10 hover:border-rose-500/40 text-xs font-medium text-neutral-200 transition-all group">
             <svg class="w-4 h-4 text-white transition-transform group-hover:scale-110" fill="currentColor" viewBox="0 0 24 24">
               <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
             </svg>
             <span>Continue with GitHub</span>
           </button>
         </div>
+
+        <!-- Honest provider availability notice (filled in from /api/auth/config) -->
+        <p id="providerNotice" class="hidden mb-3 px-3 py-2 rounded-lg bg-amber-950/30 border border-amber-500/25 text-[11px] leading-relaxed text-amber-200/90"></p>
 
         <!-- "Continue with email" Button Divider -->
         <div class="relative flex py-2 items-center mb-3">
@@ -225,7 +205,7 @@
           <div>
             <div class="flex items-center justify-between mb-1">
               <label for="passwordInput" class="block font-mono text-[10px] uppercase tracking-widest text-neutral-400">Password</label>
-              <button type="button" onclick="openPasswordResetModal()" class="text-[11px] text-rose-400/90 hover:text-rose-300 transition-colors">Forgot password?</button>
+              <button type="button" onclick="requestPasswordReset()" class="text-[11px] text-rose-400/90 hover:text-rose-300 transition-colors">Forgot password?</button>
             </div>
             <div class="relative">
               <input type="password" id="passwordInput" name="password" autocomplete="current-password" required minlength="6" placeholder="••••••••••••" class="vaelor-input w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm text-white placeholder-neutral-600">
@@ -238,41 +218,14 @@
             </div>
           </div>
 
-          <!-- ================= CAPTCHA WIDGET ================= -->
-          <div class="rounded-xl bg-[#110a0e] border border-white/10 p-3 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2.5">
-                <button type="button" id="captchaTriggerBtn" onclick="openCaptchaChallenge()" class="w-6 h-6 rounded-lg bg-[#1a0f16] border border-white/20 hover:border-rose-400 flex items-center justify-center transition-all">
-                  <div id="captchaBoxIdle" class="w-2.5 h-2.5 rounded-sm bg-rose-500/30"></div>
-                  <svg id="captchaBoxCheck" class="hidden w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
-                  </svg>
-                </button>
-                <div>
-                  <p id="captchaStatusText" class="text-xs font-medium text-neutral-200 cursor-pointer" onclick="openCaptchaChallenge()">I am human (Click to verify)</p>
-                  <p class="font-mono text-[10px] text-neutral-500">Vaelor PoW + Visual Cryptographic Challenge</p>
-                </div>
-              </div>
-              <span id="captchaBadge" class="font-mono text-[10px] px-2 py-0.5 rounded bg-white/5 text-neutral-400 border border-white/5">REQUIRED</span>
-            </div>
-
-            <!-- Challenge Drawer -->
-            <div id="captchaChallengePanel" class="hidden pt-2.5 border-t border-white/10 space-y-2">
-              <div class="flex items-center justify-between gap-2">
-                <canvas id="captchaCanvas" width="170" height="44" class="rounded-lg border border-rose-500/30 bg-[#090407]"></canvas>
-                <button type="button" onclick="generateCaptchaChallenge()" title="Refresh Captcha" class="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-neutral-300 text-xs font-mono flex items-center gap-1">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                  </svg>
-                  New
-                </button>
-              </div>
-              <div class="flex gap-2">
-                <input type="text" id="captchaUserInput" placeholder="Enter characters above" class="vaelor-input flex-1 px-3 py-1.5 rounded-lg text-xs font-mono uppercase tracking-widest text-white">
-                <button type="button" onclick="validateCaptchaInput()" class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-medium text-white transition-colors">
-                  Verify
-                </button>
-              </div>
+          <!-- ================= SERVER-SIDE PROTECTION ================= -->
+          <div class="rounded-xl bg-[#110a0e] border border-white/10 p-3 flex items-center gap-2.5">
+            <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            <div>
+              <p class="text-xs font-medium text-neutral-200">Protected server-side</p>
+              <p class="font-mono text-[10px] text-neutral-500">Rate-limited · PBKDF2-SHA256 · HttpOnly session</p>
             </div>
           </div>
 
@@ -287,7 +240,7 @@
                 </svg>
               </div>
               <span class="text-xs text-neutral-300 group-hover:text-white transition-colors">
-                Remember me <span class="text-[11px] text-neutral-500">(save username & password for next time)</span>
+                Remember me <span class="text-[11px] text-neutral-500">(keep this device signed in for 180 days)</span>
               </span>
             </label>
           </div>
@@ -335,17 +288,19 @@
 
           <div class="grid grid-cols-2 gap-2.5 font-mono text-xs mb-5">
             <div class="p-3 rounded-xl bg-black/40 border border-white/5">
-              <span class="text-[10px] text-neutral-500 block">REMEMBER ME STATUS</span>
-              <span id="dashRememberStatus" class="text-emerald-400 font-medium">Credentials Saved</span>
+              <span class="text-[10px] text-neutral-500 block">SESSION</span>
+              <span id="dashSession" class="text-emerald-400 font-medium">Active</span>
             </div>
             <div class="p-3 rounded-xl bg-black/40 border border-white/5">
-              <span class="text-[10px] text-neutral-500 block">HUMAN VERIFICATION</span>
-              <span class="text-rose-400 font-medium">PoW Verified ✓</span>
+              <span class="text-[10px] text-neutral-500 block">PLAN</span>
+              <span id="dashPlan" class="text-rose-400 font-medium">Observer (free)</span>
             </div>
           </div>
-
           <a href="/member" class="block text-center w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-700 hover:from-rose-500 hover:to-pink-600 text-xs font-mono uppercase tracking-wider text-white transition-all no-underline mb-2">
             Open member dashboard →
+          </a>
+          <a id="dashOwnerLink" href="/owner" class="hidden block text-center w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono uppercase tracking-wider text-neutral-300 transition-all no-underline mb-2">
+            Owner console
           </a>
           <button onclick="logoutSession()" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-rose-950/60 border border-white/10 hover:border-rose-500/40 text-xs font-mono uppercase tracking-wider text-rose-300 transition-all">
             Terminate Session (Log Out)
@@ -431,36 +386,49 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- MODAL: GOOGLE & GITHUB OAUTH HANDSHAKE                                    -->
-  <!-- ========================================================================= -->
-  <div id="oauthModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-    <div class="w-full max-w-md rounded-2xl bg-[#120a0f] border border-rose-500/30 p-6 shadow-2xl space-y-4">
-      <div class="flex items-center justify-between border-b border-white/10 pb-3">
-        <div class="flex items-center gap-2.5">
-          <span id="oauthModalIcon" class="w-6 h-6 flex items-center justify-center rounded-full bg-white/10 text-xs font-bold">G</span>
-          <div>
-            <h3 id="oauthModalTitle" class="text-sm font-semibold text-white">Sign in with Google</h3>
-            <p class="font-mono text-[10px] text-neutral-400">OAuth 2.0 Authorization Endpoint</p>
-          </div>
+      <!-- ===================================================================== -->
+      <!-- VIEW 3: PASSWORD RESET (single-use link)                              -->
+      <!-- ===================================================================== -->
+      <div id="resetView" class="hidden space-y-4">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-semibold tracking-tight text-white mb-1">Choose a new password</h1>
+          <p class="text-xs sm:text-sm text-neutral-400">This reset link is single-use and expires 30 minutes after it was issued.</p>
         </div>
-        <button onclick="closeOAuthModal()" class="text-neutral-500 hover:text-white">✕</button>
+
+        <div id="errorBannerReset" class="hidden p-3 rounded-xl bg-rose-950/70 border border-rose-500/50 text-xs text-rose-200 flex items-center gap-2.5">
+          <svg class="w-4 h-4 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <span id="errorTextReset">Reset link invalid.</span>
+        </div>
+
+        <form onsubmit="handleResetSubmit(event)" class="space-y-3">
+          <div>
+            <label for="newPasswordInput" class="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1">New password</label>
+            <div class="relative">
+              <input type="password" id="newPasswordInput" autocomplete="new-password" required minlength="8" placeholder="At least 8 characters" class="vaelor-input w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm text-white placeholder-neutral-600">
+              <button type="button" onclick="toggleNewPasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label for="confirmPasswordInput" class="block font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-1">Confirm password</label>
+            <input type="password" id="confirmPasswordInput" autocomplete="new-password" required minlength="8" placeholder="Repeat the new password" class="vaelor-input w-full px-3.5 py-2.5 rounded-xl text-sm text-white placeholder-neutral-600">
+          </div>
+
+          <button type="submit" class="btn-crimson w-full py-3 rounded-xl font-medium text-sm text-white">
+            Update password
+          </button>
+          <button type="button" onclick="cancelReset()" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono uppercase tracking-wider text-neutral-300 transition-all">
+            Back to sign in
+          </button>
+        </form>
       </div>
-
-      <p class="text-xs text-neutral-300">Choose an account to continue to <span class="text-rose-400 font-semibold">Vaelor Trading LLC</span>:</p>
-
-      <div id="oauthAccountList" class="space-y-2"></div>
-
-      <div class="pt-2 border-t border-white/10 space-y-2">
-        <p class="font-mono text-[10px] uppercase text-neutral-400">Or use another account</p>
-        <input id="customOAuthEmail" type="email" placeholder="your.account@gmail.com" class="vaelor-input w-full px-3 py-2 rounded-xl text-xs text-white">
-        <input id="customOAuthName" type="text" placeholder="Full Name (e.g. Elena Rostova)" class="vaelor-input w-full px-3 py-2 rounded-xl text-xs text-white">
-        <button type="button" onclick="completeCustomOAuth()" class="btn-crimson w-full py-2 rounded-xl text-xs font-medium text-white">
-          Authorize & Continue
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- Notification Toast -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
@@ -473,142 +441,147 @@
   <!-- ========================================================================= -->
   <!-- APPLICATION LOGIC                                                         -->
   <!-- ========================================================================= -->
-  <script>
-    const DB_USERS_KEY = 'vaelor_users_db_v1';
-    const REMEMBER_KEY = 'vaelor_remembered_user_v1';
-    const ACTIVE_SESSION_KEY = 'vaelor_active_session_v1';
+    <script>
+    /* ==================================================================
+       Vaelor authentication console — real, server-backed sign-in.
+
+       Identity lives in Cloudflare Pages Functions (`/api/auth/*`) behind an
+       HttpOnly cookie. This page never stores a password, never fakes an
+       OAuth account picker and never trusts its own localStorage for access.
+       ================================================================== */
+
+    const SESSION_KEY = 'vaelor_active_session_v1';
+    const USERS_KEY = 'vaelor_users_db_v1';
+    const LEGACY_REMEMBER_KEY = 'vaelor_remembered_user_v1';
 
     let currentMode = 'signin';
-    let captchaSolved = false;
-    let currentCaptchaCode = '';
-    let activeOAuthProvider = 'Google';
+    let providers = { password: true, google: false, github: false };
+    let passwordResetAvailable = false;
+    let resetToken = '';
+    let nextUrl = '/member';
 
-    window.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', init);
+
+    async function init() {
       initDataRain();
-      seedDefaultDemoUserIfEmpty();
-      generateCaptchaChallenge();
-      restoreRememberedCredentials();
-      checkExistingSession();
-    });
+      // Plaintext "remembered" credentials from the old build are deleted.
+      try { localStorage.removeItem(LEGACY_REMEMBER_KEY); } catch (_) {}
 
-    // User DB Functions
-    function getUsersDB() {
+      readQuery();
+      paintProviders();
+      await loadConfig();
+      if (resetToken) {
+        showResetView();
+        return;
+      }
+      await checkExistingSession();
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Query string: next destination, OAuth errors, reset token           */
+    /* ------------------------------------------------------------------ */
+
+    function readQuery() {
+      const params = new URLSearchParams(location.search);
+      nextUrl = safeNext(params.get('next'));
+      resetToken = params.get('reset') || '';
+
+      const error = params.get('error');
+      if (error) {
+        showError(oauthErrorMessage(error, params.get('provider'), params.get('detail')));
+        history.replaceState(null, '', location.pathname);
+      }
+    }
+
+    function safeNext(value) {
+      if (!value) return '/member';
+      if (value.charAt(0) !== '/' || value.charAt(1) === '/') return '/member';
+      return value;
+    }
+
+    function oauthErrorMessage(code, provider, detail) {
+      const name = provider ? provider.charAt(0).toUpperCase() + provider.slice(1) : 'OAuth';
+      switch (code) {
+        case 'oauth_not_configured':
+          return `${name} sign-in is not wired up on this deployment yet. Add ${provider ? provider.toUpperCase() : 'the provider'}_CLIENT_ID and ${provider ? provider.toUpperCase() : 'the provider'}_CLIENT_SECRET in Cloudflare Pages → Settings → Environment variables, then redeploy.`;
+        case 'oauth_denied':
+          return 'Sign-in was cancelled at the provider.';
+        case 'oauth_state':
+        case 'oauth_incomplete':
+          return 'That sign-in link expired or was already used. Try again.';
+        case 'oauth_email':
+          return `The ${name} account did not expose a verified email address, so it cannot be used to sign in.`;
+        case 'oauth_failed':
+          return `The ${name} sign-in failed${detail ? `: ${detail}` : '. Please retry.'}`;
+        default:
+          return 'Sign-in did not complete. Please retry.';
+      }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Provider availability                                               */
+    /* ------------------------------------------------------------------ */
+
+    async function loadConfig() {
       try {
-        return JSON.parse(localStorage.getItem(DB_USERS_KEY)) || [];
-      } catch {
-        return [];
-      }
-    }
-
-    function saveUsersDB(users) {
-      localStorage.setItem(DB_USERS_KEY, JSON.stringify(users));
-    }
-
-    function seedDefaultDemoUserIfEmpty() {
-      const users = getUsersDB();
-      if (users.length === 0) {
-        users.push({
-          username: 'vaelor_quant',
-          firstName: 'Arthur',
-          lastName: 'Vance',
-          email: 'you@email.com',
-          password: 'password123',
-          provider: 'Email'
+        const response = await fetch('/api/auth/config', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { accept: 'application/json' }
         });
-        saveUsersDB(users);
+        if (!response.ok) return;
+        const config = await response.json();
+        if (config && config.providers) providers = { password: true, ...config.providers };
+        passwordResetAvailable = Boolean(config && config.passwordReset);
+      } catch (_) {
+        /* static preview without Functions: keep the honest "unconfigured" state */
+      }
+      paintProviders();
+    }
+
+    function paintProviders() {
+      const googleBtn = document.getElementById('oauthGoogleBtn');
+      const githubBtn = document.getElementById('oauthGithubBtn');
+      const notice = document.getElementById('providerNotice');
+
+      markProvider(googleBtn, providers.google);
+      markProvider(githubBtn, providers.github);
+
+      const missing = [];
+      if (!providers.google) missing.push('Google');
+      if (!providers.github) missing.push('GitHub');
+
+      if (notice) {
+        if (missing.length === 0) {
+          notice.classList.add('hidden');
+        } else {
+          notice.classList.remove('hidden');
+          notice.textContent = `${missing.join(' and ')} sign-in ${missing.length === 1 ? 'is' : 'are'} not configured on this deployment. Email + password is fully active.`;
+        }
       }
     }
 
-    // CAPTCHA Engine
-    function openCaptchaChallenge() {
-      if (captchaSolved) return;
-      const panel = document.getElementById('captchaChallengePanel');
-      panel.classList.remove('hidden');
-      generateCaptchaChallenge();
-      document.getElementById('captchaUserInput').focus();
+    function markProvider(button, ready) {
+      if (!button) return;
+      button.dataset.ready = ready ? 'true' : 'false';
+      button.classList.toggle('opacity-60', !ready);
+      button.title = ready ? '' : 'This provider is not configured on this deployment yet.';
     }
 
-    function generateCaptchaChallenge() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      let code = '';
-      for (let i = 0; i < 5; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    function startOAuth(provider) {
+      if (!providers[provider]) {
+        const label = provider === 'google' ? 'Google' : 'GitHub';
+        showError(`${label} sign-in is not configured on this deployment yet. Email + password works right now.`);
+        return;
       }
-      currentCaptchaCode = code;
-
-      const canvas = document.getElementById('captchaCanvas');
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#0c0509';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      for (let i = 0; i < 6; i++) {
-        ctx.strokeStyle = `rgba(225, 29, 72, ${0.25 + Math.random() * 0.4})`;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
-        ctx.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
-        ctx.stroke();
-      }
-
-      ctx.font = 'bold 22px "JetBrains Mono", monospace';
-      for (let i = 0; i < code.length; i++) {
-        ctx.save();
-        const x = 18 + i * 28;
-        const y = 28 + (Math.random() * 8 - 4);
-        const angle = (Math.random() - 0.5) * 0.35;
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.fillStyle = i % 2 === 0 ? '#f43f5e' : '#f8fafc';
-        ctx.fillText(code[i], 0, 0);
-        ctx.restore();
-      }
+      const remember = document.getElementById('rememberMe').checked ? '1' : '0';
+      const url = `/api/auth/oauth/${provider}/start?remember=${remember}&next=${encodeURIComponent(nextUrl)}`;
+      location.href = url;
     }
 
-    function validateCaptchaInput() {
-      const input = document.getElementById('captchaUserInput').value.trim().toUpperCase();
-      if (input === currentCaptchaCode) {
-        captchaSolved = true;
-        document.getElementById('captchaChallengePanel').classList.add('hidden');
-        document.getElementById('captchaBoxIdle').classList.add('hidden');
-        document.getElementById('captchaBoxCheck').classList.remove('hidden');
-        
-        const statusText = document.getElementById('captchaStatusText');
-        statusText.textContent = 'Human verified (Cryptographic PoW passed)';
-        statusText.classList.add('text-emerald-400');
-
-        const badge = document.getElementById('captchaBadge');
-        badge.textContent = 'VERIFIED';
-        badge.className = 'font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-500/30';
-        hideError();
-        showToast('CAPTCHA verified successfully.');
-      } else {
-        showError('Incorrect CAPTCHA code. A new code has been generated.');
-        document.getElementById('captchaUserInput').value = '';
-        generateCaptchaChallenge();
-      }
-    }
-
-    function resetCaptcha() {
-      captchaSolved = false;
-      document.getElementById('captchaUserInput').value = '';
-      document.getElementById('captchaBoxIdle').classList.remove('hidden');
-      document.getElementById('captchaBoxCheck').classList.add('hidden');
-      const statusText = document.getElementById('captchaStatusText');
-      statusText.textContent = 'I am human (Click to verify)';
-      statusText.classList.remove('text-emerald-400');
-      const badge = document.getElementById('captchaBadge');
-      badge.textContent = 'REQUIRED';
-      badge.className = 'font-mono text-[10px] px-2 py-0.5 rounded bg-white/5 text-neutral-400 border border-white/5';
-    }
-
-    // Continue with email & Modes
-    function activateContinueWithEmail() {
-      switchMode('signup');
-      document.getElementById('usernameInput').focus();
-      showToast('Continue with Email: Enter your details & check Remember Me.');
-    }
+    /* ------------------------------------------------------------------ */
+    /* Mode switching                                                      */
+    /* ------------------------------------------------------------------ */
 
     function switchMode(mode) {
       currentMode = mode;
@@ -623,34 +596,32 @@
       const footerPrompt = document.getElementById('footerPrompt');
       const footerAction = document.getElementById('footerAction');
       const emailLabel = document.getElementById('emailLabel');
+      const emailInput = document.getElementById('emailInput');
+      const passwordInput = document.getElementById('passwordInput');
 
       if (mode === 'signup') {
         tabSignUp.className = 'py-2.5 text-xs font-medium rounded-lg transition-all duration-300 btn-crimson text-white';
         tabSignIn.className = 'py-2.5 text-xs font-medium rounded-lg transition-all duration-300 text-neutral-400 hover:text-white';
-        
-        extraFields.classList.remove('hidden');
-        document.getElementById('usernameInput').required = true;
-        document.getElementById('firstNameInput').required = true;
-        document.getElementById('lastNameInput').required = true;
 
-        authHeading.textContent = 'Continue with email';
-        authSubtext.textContent = 'Enter your username, name, email & password below.';
+        extraFields.classList.remove('hidden');
         emailLabel.textContent = 'Email Address';
-        submitBtnText.textContent = 'Create account & Sign in';
+        emailInput.autocomplete = 'email';
+        passwordInput.autocomplete = 'new-password';
+        authHeading.textContent = 'Create your member account';
+        authSubtext.textContent = 'One email and a password. Your plan starts on Observer (free).';
+        submitBtnText.textContent = 'Create account & sign in';
         footerPrompt.textContent = 'Already have an account?';
         footerAction.textContent = 'Sign in';
       } else {
         tabSignIn.className = 'py-2.5 text-xs font-medium rounded-lg transition-all duration-300 btn-crimson text-white';
         tabSignUp.className = 'py-2.5 text-xs font-medium rounded-lg transition-all duration-300 text-neutral-400 hover:text-white';
-        
-        extraFields.classList.add('hidden');
-        document.getElementById('usernameInput').required = false;
-        document.getElementById('firstNameInput').required = false;
-        document.getElementById('lastNameInput').required = false;
 
-        authHeading.textContent = 'Welcome back';
-        authSubtext.textContent = 'Sign in to your autonomous trading dashboard.';
+        extraFields.classList.add('hidden');
         emailLabel.textContent = 'Email or Username';
+        emailInput.autocomplete = 'username';
+        passwordInput.autocomplete = 'current-password';
+        authHeading.textContent = 'Welcome back';
+        authSubtext.textContent = 'Sign in to your trading dashboard.';
         submitBtnText.textContent = 'Sign in';
         footerPrompt.textContent = 'New to Vaelor Trading?';
         footerAction.textContent = 'Create an account';
@@ -661,268 +632,315 @@
       switchMode(currentMode === 'signin' ? 'signup' : 'signin');
     }
 
-    // Submit & Remember Me Logic
-    async function handleAuthSubmit(e) {
-      e.preventDefault();
-      hideError();
+    function activateContinueWithEmail() {
+      const emailInput = document.getElementById('emailInput');
+      emailInput.focus();
+      emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 
-      if (!captchaSolved) {
-        openCaptchaChallenge();
-        showError('Please complete the human verification CAPTCHA first.');
-        return;
-      }
+    /* ------------------------------------------------------------------ */
+    /* Email + password                                                    */
+    /* ------------------------------------------------------------------ */
+
+    async function handleAuthSubmit(event) {
+      event.preventDefault();
+      hideError();
 
       const identifier = document.getElementById('emailInput').value.trim();
       const password = document.getElementById('passwordInput').value;
-      const username = document.getElementById('usernameInput').value.trim();
-      const firstName = document.getElementById('firstNameInput').value.trim();
-      const lastName = document.getElementById('lastNameInput').value.trim();
-      const rememberMe = document.getElementById('rememberMe').checked;
+      const remember = document.getElementById('rememberMe').checked;
 
-      const users = getUsersDB();
-
-      if (currentMode === 'signup') {
-        const existing = users.find(
-          u => u.email.toLowerCase() === identifier.toLowerCase() ||
-               (u.username && u.username.toLowerCase() === username.toLowerCase())
-        );
-        if (existing) {
-          showError('An operator with that email or username already exists.');
-          return;
-        }
-
-        const newUser = {
-          username,
-          firstName,
-          lastName,
-          email: identifier,
-          password,
-          provider: 'Email'
-        };
-        users.push(newUser);
-        saveUsersDB(users);
-
-        handleRememberMePersistence(newUser, rememberMe);
-        loginUserToDashboard(newUser, rememberMe, true);
-      } else {
-        const matchedUser = users.find(
-          u => (u.email.toLowerCase() === identifier.toLowerCase() ||
-               (u.username && u.username.toLowerCase() === identifier.toLowerCase())) &&
-               u.password === password
-        );
-
-        if (!matchedUser) {
-          showError('Invalid credentials. (Demo login: you@email.com / password123)');
-          return;
-        }
-
-        handleRememberMePersistence(matchedUser, rememberMe);
-        loginUserToDashboard(matchedUser, rememberMe, true);
-      }
-    }
-
-    async function handleRememberMePersistence(user, rememberMe) {
-      if (rememberMe) {
-        localStorage.setItem(REMEMBER_KEY, JSON.stringify(user));
-      } else {
-        localStorage.removeItem(REMEMBER_KEY);
-      }
-    }
-
-    function restoreRememberedCredentials() {
-      const raw = localStorage.getItem(REMEMBER_KEY);
-      const badge = document.getElementById('savedBadge');
-      const quickCard = document.getElementById('quickLoginCard');
-
-      if (!raw) {
-        badge.classList.add('hidden');
-        quickCard.classList.add('hidden');
+      if (!identifier) {
+        showError('Enter your email address.');
+        document.getElementById('emailInput').focus();
         return;
       }
+      if (!password) {
+        showError('Enter your password.');
+        document.getElementById('passwordInput').focus();
+        return;
+      }
+
+      const submitBtn = document.getElementById('submitBtn');
+      setBusy(submitBtn, true);
 
       try {
-        const saved = JSON.parse(raw);
-        document.getElementById('emailInput').value = saved.username || saved.email || '';
-        document.getElementById('passwordInput').value = saved.password || '';
-        document.getElementById('usernameInput').value = saved.username || '';
-        document.getElementById('firstNameInput').value = saved.firstName || '';
-        document.getElementById('lastNameInput').value = saved.lastName || '';
-        document.getElementById('rememberMe').checked = true;
+        let result;
+        if (currentMode === 'signup') {
+          if (password.length < 8) {
+            showError('Choose a password with at least 8 characters.');
+            return;
+          }
+          const username = document.getElementById('usernameInput').value.trim();
+          const firstName = document.getElementById('firstNameInput').value.trim();
+          const lastName = document.getElementById('lastNameInput').value.trim();
+          result = await postJson('/api/auth/register', {
+            email: identifier,
+            password,
+            firstName,
+            lastName,
+            name: `${firstName} ${lastName}`.trim(),
+            username: username || undefined,
+            remember
+          });
+        } else {
+          result = await postJson('/api/auth/login', { identifier, password, remember });
+        }
 
-        badge.classList.remove('hidden');
-        badge.classList.add('flex');
+        if (!result.ok) {
+          showError(result.message);
+          if (result.status === 401 || result.status === 409) {
+            document.getElementById('passwordInput').select();
+          }
+          return;
+        }
 
-        const fullName = `${saved.firstName || ''} ${saved.lastName || ''}`.trim() || saved.username || 'Operator';
-        document.getElementById('quickName').textContent = fullName;
-        document.getElementById('quickEmail').textContent = `@${saved.username || 'user'} • ${saved.email}`;
-        document.getElementById('quickAvatar').textContent = fullName.slice(0, 2).toUpperCase();
-        quickCard.classList.remove('hidden');
-        quickCard.classList.add('flex');
-      } catch (e) {
-        console.error(e);
+        finishLogin(result.data, remember);
+      } finally {
+        setBusy(submitBtn, false);
       }
     }
 
-    function oneClickSavedLogin() {
-      const raw = localStorage.getItem(REMEMBER_KEY);
-      if (!raw) return;
-      loginUserToDashboard(JSON.parse(raw), true, false);
+    function setBusy(button, busy) {
+      if (!button) return;
+      button.disabled = busy;
+      button.classList.toggle('opacity-60', busy);
+      button.style.cursor = busy ? 'wait' : '';
     }
 
-    function clearRememberedAccount() {
-      localStorage.removeItem(REMEMBER_KEY);
-      document.getElementById('emailInput').value = '';
-      document.getElementById('passwordInput').value = '';
-      restoreRememberedCredentials();
-      showToast('Saved credentials removed.');
+    async function postJson(url, body) {
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify(body)
+        });
+        let data = null;
+        try { data = await response.json(); } catch (_) {}
+        if (!response.ok) {
+          return {
+            ok: false,
+            status: response.status,
+            message: (data && (data.detail || errorMessage(data.error))) || `Request failed (${response.status}).`
+          };
+        }
+        return { ok: true, data };
+      } catch (_) {
+        return { ok: false, message: 'Cannot reach the sign-in service. Check your connection and try again.' };
+      }
     }
 
-    // OAuth Management
-    function startOAuthFlow(provider) {
-      activeOAuthProvider = provider;
-      const modal = document.getElementById('oauthModal');
-      const title = document.getElementById('oauthModalTitle');
-      const icon = document.getElementById('oauthModalIcon');
-      const list = document.getElementById('oauthAccountList');
-
-      title.textContent = `Continue with ${provider}`;
-      icon.textContent = provider === 'Google' ? 'G' : 'GH';
-
-      const presets = provider === 'Google'
-        ? [
-            { firstName: 'Arthur', lastName: 'Vance', username: 'arthur.vance', email: 'arthur.vance@gmail.com' },
-            { firstName: 'Sophia', lastName: 'Chen', username: 'schen_quant', email: 'sophia.chen@vaelor.io' }
-          ]
-        : [
-            { firstName: 'Linus', lastName: 'Kowalski', username: 'lkowalski-dev', email: 'linus@github.com' },
-            { firstName: 'Vaelor', lastName: 'CoreOps', username: 'vaelor-ops', email: 'ops@vaelor.trading' }
-          ];
-
-      list.innerHTML = presets.map((acc) => `
-        <button type="button" onclick='selectOAuthAccount(${JSON.stringify(acc)})' class="w-full p-3 rounded-xl bg-white/5 hover:bg-rose-950/40 border border-white/10 hover:border-rose-500/40 flex items-center justify-between transition-all text-left">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-rose-500/20 border border-rose-500/40 flex items-center justify-center font-mono text-xs font-bold text-rose-300">
-              ${acc.firstName[0]}${acc.lastName[0]}
-            </div>
-            <div>
-              <p class="text-xs font-medium text-white">${acc.firstName} ${acc.lastName}</p>
-              <p class="font-mono text-[10px] text-neutral-400">${acc.email}</p>
-            </div>
-          </div>
-          <span class="font-mono text-[10px] text-rose-400">Select →</span>
-        </button>
-      `).join('');
-
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
+    function errorMessage(code) {
+      switch (code) {
+        case 'invalid_credentials': return 'Email, username or password is incorrect.';
+        case 'email_taken': return 'An account with that email already exists. Sign in instead.';
+        case 'email_invalid': return 'Enter a valid email address.';
+        case 'password_weak': return 'Choose a password with at least 8 characters.';
+        case 'username_taken': return 'That username is already taken. Pick another.';
+        case 'username_invalid': return 'Username needs at least 3 letters, numbers, dots, dashes or underscores.';
+        case 'rate_limited': return 'Too many attempts. Wait a few minutes and try again.';
+        case 'credentials_missing': return 'Enter your email or username and password.';
+        default: return '';
+      }
     }
 
-    function closeOAuthModal() {
-      const modal = document.getElementById('oauthModal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-    }
+    /* ------------------------------------------------------------------ */
+    /* Session mirror + dashboard view                                     */
+    /* ------------------------------------------------------------------ */
 
-    function selectOAuthAccount(acc) {
-      closeOAuthModal();
-      const userObj = {
-        ...acc,
-        password: 'oauth_token_verified',
-        provider: activeOAuthProvider
-      };
-      const remember = document.getElementById('rememberMe').checked;
-      handleRememberMePersistence(userObj, remember);
-      loginUserToDashboard(userObj, remember, true);
-    }
-
-    function completeCustomOAuth() {
-      const email = document.getElementById('customOAuthEmail').value.trim();
-      const fullName = document.getElementById('customOAuthName').value.trim() || 'OAuth Operator';
-      if (!email) {
-        showToast('Please enter an email address.');
+    function finishLogin(payload, remembered) {
+      if (!payload || !payload.user) {
+        showError('The sign-in service returned an unexpected response.');
         return;
       }
-      const parts = fullName.split(' ');
-      selectOAuthAccount({
-        firstName: parts[0] || 'Operator',
-        lastName: parts.slice(1).join(' ') || '',
-        username: email.split('@')[0],
-        email
-      });
+      mirrorSession(payload);
+      renderDashboard(payload, remembered);
+      const firstName = payload.user.firstName || payload.user.username;
+      showToast(`Welcome, ${firstName}.`);
+      setTimeout(() => { location.href = nextUrl; }, 800);
     }
 
-    // Sessions
-    function loginUserToDashboard(user, remembered, redirect) {
-      localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify({ user, remembered }));
+    function mirrorSession(payload) {
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ user: payload.user, remembered: false }));
+        localStorage.setItem(`vaelor_sub:${payload.user.username}`, JSON.stringify(payload.subscription));
+        upsertUser(payload.user);
+      } catch (_) { /* storage can be disabled; the cookie is still authoritative */ }
+    }
 
+    function upsertUser(user) {
+      try {
+        const raw = localStorage.getItem(USERS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        const list = Array.isArray(parsed) ? parsed : [];
+        const index = list.findIndex(entry =>
+          (entry.username && entry.username.toLowerCase() === String(user.username).toLowerCase()) ||
+          (entry.email && user.email && entry.email.toLowerCase() === String(user.email).toLowerCase())
+        );
+        if (index >= 0) list[index] = { ...list[index], ...user };
+        else list.push(user);
+        localStorage.setItem(USERS_KEY, JSON.stringify(list));
+      } catch (_) { /* ignore */ }
+    }
+
+    function renderDashboard(payload, remembered) {
+      const user = payload.user;
       document.getElementById('authView').classList.add('hidden');
+      document.getElementById('resetView').classList.add('hidden');
       document.getElementById('dashboardView').classList.remove('hidden');
 
-      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'Operator';
-      const initials = fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'OP';
+      const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username;
+      const initials = fullName.split(' ').map(part => part.charAt(0)).join('').slice(0, 2).toUpperCase() || 'OP';
 
       document.getElementById('dashAvatar').textContent = initials;
       document.getElementById('dashFullName').textContent = fullName;
-      document.getElementById('dashUsernameEmail').textContent = `@${user.username || user.email.split('@')[0]} • ${user.email}`;
-      document.getElementById('dashAuthProvider').textContent = `${user.provider || 'EMAIL'} OAUTH`;
-      document.getElementById('dashRememberStatus').textContent = remembered ? 'Saved for Next Login ✓' : 'Session Only';
-
-      showToast(`Welcome, ${fullName}!`);
-      if (redirect) {
-        window.setTimeout(() => { window.location.href = '/member'; }, 700);
-      }
+      document.getElementById('dashUsernameEmail').textContent = `@${user.username} — ${user.email}`;
+      document.getElementById('dashAuthProvider').textContent = `${String(user.provider || 'password').toUpperCase()} AUTH`;
+      document.getElementById('dashSession').textContent = remembered ? 'Active · 180 days' : 'Active · 30 days';
+      document.getElementById('dashPlan').textContent = planLabel(payload.subscription);
+      document.getElementById('dashOwnerLink').classList.toggle('hidden', !payload.isOwner);
     }
 
-    function checkExistingSession() {
-      const raw = localStorage.getItem(ACTIVE_SESSION_KEY);
-      if (raw) {
-        try {
-          const { user, remembered } = JSON.parse(raw);
-          loginUserToDashboard(user, remembered, false);
-        } catch (_) {}
-      }
+    function planLabel(subscription) {
+      const tier = subscription && subscription.tier ? subscription.tier : 'free';
+      if (tier === 'desk' || tier === 'subscriber') return 'Desk';
+      if (tier === 'operator') return 'Operator';
+      return 'Observer (free)';
     }
 
-    function logoutSession() {
-      localStorage.removeItem(ACTIVE_SESSION_KEY);
+    async function checkExistingSession() {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+          headers: { accept: 'application/json' }
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (!payload || !payload.ok) return;
+        mirrorSession(payload);
+        renderDashboard(payload, false);
+      } catch (_) { /* not signed in, or Functions unavailable in static preview */ }
+    }
+
+    async function logoutSession() {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      } catch (_) { /* clear locally regardless */ }
+
+      try {
+        const raw = localStorage.getItem(SESSION_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.user && parsed.user.username) {
+            localStorage.removeItem(`vaelor_sub:${parsed.user.username}`);
+          }
+        }
+        localStorage.removeItem(SESSION_KEY);
+      } catch (_) {}
+
       document.getElementById('dashboardView').classList.add('hidden');
+      document.getElementById('resetView').classList.add('hidden');
       document.getElementById('authView').classList.remove('hidden');
-      resetCaptcha();
-      restoreRememberedCredentials();
       switchMode('signin');
-      showToast('Logged out.');
+      showToast('Signed out.');
     }
 
-    // Password & Alerts
+    /* ------------------------------------------------------------------ */
+    /* Password recovery                                                   */
+    /* ------------------------------------------------------------------ */
+
+    async function requestPasswordReset() {
+      const emailInput = document.getElementById('emailInput');
+      const email = emailInput.value.trim();
+      if (!email || email.indexOf('@') === -1) {
+        showError('Enter your account email first, then click Forgot password.');
+        emailInput.focus();
+        return;
+      }
+
+      const result = await postJson('/api/auth/forgot', { email });
+      if (!result.ok) {
+        showError(result.message);
+        return;
+      }
+      if (result.data && result.data.delivery === 'email') {
+        showToast('If that address has an account, a reset link is on its way.');
+      } else {
+        showError('Password email delivery is not configured on this deployment yet. Ask the owner to reset the password from the server.');
+      }
+    }
+
+    function showResetView() {
+      document.getElementById('authView').classList.add('hidden');
+      document.getElementById('dashboardView').classList.add('hidden');
+      document.getElementById('resetView').classList.remove('hidden');
+      const input = document.getElementById('newPasswordInput');
+      if (input) input.focus();
+    }
+
+    function cancelReset() {
+      resetToken = '';
+      history.replaceState(null, '', location.pathname);
+      document.getElementById('resetView').classList.add('hidden');
+      document.getElementById('authView').classList.remove('hidden');
+      switchMode('signin');
+    }
+
+    async function handleResetSubmit(event) {
+      event.preventDefault();
+      hideError();
+
+      const password = document.getElementById('newPasswordInput').value;
+      const confirm = document.getElementById('confirmPasswordInput').value;
+      if (password.length < 8) {
+        showError('Choose a password with at least 8 characters.');
+        return;
+      }
+      if (password !== confirm) {
+        showError('The two passwords do not match.');
+        return;
+      }
+
+      const result = await postJson('/api/auth/reset', { token: resetToken, password });
+      if (!result.ok) {
+        showError(result.message);
+        return;
+      }
+      cancelReset();
+      showToast('Password updated. Sign in with the new one.');
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Small UI helpers                                                    */
+    /* ------------------------------------------------------------------ */
+
     function togglePasswordVisibility() {
       const input = document.getElementById('passwordInput');
       input.type = input.type === 'password' ? 'text' : 'password';
     }
 
-    function openPasswordResetModal() {
-      const email = document.getElementById('emailInput').value.trim();
-      if (!email) {
-        showError('Enter your email or username first, then click Forgot password.');
-        document.getElementById('emailInput').focus();
-        return;
-      }
-      const users = getUsersDB();
-      const found = users.find(u => u.email.toLowerCase() === email.toLowerCase() || (u.username && u.username.toLowerCase() === email.toLowerCase()));
-      if (found) {
-        showToast(`Recovery Hint: Password is "${found.password}"`);
-      } else {
-        showToast(`Reset protocol dispatched to ${email}.`);
-      }
+    function toggleNewPasswordVisibility() {
+      const input = document.getElementById('newPasswordInput');
+      input.type = input.type === 'password' ? 'text' : 'password';
     }
 
-    function showError(msg) {
-      const banner = document.getElementById('errorBanner');
-      document.getElementById('errorText').textContent = msg;
-      banner.classList.remove('hidden');
+    function showError(message) {
+      const primary = document.getElementById('errorBanner');
+      const secondary = document.getElementById('errorBannerReset');
+      if (primary) primary.classList.remove('hidden');
+      if (secondary) secondary.classList.remove('hidden');
+      const primaryText = document.getElementById('errorText');
+      const secondaryText = document.getElementById('errorTextReset');
+      if (primaryText) primaryText.textContent = message;
+      if (secondaryText) secondaryText.textContent = message;
     }
 
     function hideError() {
       document.getElementById('errorBanner').classList.add('hidden');
+      const secondary = document.getElementById('errorBannerReset');
+      if (secondary) secondary.classList.add('hidden');
     }
 
     function showToast(message) {
@@ -934,8 +952,13 @@
       }, 3600);
     }
 
+    /* ------------------------------------------------------------------ */
+    /* Background canvas (unchanged visual)                                */
+    /* ------------------------------------------------------------------ */
+
     function initDataRain() {
       const canvas = document.getElementById('dataRainCanvas');
+      if (!canvas) return;
       const ctx = canvas.getContext('2d');
 
       function resize() {
@@ -945,7 +968,7 @@
       resize();
       window.addEventListener('resize', resize);
 
-      const columns = Math.floor(canvas.width / 28);
+      const columns = Math.max(1, Math.floor(canvas.width / 28));
       const drops = Array.from({ length: columns }, () => ({
         y: Math.random() * canvas.height,
         speed: 0.6 + Math.random() * 1.4,

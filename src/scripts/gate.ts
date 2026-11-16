@@ -21,9 +21,11 @@ import {
   getTier,
   isMember,
   openFeatureLock,
+  tierLabel,
   FEATURES,
   type FeatureKey,
 } from './membership';
+import { syncSession } from './auth-client';
 
 const DOC_PATHS = ['/docs', '/docs/', '/docs/company-code', '/docs/company-code/'];
 
@@ -62,7 +64,7 @@ function applyMemberChrome(): void {
       const pill = document.createElement('a');
       pill.id = 'memberTierPill';
       pill.href = '/member';
-      pill.textContent = `${tier === 'subscriber' ? 'MEMBER' : 'FREE'} · @${user.username}`;
+      pill.textContent = `${tier === 'free' ? 'FREE' : tierLabel(tier).toUpperCase()} · @${user.username}`;
       pill.className = 'nav-link';
       pill.style.cssText =
         'margin-left:auto;border:1px solid rgba(225,29,72,0.35);border-radius:999px;padding:8px 14px;' +
@@ -158,5 +160,43 @@ export function applyMemberGate(): void {
     document.addEventListener('DOMContentLoaded', run, { once: true });
   } else {
     run();
+  }
+
+  // The cookie is the source of truth. Once `/api/auth/me` answers, repaint
+  // with the server's tier instead of whatever the browser remembered.
+  void syncSession().then((result) => {
+    if (result === 'unavailable') return;
+    if (result === 'signed-out' && hadLocalSession()) {
+      // Stale mirror (session expired or revoked elsewhere): reload once so
+      // the header and gates fall back to the anonymous view.
+      location.reload();
+      return;
+    }
+    resetGates();
+    run();
+  });
+}
+
+/** Remove every overlay/attribute this module added so it can be rebuilt. */
+function resetGates(): void {
+  for (const overlay of Array.from(document.querySelectorAll('.v-gate'))) overlay.remove();
+  for (const node of Array.from(document.querySelectorAll<HTMLElement>('[data-gate]'))) {
+    node.removeAttribute('data-locked');
+  }
+  document.getElementById('memberTierPill')?.remove();
+  for (const link of Array.from(document.querySelectorAll<HTMLAnchorElement>('a.nav-link'))) {
+    const href = link.getAttribute('href') ?? '';
+    if (href === '/member' && link.textContent === 'Member') {
+      link.href = '/login.html';
+      link.textContent = 'Sign in';
+    }
+  }
+}
+
+function hadLocalSession(): boolean {
+  try {
+    return window.localStorage.getItem('vaelor_active_session_v1') !== null;
+  } catch {
+    return false;
   }
 }

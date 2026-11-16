@@ -122,7 +122,7 @@ function lastActivity(username: string): number | null {
 function grant(username: string, days: number, status: 'active' | 'trialing' = 'active'): void {
   const now = Date.now();
   setSubscription(username, {
-    tier: 'subscriber',
+    tier: 'desk',
     status,
     startedAt: now,
     expiresAt: now + days * 86400_000,
@@ -195,7 +195,7 @@ function renderMembers(): void {
     .map((u: MemberUser) => {
       const sub = getSubscription(u.username);
       const remaining = getSubscriptionRemainingSeconds();
-      const paid = sub.tier === 'subscriber' && sub.status !== 'canceled';
+      const paid = sub.tier !== 'free' && sub.status !== 'canceled';
       const left =
         paid && sub.expiresAt
           ? `${Math.max(0, Math.ceil((sub.expiresAt - Date.now()) / 86400_000))} d`
@@ -236,7 +236,7 @@ function renderMembers(): void {
   const total = users.length;
   const paidCount = users.filter((u) => {
     const s = getSubscription(u.username);
-    return s.tier === 'subscriber' && s.status !== 'canceled';
+    return s.tier !== 'free' && s.status !== 'canceled';
   }).length;
   const stat = (id: string, value: string) => {
     const node = $(id);
