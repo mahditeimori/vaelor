@@ -10,7 +10,7 @@ opaque token in an `HttpOnly` cookie.
   password change, logout, server-side rate limiting.
 - **Session cookie** — `vaelor_session`, `HttpOnly`, `SameSite=Lax`,
   `Secure` on HTTPS, 30 days normally, 180 days with "Remember me".
-- **Password hashing** — PBKDF2-SHA256, 150 000 iterations, 16-byte random
+- **Password hashing** — PBKDF2-SHA256, 100 000 iterations, 16-byte random
   salt per user. Only the derived hash is stored.
 - **Owner detection** — any address in `OWNER_EMAILS` gets `isOwner: true`
   from `/api/auth/me` and the owner link on the login page.

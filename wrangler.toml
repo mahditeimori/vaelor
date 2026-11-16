@@ -20,7 +20,6 @@
 name = "vaelor"
 compatibility_date = "2026-11-10"
 pages_build_output_dir = "dist"
-account_id = "3cd600058fe97fbab666f060a2037044"
 
 [[kv_namespaces]]
 binding = "AUTH"

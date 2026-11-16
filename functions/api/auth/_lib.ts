@@ -9,7 +9,7 @@
  *   rl:<key>         login attempt counters
  *   s:<userId>       subscription record (tier/status/expiry)
  *
- * Passwords are PBKDF2-SHA256, 150k iterations, 16-byte random salt. Only the
+ * Passwords are PBKDF2-SHA256, 100 000 iterations, 16-byte random salt. Only the
  * derived hash is stored. Sessions are opaque 32-byte tokens delivered in an
  * HttpOnly cookie, so no credential ever reaches client JavaScript.
  */
@@ -49,7 +49,8 @@ export const SESSION_COOKIE = 'vaelor_session';
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 export const SESSION_TTL_REMEMBERED = 60 * 60 * 24 * 180;
 export const OAUTH_STATE_TTL = 600;
-export const PBKDF2_ITERATIONS = 150000;
+/** Cloudflare Workers caps WebCrypto PBKDF2 at 100 000 iterations. */
+export const PBKDF2_ITERATIONS = 100000;
 
 /* ------------------------------------------------------------------ */
 /* HTTP helpers                                                        */

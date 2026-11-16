@@ -76,7 +76,8 @@ export const onRequestPost: Handler = async ({ request, env }) => {
       username: body.username,
     });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : '';
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error('auth.register failed:', reason);
     if (reason === 'username_taken') return fail(409, 'username_taken', 'That username is already taken.');
     if (reason === 'username_invalid') {
       return fail(400, 'username_invalid', 'Username needs at least 3 letters, numbers, dots, dashes or underscores.');
