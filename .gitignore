@@ -74,3 +74,4 @@ public/downloads/*.zip
 
 # Wrangler local dev state (auth KV + cache)
 .wrangler/
+.dev.vars

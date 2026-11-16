@@ -14,7 +14,20 @@
  *   - Live figures are polled from the member's own bridge instance
  *     (`vaelor.bridge.pairing` → { url, token }).
  */
-import { getCurrentUser, type MemberUser } from './membership';
+import {
+  PLANS,
+  PLAN_ORDER,
+  TIER_RANK,
+  can,
+  getCurrentUser,
+  getPlan,
+  getTier,
+  openFeatureLock,
+  requiredTier,
+  type FeatureKey,
+  type MemberUser,
+  type Tier,
+} from './membership';
 import { signOut, syncSession } from './auth-client';
 
 const PAIRING_KEY = 'vaelor.bridge.pairing';
@@ -242,7 +255,22 @@ type TabId = 'overview' | 'execution' | 'terminal' | 'playbook';
 
 const TABS: TabId[] = ['overview', 'execution', 'terminal', 'playbook'];
 
+/** Which entitlement a tab needs. `null` means it is part of every plan. */
+const TAB_FEATURE: Record<TabId, FeatureKey | null> = {
+  overview: null,
+  execution: 'live_trade',
+  terminal: 'terminal_section2',
+  playbook: null,
+};
+
 function switchTab(tabId: string): void {
+  const feature = TAB_FEATURE[tabId as TabId] ?? null;
+  // A locked tab explains itself instead of switching, so the member never
+  // lands on a desk they cannot use.
+  if (feature && !can(feature)) {
+    openFeatureLock(feature);
+    return;
+  }
   state.activeTab = tabId;
   for (const view of TABS) {
     const el = document.getElementById(`view-${view}`);
@@ -1132,10 +1160,211 @@ g.unpairBridge = unpairBridge;
 g.closePosition = closePosition;
 g.showToast = showToast;
 g.signOutMember = signOutMember;
+g.scrollToMembership = scrollToMembership;
 
 async function signOutMember(): Promise<void> {
   await signOut();
   location.replace('/login.html');
+}
+
+/* ------------------------------------------------------------------ */
+/* Entitlements (Observer / Operator / Desk)                          */
+/* ------------------------------------------------------------------ */
+
+function scrollToMembership(): void {
+  switchTab('overview');
+  document.getElementById('membership')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/** Repaint every tier-dependent part of the page from `membership.ts`. */
+function applyEntitlements(): void {
+  const tier = getTier();
+  const plan = getPlan(tier);
+
+  const chip = document.getElementById('member-plan-chip');
+  const label = document.getElementById('member-plan-label');
+  if (label) label.textContent = plan.name.toUpperCase();
+  if (chip) {
+    chip.classList.toggle('border-rose-500/40', tier === 'free');
+    chip.classList.toggle('text-rose-200', tier === 'free');
+    chip.classList.toggle('border-emerald-500/50', tier !== 'free');
+    chip.classList.toggle('text-emerald-200', tier !== 'free');
+  }
+
+  paintTabLocks();
+  gatePairingFields();
+  renderMembership(tier);
+}
+
+/** Lock badges on the nav pills for tabs the current plan cannot open. */
+function paintTabLocks(): void {
+  for (const view of TABS) {
+    const feature = TAB_FEATURE[view];
+    const btn = document.getElementById(`nav-${view}`);
+    if (!btn) continue;
+    const locked = Boolean(feature && !can(feature));
+    const existing = btn.querySelector('.nav-lock');
+    btn.classList.toggle('opacity-70', locked);
+    if (locked && !existing) {
+      const icon = document.createElement('i');
+      icon.className = 'nav-lock fa-solid fa-lock text-[9px] text-amber-400 ml-0.5';
+      icon.setAttribute('aria-hidden', 'true');
+      btn.appendChild(icon);
+      if (feature) btn.title = `${getPlan(requiredTier(feature)).name} plan required`;
+    } else if (!locked && existing) {
+      existing.remove();
+      btn.removeAttribute('title');
+    }
+  }
+}
+
+/** The bridge pairing fields are Desk-only; the account actions stay usable. */
+function gatePairingFields(): void {
+  const host = document.getElementById('pairing-fields');
+  const pairButton = document.getElementById('pair-btn') as HTMLButtonElement | null;
+  if (!host) return;
+
+  const allowed = can('pair');
+  const inputs = Array.from(host.querySelectorAll<HTMLInputElement>('input'));
+  const existing = host.querySelector<HTMLElement>('.pairing-lock');
+
+  for (const input of inputs) input.disabled = !allowed;
+  if (pairButton) {
+    pairButton.disabled = !allowed;
+    pairButton.classList.toggle('opacity-50', !allowed);
+    pairButton.classList.toggle('cursor-not-allowed', !allowed);
+  }
+
+  if (allowed) {
+    existing?.remove();
+    host.classList.remove('pointer-events-none');
+    return;
+  }
+
+  host.classList.add('pointer-events-none');
+  if (existing) return;
+
+  const note = document.createElement('div');
+  note.className =
+    'pairing-lock pointer-events-auto absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-[#0d070a]/95 border border-amber-500/40 text-center px-4';
+  note.innerHTML = `
+    <i class="fa-solid fa-lock text-amber-400"></i>
+    <p class="text-xs font-medium text-amber-200 leading-relaxed">A dedicated cloud bridge is a Desk feature.</p>
+    <button type="button" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-[11px] font-semibold text-white">See the Desk plan</button>`;
+  note.querySelector('button')?.addEventListener('click', () => {
+    closeSignInModal();
+    openFeatureLock('pair');
+  });
+  // The container needs a positioning context for the overlay.
+  host.style.position = 'relative';
+  host.appendChild(note);
+}
+
+/** Render the plan catalogue and wire each request button. */
+function renderMembership(tier: Tier): void {
+  const grid = document.getElementById('membership-grid');
+  if (!grid) return;
+
+  const plan = getPlan(tier);
+  const current = document.getElementById('membership-current');
+  if (current) {
+    current.textContent = plan.price === 0 ? `${plan.name} · free` : `${plan.name} · $${plan.price}/mo`;
+  }
+  const handle = document.getElementById('membership-handle');
+  if (handle && user) handle.textContent = `@${user.username}`;
+
+  grid.innerHTML = PLAN_ORDER.map((id) => {
+    const entry = PLANS[id];
+    const isCurrent = id === tier;
+    const upgrade = TIER_RANK[id] > TIER_RANK[tier];
+    const price = entry.price === 0 ? 'FREE' : `$${entry.price}<span class="text-[9px] text-slate-500">/mo</span>`;
+
+    let action: string;
+    if (isCurrent) {
+      action = `<span class="block text-center text-[10px] font-mono uppercase tracking-wider text-emerald-300 py-2 rounded-lg border border-emerald-500/40 bg-emerald-950/30">Current plan</span>`;
+    } else if (id === 'free') {
+      action = `<span class="block text-center text-[10px] font-mono uppercase tracking-wider text-slate-500 py-2">Included by default</span>`;
+    } else {
+      const cls = upgrade
+        ? 'bg-rose-600 hover:bg-rose-500 text-white'
+        : 'bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300';
+      action = `<button type="button" data-plan="${id}" class="w-full py-2 rounded-lg text-[11px] font-semibold transition-colors ${cls}">${upgrade ? `Request ${entry.name}` : `Switch to ${entry.name}`}</button>`;
+    }
+
+    return `<div class="relative flex flex-col rounded-2xl border p-5 ${
+      isCurrent ? 'border-rose-500 bg-rose-950/20' : 'border-[#331d27] bg-[#130b0f]/90'
+    }">
+      ${
+        entry.badge
+          ? `<span class="absolute -top-2.5 left-4 px-2 py-0.5 rounded-full bg-rose-600 text-[9px] font-mono uppercase tracking-wider text-white">${entry.badge}</span>`
+          : ''
+      }
+      <div class="flex items-baseline justify-between gap-2 mb-1">
+        <h3 class="text-base font-semibold text-white">${entry.name}</h3>
+        <span class="font-mono text-xs text-rose-300">${price}</span>
+      </div>
+      <p class="text-[11px] text-slate-400 leading-relaxed mb-3">${entry.tagline}</p>
+      <ul class="space-y-1.5 text-[11px] text-slate-300 flex-1">
+        ${entry.highlights
+          .slice(0, 4)
+          .map(
+            (line) =>
+              `<li class="flex gap-2"><i class="fa-solid fa-check text-emerald-400 text-[9px] mt-1"></i><span class="leading-relaxed">${line}</span></li>`,
+          )
+          .join('')}
+      </ul>
+      <div class="mt-4">${action}</div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((btn) => {
+    btn.addEventListener('click', () => void requestPlan(btn.dataset.plan ?? '', btn));
+  });
+}
+
+/**
+ * Ask the desk for a plan. The request is stored server-side so the owner
+ * console sees it; nothing here grants access — a grant is a server write.
+ */
+async function requestPlan(planId: string, button: HTMLButtonElement): Promise<void> {
+  if (planId !== 'operator' && planId !== 'desk') return;
+  const original = button.textContent ?? '';
+  button.disabled = true;
+  button.classList.add('opacity-60');
+  button.textContent = 'Sending…';
+
+  try {
+    const response = await fetch('/api/subscription/request', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ plan: planId }),
+    });
+    const payload = (await response.json().catch(() => null)) as
+      | { ok?: boolean; detail?: string; planName?: string }
+      | null;
+
+    if (!response.ok || !payload?.ok) {
+      showToast(payload?.detail || 'Could not send the request. Try again in a moment.', 'error');
+      button.disabled = false;
+      button.classList.remove('opacity-60');
+      button.textContent = original;
+      return;
+    }
+
+    button.textContent = 'Request sent';
+    button.classList.remove('bg-rose-600', 'hover:bg-rose-500');
+    button.classList.add('bg-emerald-700/60', 'text-emerald-100');
+    showToast(
+      `Request sent for ${payload.planName ?? getPlan(planId as Tier).name}. The desk activates it after payment.`,
+      'success',
+    );
+  } catch {
+    showToast('Could not reach the desk. Check your connection and retry.', 'error');
+    button.disabled = false;
+    button.classList.remove('opacity-60');
+    button.textContent = original;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -1165,6 +1394,7 @@ async function mountDesign(): Promise<void> {
   paintMode();
   setBridgePill('unpaired', 'BRIDGE: NOT PAIRED');
   applyDataMode();
+  applyEntitlements();
 
   const symbolSelect = document.getElementById('ticket-symbol') as HTMLSelectElement | null;
   if (symbolSelect) curatedOptions = symbolSelect.innerHTML;
@@ -1174,7 +1404,9 @@ async function mountDesign(): Promise<void> {
 
   switchTab('overview');
   renderPositionsTable();
-  await connectBridge(false);
+  // Only a Desk member owns a bridge instance; everyone else stays in the
+  // labelled preview mode instead of polling an endpoint they cannot have.
+  if (can('pair')) await connectBridge(false);
 
   setInterval(() => {
     void tick();

@@ -119,11 +119,40 @@ function lastActivity(username: string): number | null {
   }
 }
 
-function grant(username: string, days: number, status: 'active' | 'trialing' = 'active'): void {
+/**
+ * Entitlements live on the server (`s:<userId>` in KV) so a grant reaches the
+ * member from whichever browser the owner uses. The local write below keeps
+ * this console responsive and still works in a static preview without Functions.
+ */
+async function grantOnServer(options: {
+  username: string;
+  tier: 'operator' | 'desk' | 'free';
+  days?: number;
+  requestId?: string;
+}): Promise<boolean> {
+  try {
+    const response = await fetch('/api/subscription/grant', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(options),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function grant(
+  username: string,
+  days: number,
+  options: { tier?: 'operator' | 'desk'; requestId?: string } = {},
+): Promise<void> {
+  const tier = options.tier ?? 'desk';
   const now = Date.now();
   setSubscription(username, {
-    tier: 'desk',
-    status,
+    tier,
+    status: 'active',
     startedAt: now,
     expiresAt: now + days * 86400_000,
   });
@@ -134,7 +163,7 @@ function grant(username: string, days: number, status: 'active' | 'trialing' = '
       id: `n_${Date.now()}`,
       kind: 'subscription',
       title: 'Subscription active',
-      body: `${days} days of full platform access are now unlocked.`,
+      body: `${days} days of ${tier} access are now unlocked.`,
       at: now,
       read: false,
     });
@@ -143,15 +172,21 @@ function grant(username: string, days: number, status: 'active' | 'trialing' = '
     /* notification is best-effort */
   }
   renderMembers();
-  renderRequests();
+  void renderRequests();
   renderActivity();
-  toast(`${username}: ${days} days granted.`);
+  const synced = await grantOnServer({ username, tier, days, requestId: options.requestId });
+  toast(
+    synced
+      ? `${username}: ${tier}, ${days} days granted.`
+      : `${username}: saved in this browser only — the server refused or is unreachable.`,
+  );
 }
 
-function revoke(username: string): void {
+async function revoke(username: string): Promise<void> {
   setSubscription(username, { tier: 'free', status: 'canceled', startedAt: null, expiresAt: null });
   renderMembers();
-  toast(`${username}: plan set to free.`);
+  const synced = await grantOnServer({ username, tier: 'free' });
+  toast(synced ? `${username}: plan set to free.` : `${username}: cleared locally only.`);
 }
 
 function unlock(): void {
@@ -258,12 +293,29 @@ function remainingUnused(): void {
 /* Requests                                                           */
 /* ------------------------------------------------------------------ */
 
-function renderRequests(): void {
+async function fetchRemoteRequests(): Promise<UpgradeRequest[] | null> {
+  try {
+    const response = await fetch('/api/subscription/requests', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as { requests?: UpgradeRequest[] };
+    return Array.isArray(payload.requests) ? payload.requests : [];
+  } catch {
+    return null;
+  }
+}
+
+async function renderRequests(): Promise<void> {
   const host = $('ownerRequests');
   if (!host) return;
-  const requests = readRequests().filter((r) => r.status === 'pending');
+  const remote = await fetchRemoteRequests();
+  const requests = remote ?? readRequests().filter((r) => r.status === 'pending');
   if (!requests.length) {
     host.innerHTML = '<p class="o-empty">No pending upgrade requests.</p>';
+    updateRequestBadge(0);
     return;
   }
   host.innerHTML = requests
@@ -285,22 +337,29 @@ function renderRequests(): void {
     btn.addEventListener('click', () => {
       const id = btn.dataset.approve ?? '';
       const user = btn.dataset.user ?? '';
-      const plan = btn.dataset.plan ?? 'monthly';
+      const plan = btn.dataset.plan ?? 'desk';
+      // Server records carry the real tier; older local ones carried a period.
+      const tier: 'operator' | 'desk' = plan === 'operator' ? 'operator' : 'desk';
+      const days = plan === 'annual' ? 365 : 30;
       const list = readRequests().map((r) => (r.id === id ? { ...r, status: 'approved' } : r));
       writeRequests(list);
-      grant(user, plan === 'annual' ? 365 : 30);
+      if (user) void grant(user, days, { tier, requestId: id });
     });
   });
   host.querySelectorAll<HTMLButtonElement>('[data-deny]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.dataset.deny ?? '';
       writeRequests(readRequests().map((r) => (r.id === id ? { ...r, status: 'dismissed' } : r)));
-      renderRequests();
+      void renderRequests();
     });
   });
 
+  updateRequestBadge(requests.length);
+}
+
+function updateRequestBadge(count: number): void {
   const badge = $('oReqCount');
-  if (badge) badge.textContent = String(requests.length);
+  if (badge) badge.textContent = String(count);
 }
 
 /* ------------------------------------------------------------------ */
@@ -399,12 +458,12 @@ async function renderBridge(): Promise<void> {
 
 function mountConsole(): void {
   renderMembers();
-  renderRequests();
+  void renderRequests();
   renderActivity();
   void renderBridge();
   $('ownerRefresh')?.addEventListener('click', () => {
     renderMembers();
-    renderRequests();
+    void renderRequests();
     renderActivity();
     void renderBridge();
     toast('Console refreshed.');

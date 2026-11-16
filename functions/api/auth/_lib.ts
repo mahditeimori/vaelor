@@ -339,6 +339,15 @@ export async function getSubscription(env: Env, userId: string): Promise<Subscri
   return { tier: 'free', status: 'active', startedAt: null, expiresAt: null };
 }
 
+/** The single writer for entitlements. Only owner-gated code may call it. */
+export async function putSubscription(
+  env: Env,
+  userId: string,
+  sub: SubscriptionRecord,
+): Promise<void> {
+  await env.AUTH.put(`s:${userId}`, JSON.stringify(sub));
+}
+
 /* ------------------------------------------------------------------ */
 /* Sessions                                                            */
 /* ------------------------------------------------------------------ */

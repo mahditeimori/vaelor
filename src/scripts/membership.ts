@@ -301,7 +301,7 @@ export const FEATURES: Record<FeatureKey, FeatureDef> = {
   oi_cot: { key: 'oi_cot', label: 'OI / COT analytics', minTier: 'operator', freeFallback: 'OI / COT positioning starts on the Operator plan.' },
   cdtc: { key: 'cdtc', label: 'CDTC charts + analysis', minTier: 'operator', freeFallback: 'CDTC charts start on the Operator plan.' },
   analytical_chart: { key: 'analytical_chart', label: 'Analytical engine', minTier: 'operator', freeFallback: 'The analytical engine starts on the Operator plan.' },
-  terminal_section2: { key: 'terminal_section2', label: 'Terminal analysis sections', minTier: 'operator', freeFallback: 'Terminal analysis starts on the Operator plan.' },
+  terminal_section2: { key: 'terminal_section2', label: 'Live terminal analysis', minTier: 'operator', freeFallback: 'The live terminal starts on the Operator plan.' },
   news_custom_ai: { key: 'news_custom_ai', label: 'Custom news AI analysis', minTier: 'operator', freeFallback: 'Custom news AI analysis starts on the Operator plan.' },
   ai_chat: { key: 'ai_chat', label: 'AI chat (MCP)', minTier: 'operator', freeFallback: 'AI chat starts on the Operator plan.' },
   pair: { key: 'pair', label: 'Cloud bridge pairing', minTier: 'desk', freeFallback: 'A dedicated cloud bridge is included on the Desk plan.' },
