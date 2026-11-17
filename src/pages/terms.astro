@@ -1,0 +1,133 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const updated = '16 November 2026';
+---
+
+<BaseLayout title="Terms of Service" description="Terms for using Vaelor Trading LLC.">
+  <main class="shell">
+    <article class="prose" style="max-width:860px;margin:0 auto;padding:40px 0 72px">
+      <div class="mono" style="font-size:0.7rem;letter-spacing:0.24em;text-transform:uppercase;color:var(--text-faint)">
+        Legal · Members
+      </div>
+      <h1>Terms of Service</h1>
+      <p style="color:var(--text-dim)">Last updated {updated}.</p>
+
+      <p>
+        These terms govern your use of <code>vaelor.pages.dev</code> and the Vaelor member dashboard
+        (the "Service"), operated by Vaelor Trading LLC ("Vaelor", "we"). By creating an account or
+        signing in, you agree to them. If you do not agree, do not use the Service.
+      </p>
+
+      <h2>1. What the Service is</h2>
+      <p>
+        The Service is research and analysis software for futures traders: signal generation from
+        published rule sets, indicator export, open-interest and positioning analytics, a backtester,
+        news analysis, and optional tooling that can route orders you submit to your own MetaTrader 5
+        bridge instance.
+      </p>
+      <p>
+        The Service is not a broker, does not hold client money, and does not manage an account on your
+        behalf. You place every live order yourself.
+      </p>
+
+      <h2>2. Your account</h2>
+      <ul>
+        <li>Give accurate information and keep your credentials private.</li>
+        <li>One account per person. Accounts are not transferable or resellable.</li>
+        <li>You are responsible for activity under your account.</li>
+        <li>Tell us promptly if you believe your account is compromised.</li>
+      </ul>
+
+      <h2>3. Plans and payment</h2>
+      <table>
+        <thead>
+          <tr><th>Plan</th><th>Price</th><th>Includes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Observer</td><td>Free</td><td>Backtester, operating manual, feature overview</td></tr>
+          <tr><td>Operator</td><td>$49 / month ($490 / year)</td><td>Observer plus live signals, indicator export, OI/COT and CDTC analytics, news desk, AI chat</td></tr>
+          <tr><td>Desk</td><td>$199 / month ($1,990 / year)</td><td>Operator plus a dedicated cloud MT5 bridge, live order desk, prop-safe lock, audit trail, strategy upload</td></tr>
+        </tbody>
+      </table>
+      <ul>
+        <li>Paid plans are activated by the desk after payment. An upgrade request does not grant access by itself.</li>
+        <li>Fees are charged in advance for the period. Subscriptions renew only if you choose to renew.</li>
+        <li>Refunds, if any, are handled by the desk and only where required by law.</li>
+      </ul>
+
+      <h2>4. Trading risk — read this</h2>
+      <div class="card" style="border-color:rgba(201,162,75,0.35)">
+        <p style="margin:0">
+          <b>Trading leveraged futures involves substantial risk of loss and is not suitable for everyone.</b>
+          Nothing in the Service is financial, investment, or trading advice, and nothing in it is a
+          recommendation to buy or sell any instrument.
+        </p>
+      </div>
+      <ul>
+        <li>Signals are outputs of a rule set on historical and current data. They can be wrong. Past performance does not predict future results.</li>
+        <li>Backtest and paper results are simulated and are labelled as such. They are not live fills.</li>
+        <li>You are solely responsible for every order you place, for position sizing, and for complying with your broker's and your prop firm's rules.</li>
+        <li>Never let the Service, or any tool built with it, place live orders on an account where automated execution is prohibited. The live desk refuses to open orders when the prop-safe lock is armed; that lock is a safety aid, not a guarantee.</li>
+      </ul>
+
+      <h2>5. Acceptable use</h2>
+      <ul>
+        <li>No automated trading on prop-firm or evaluation accounts through the Service.</li>
+        <li>No attempts to break, probe, or overload the Service, its bridge, or another member's instance.</li>
+        <li>No sharing your session, pairing token, or bridge endpoint with anyone else.</li>
+        <li>No scraping, resale, or redistribution of the content or the indicator files.</li>
+        <li>No unlawful use, including market manipulation or fraud.</li>
+      </ul>
+
+      <h2>6. Intellectual property</h2>
+      <p>
+        The Service, its rule sets, indicator files, documentation, and the Vaelor name and marks belong
+        to Vaelor Trading LLC. You get a personal, non-exclusive, non-transferable licence to use them
+        during your subscription. Indicator files are licensed for your own accounts only.
+      </p>
+
+      <h2>7. Third-party services</h2>
+      <p>
+        MetaTrader 5, your broker, your prop firm, and any market-data or news provider are independent.
+        Their terms apply to your use of them. We are not responsible for their availability, accuracy, or decisions.
+      </p>
+
+      <h2>8. Suspension and termination</h2>
+      <p>
+        We may suspend or close an account that breaks these terms, that we reasonably believe is
+        compromised, or that is used to attack the Service. You can stop using the Service at any time;
+        paid periods are not refunded except where the law requires it.
+      </p>
+
+      <h2>9. Disclaimers</h2>
+      <p>
+        The Service is provided "as is" and "as available", without warranties of any kind, express or
+        implied, including fitness for a particular purpose. We do not warrant that signals, analytics,
+        or backtests are accurate, complete, or fit for your trading.
+      </p>
+
+      <h2>10. Limitation of liability</h2>
+      <p>
+        To the maximum extent the law allows, Vaelor is not liable for indirect, incidental, special, or
+        consequential loss, and our total liability for any claim relating to the Service is limited to
+        the fees you paid for the three months before the claim. Nothing here limits liability that
+        cannot lawfully be limited.
+      </p>
+
+      <h2>11. Changes</h2>
+      <p>
+        We may change these terms as the Service changes. Material changes are posted here with a new
+        date, and where they affect your rights we will also tell you in the dashboard or by email.
+        Continuing to use the Service after a change means you accept it.
+      </p>
+
+      <h2>12. Contact</h2>
+      <p>
+        Questions about these terms: <a href="mailto:mahdi.t8256@gmail.com">mahdi.t8256@gmail.com</a>.
+      </p>
+
+      <p style="margin-top:28px"><a href="/privacy">Privacy Policy →</a></p>
+    </article>
+  </main>
+</BaseLayout>

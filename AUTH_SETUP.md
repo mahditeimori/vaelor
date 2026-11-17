@@ -35,6 +35,31 @@ so they stay visibly disabled until the credentials below exist.
 | `GET` | `/api/auth/oauth/google/callback` | Finish Google sign-in. |
 | `GET` | `/api/auth/oauth/github/start` | Begin GitHub sign-in. |
 | `GET` | `/api/auth/oauth/github/callback` | Finish GitHub sign-in. |
+| `POST` | `/api/subscription/request` | Member asks for Operator or Desk (rate limited, de-duplicated). |
+| `GET` | `/api/subscription/requests` | Owner-only list of pending upgrade requests. |
+| `POST` | `/api/subscription/grant` | Owner-only entitlement write (`operator` / `desk` / `free`). |
+
+## Subscription endpoints
+
+Tiers are server-owned. A member can ask; only an owner can grant.
+
+```powershell
+# member: ask for a plan
+curl.exe -X POST https://vaelor.pages.dev/api/subscription/request `
+  -H "content-type: application/json" -b "vaelor_session=<member cookie>" `
+  -d '{"plan":"operator","period":"monthly"}'
+
+# owner: see what is pending
+curl.exe https://vaelor.pages.dev/api/subscription/requests -b "vaelor_session=<owner cookie>"
+
+# owner: activate a plan for 30 days, closing the request that asked for it
+curl.exe -X POST https://vaelor.pages.dev/api/subscription/grant `
+  -H "content-type: application/json" -b "vaelor_session=<owner cookie>" `
+  -d '{"username":"tier.tester","tier":"desk","days":30,"requestId":"<id>"}'
+```
+
+`putSubscription()` in `functions/api/auth/_lib.ts` is the only writer of
+`s:<userId>`. A member calling `/api/subscription/grant` gets `403`.
 
 ## KV keys
 
@@ -50,6 +75,8 @@ sid:<token>     session record (TTL = cookie lifetime)
 oauth:<state>   OAuth state, 10 minutes
 rst:<token>     password-reset token, 30 minutes
 rl:<key>        rate-limit counters
+subreq:<id>     upgrade request, 180 days
+subreqidx       list of upgrade-request ids the owner console reads
 ```
 
 ## Local testing
@@ -62,11 +89,16 @@ npx wrangler pages dev dist --port 8788 --ip 127.0.0.1
 Open `http://127.0.0.1:8788/login`. The local KV is simulated in
 `.wrangler/state`, so test accounts are not created in production.
 
-With a throwaway owner for testing:
+`wrangler pages dev` has no `--var` flag; local-only values go in `.dev.vars`
+(gitignored), which wrangler reads automatically:
 
-```powershell
-npx wrangler pages dev dist --port 8788 --ip 127.0.0.1 --var OWNER_EMAILS:you@example.com
 ```
+OWNER_EMAILS=you@example.com
+```
+
+To exercise OAuth locally, add the local callback URL to the same OAuth app
+(Google allows several; GitHub needs a second app) and put the client
+id/secret in `.dev.vars` too.
 
 ## Production deployment
 
@@ -110,16 +142,21 @@ npx wrangler pages dev dist --port 8788 --ip 127.0.0.1 --var OWNER_EMAILS:you@ex
 
 ## Google sign-in
 
-1. Go to <https://console.cloud.google.com/> → create or pick a project.
-2. **APIs & Services → OAuth consent screen**: External, add the app name,
-   support email and your own account as a test user while in testing mode.
-3. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
+1. Go to <https://console.cloud.google.com/> → pick a project (or create one).
+2. **Google Auth Platform → Branding**: app name, user support email, application
+   home page, privacy policy and terms links, authorized domain (the site's
+   registrable domain, e.g. `vaelor.pages.dev`), developer contact email.
+3. **Google Auth Platform → Audience**: user type External. While the app is in
+   *Testing* only listed test users can sign in (100-user lifetime cap). With
+   only `openid email profile` scopes, **Publish app** moves it to *In
+   production* without verification.
+4. **Google Auth Platform → Clients → Create client**:
    - Application type: **Web application**
    - Authorised redirect URIs:
      - `https://vaelor.pages.dev/api/auth/oauth/google/callback`
      - `http://127.0.0.1:8788/api/auth/oauth/google/callback` (local testing)
-4. Copy the client id/secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
-5. `GET /api/auth/config` should now return `"google": true` and the button
+5. Copy the client id/secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
+6. `GET /api/auth/config` should now return `"google": true` and the button
    becomes active automatically.
 
 ## GitHub sign-in
@@ -128,10 +165,12 @@ npx wrangler pages dev dist --port 8788 --ip 127.0.0.1 --var OWNER_EMAILS:you@ex
 2. Homepage URL: `https://vaelor.pages.dev`
    Authorization callback URL:
    `https://vaelor.pages.dev/api/auth/oauth/github/callback`
-3. Copy the client id/secret into `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
-4. GitHub allows one callback URL per app. For local testing, create a second
-   OAuth app whose callback is
-   `http://127.0.0.1:8788/api/auth/oauth/github/callback`.
+3. **Generate a new client secret** — GitHub asks for sudo mode (2FA) first,
+   and the secret is shown only once.
+4. Copy the client id/secret into `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`.
+5. GitHub allows several callback URLs per app, but wildcards only match
+   subdomains/paths of a listed URI. For local testing add
+   `http://127.0.0.1:8788/api/auth/oauth/github/callback` to the same app.
 
 An existing account is reused when the provider returns an email that already
 exists, so a member can register with a password and later add Google/GitHub

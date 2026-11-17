@@ -1,0 +1,161 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const updated = '16 November 2026';
+---
+
+<BaseLayout title="Privacy Policy" description="How Vaelor Trading LLC handles member data.">
+  <main class="shell">
+    <article class="prose" style="max-width:860px;margin:0 auto;padding:40px 0 72px">
+      <div class="mono" style="font-size:0.7rem;letter-spacing:0.24em;text-transform:uppercase;color:var(--text-faint)">
+        Legal · Members
+      </div>
+      <h1>Privacy Policy</h1>
+      <p style="color:var(--text-dim)">Last updated {updated}.</p>
+
+      <p>
+        This policy explains what Vaelor Trading LLC ("Vaelor", "we") collects when you create a member
+        account or use the member dashboard, why we collect it, and the choices you have. It applies to
+        <code>vaelor.pages.dev</code> and the member dashboard at <code>/member</code>.
+      </p>
+
+      <h2>1. What we collect</h2>
+      <table>
+        <thead>
+          <tr><th>Data</th><th>When</th><th>Why</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Email address, display name, optional first/last name</td>
+            <td>Registration, or your first Google/GitHub sign-in</td>
+            <td>Identify your account, contact you about it</td>
+          </tr>
+          <tr>
+            <td>Password hash (PBKDF2-SHA256, 100 000 iterations, per-user salt)</td>
+            <td>When you choose email + password sign-in</td>
+            <td>Sign you in. We never store your password itself.</td>
+          </tr>
+          <tr>
+            <td>OAuth account identifier from Google or GitHub</td>
+            <td>Only if you use that provider</td>
+            <td>Link the provider to your existing account so you can sign in either way</td>
+          </tr>
+          <tr>
+            <td>Session token</td>
+            <td>Every sign-in</td>
+            <td>Keep you signed in. Stored server-side as a hash, in your browser as an HttpOnly cookie.</td>
+          </tr>
+          <tr>
+            <td>Plan, subscription status and expiry</td>
+            <td>When the desk activates or changes a plan</td>
+            <td>Decide which features your account can open</td>
+          </tr>
+          <tr>
+            <td>Sign-in timestamps, IP address, failed-attempt counters</td>
+            <td>Every authentication attempt</td>
+            <td>Rate limiting, abuse prevention, and the owner's security console</td>
+          </tr>
+          <tr>
+            <td>Bridge endpoint and pairing token</td>
+            <td>When you pair a MetaTrader 5 bridge instance</td>
+            <td>Talk to your own cloud bridge. The token is kept in your browser, not in our database.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>2. How we use it</h2>
+      <ul>
+        <li>To run the service you asked for: sign you in, keep your session, and show the tools your plan includes.</li>
+        <li>To secure the service: rate limiting, detecting credential stuffing, and an audit trail of account actions.</li>
+        <li>To answer you when you contact the desk, and to tell you about your subscription.</li>
+        <li>To meet legal obligations and enforce this policy.</li>
+      </ul>
+      <p>
+        We do not sell member data, and we do not use your account data for advertising.
+      </p>
+
+      <h2>3. Cookies and browser storage</h2>
+      <table>
+        <thead>
+          <tr><th>Item</th><th>Type</th><th>Purpose</th><th>Lifetime</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>vaelor_session</code></td>
+            <td>First-party cookie, HttpOnly, SameSite=Lax, Secure on HTTPS</td>
+            <td>Server-side session</td>
+            <td>30 days, or 180 days with "Remember me"</td>
+          </tr>
+          <tr>
+            <td><code>localStorage</code> keys such as <code>vaelor_profile_v1</code>, <code>vaelor_bridge_v1</code></td>
+            <td>Browser storage</td>
+            <td>Remember your dashboard preferences and your own bridge endpoint and token</td>
+            <td>Until you clear it or unpair</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>
+        The dashboard reads your session from the server on every page load. The browser copy is a cache,
+        so an outage cannot sign you in or keep you signed in on its own.
+      </p>
+
+      <h2>4. Who we share it with</h2>
+      <ul>
+        <li>
+          <b>Hosting and storage:</b> Cloudflare (Pages hosting and KV storage of account records).
+        </li>
+        <li>
+          <b>Sign-in providers:</b> Google or GitHub, but only if you choose them. They receive the
+          information needed to complete that sign-in and nothing else.
+        </li>
+        <li>
+          <b>Your broker:</b> MetaTrader 5 bridge traffic goes between your browser and your own bridge
+          instance. Vaelor does not hold your broker credentials.
+        </li>
+        <li>
+          <b>Payment processing:</b> if a payment processor is enabled, it receives the billing details
+          needed to take payment. Card numbers never reach us.
+        </li>
+      </ul>
+
+      <h2>5. Retention</h2>
+      <p>
+        We keep your account record while your account exists. Sessions expire on the schedule above.
+        Failed-login counters expire within 15 minutes. Audit entries are kept for 180 days.
+        If you close your account, we delete the account record and its subscription record within 30 days,
+        except where we must keep a record to meet a legal obligation.
+      </p>
+
+      <h2>6. Security</h2>
+      <ul>
+        <li>Passwords are hashed with PBKDF2-SHA256 and a random per-user salt. Plaintext passwords are never stored or logged.</li>
+        <li>Session tokens are random, opaque, and stored server-side as a hash; the cookie is HttpOnly and Secure on HTTPS.</li>
+        <li>Plan changes are written only by owner-authenticated endpoints. A member cannot grant themselves a plan.</li>
+        <li>OAuth logins verify the provider's signed identity and require a verified email before an account is created.</li>
+      </ul>
+
+      <h2>7. Your choices</h2>
+      <ul>
+        <li>You can sign in with a password, Google, or GitHub, and add a second method later.</li>
+        <li>You can unpair your bridge at any time from the account panel, which removes the token from this browser.</li>
+        <li>You can ask for a copy or deletion of your account data by emailing the address below.</li>
+      </ul>
+
+      <h2>8. Children</h2>
+      <p>The service is for adults 18 and over. We do not knowingly collect data from children.</p>
+
+      <h2>9. Changes</h2>
+      <p>
+        If this policy changes materially, we will update the date above and, where the change affects
+        how we use your data, tell members through the dashboard or by email.
+      </p>
+
+      <h2>10. Contact</h2>
+      <p>
+        Questions or requests about your data: <a href="mailto:mahdi.t8256@gmail.com">mahdi.t8256@gmail.com</a>.
+      </p>
+
+      <p style="margin-top:28px"><a href="/terms">Terms of Service →</a></p>
+    </article>
+  </main>
+</BaseLayout>
