@@ -201,6 +201,14 @@ class TradingEngine:
             raise RiskError("no MetaTrader 5 terminal found on this machine")
         return self.connect_mt5(path=path)
 
+    def kill_enabled(self) -> bool:
+        """Connection kill switch: armed by the member on the website.
+
+        While armed the supervisor keeps MT5 disconnected and never
+        re-attaches the terminal on its own (no PowerShell popups).
+        """
+        return self.store.get_kv("mt5_kill") == "1"
+
     # ------------------------------------------------------------- lifecycle
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -250,6 +258,12 @@ class TradingEngine:
         """
         while not self._stop.is_set():
             self._stop.wait(10)
+            if self.kill_enabled():
+                from .mt5_provider import MT5Provider
+
+                if isinstance(self.provider, MT5Provider):
+                    self.disconnect_mt5()
+                continue
             try:
                 from .mt5_provider import MT5Provider
 

@@ -82,6 +82,11 @@ import '../styles/global.css';
             </div>
           </section>
 
+          <section id="ownerUserDetail" class="o-panel hidden">
+            <h2 class="o-title">User Details <span id="userDetailClose">✕</span></h2>
+            <div id="ownerUserDetailBody"></div>
+          </section>
+
           <section class="o-panel">
             <div class="o-panel-head">
               <h2>Upgrade requests <span class="o-req-count" id="oReqCount">0</span></h2>
@@ -104,6 +109,79 @@ import '../styles/global.css';
               <span class="o-mono">NOTIFICATION FEED</span>
             </div>
             <div id="ownerActivity"></div>
+          </section>
+
+          <section id="ownerFeatures" class="o-panel">
+            <div class="o-panel-head">
+              <h2>Capability catalog — Feature Manager</h2>
+              <span class="o-mono">OWNER · /api/owner/features</span>
+            </div>
+            <div id="ownerFeaturesList"></div>
+            <form id="addCapabilityForm" class="o-form">
+              <div class="o-form-row">
+                <label for="capName">Name</label>
+                <input id="capName" type="text" placeholder="e.g. Cross-Session Hedging" required />
+              </div>
+              <div class="o-form-row">
+                <label for="capDesc">Description</label>
+                <textarea id="capDesc" placeholder="What the capability does…" rows="2"></textarea>
+              </div>
+              <div class="o-form-grid">
+                <div class="o-form-row full">
+                  <label for="capSection">Section</label>
+                  <select id="capSection">
+                    <option value="Terminal">Terminal</option>
+                    <option value="Execution">Execution</option>
+                    <option value="Playbook">Playbook</option>
+                    <option value="Other" selected>Other</option>
+                  </select>
+                </div>
+                <div class="o-form-row">
+                  <label for="capTier">Tier (Observer/Operator/Desk)</label>
+                  <select id="capTier">
+                    <option value="free">Observer</option>
+                    <option value="operator" selected>Operator</option>
+                    <option value="desk">Desk</option>
+                  </select>
+                </div>
+                <div class="o-form-row">
+                  <label for="capPrice">Price per month (USD)</label>
+                  <input id="capPrice" type="number" min="0" step="0.01" value="0" />
+                </div>
+              </div>
+              <button type="submit" class="o-btn">Add capability</button>
+            </form>
+          </section>
+
+          <section id="ownerStrategies" class="o-panel">
+            <div class="o-panel-head">
+              <h2>Strategies — Strategy Manager</h2>
+              <span class="o-mono">OWNER · /api/owner/strategies</span>
+            </div>
+            <div id="ownerStrategiesList"></div>
+            <form id="addStrategyForm" class="o-form">
+              <div class="o-form-row">
+                <label for="stratTitle">Title</label>
+                <input id="stratTitle" type="text" placeholder="e.g. VWAP Baseline" required />
+              </div>
+              <div class="o-form-row">
+                <label for="stratDesc">Description</label>
+                <textarea id="stratDesc" placeholder="How the owner uses it…" rows="2"></textarea>
+              </div>
+              <div class="o-form-row">
+                <label for="stratId">StrategyId (optional, e.g. VWAP-v3)</label>
+                <input id="stratId" type="text" placeholder="VWAP-v3" />
+              </div>
+              <div class="o-form-row">
+                <label>Visible tiers</label>
+                <div class="o-tier-checks">
+                  <label class="o-tier-check"><input type="checkbox" value="free" /> Observer</label>
+                  <label class="o-tier-check"><input type="checkbox" value="operator" /> Operator</label>
+                  <label class="o-tier-check"><input type="checkbox" value="desk" /> Desk</label>
+                </div>
+              </div>
+              <button type="submit" class="o-btn">Add strategy</button>
+            </form>
           </section>
         </div>
 
@@ -242,6 +320,18 @@ import '../styles/global.css';
       .o-ok { color: #6ee7b7 !important; }
       .o-bad { color: #fb7185 !important; }
 
+      #ownerUserDetail h2.o-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 18px;
+        margin: 0 0 10px;
+      }
+      #userDetailClose {
+        float: right;
+        font-size: 13px;
+        cursor: pointer;
+        color: #a5979d;
+      }
+
       .o-req { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px; border-radius: 11px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); margin-bottom: 8px; flex-wrap: wrap; }
       .o-req b { font-size: 12.5px; }
       .o-req span { display: block; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #8d7f85; margin-top: 3px; }
@@ -254,6 +344,41 @@ import '../styles/global.css';
       .o-act { display: grid; grid-template-columns: 90px 1fr auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12px; }
       .o-act time { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #75686e; }
       .o-fine { font-size: 10.5px; line-height: 1.7; color: #75686e; margin-top: 16px; }
+
+      .o-user-link {
+        padding: 0;
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        border-bottom: 1px dotted rgba(255, 255, 255, 0.35);
+      }
+      .o-user-link:hover { border-bottom-color: #e11d48; }
+      .o-close {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.04);
+        color: #d8ccd1;
+        border-radius: 7px;
+        padding: 3px 8px;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .o-close:hover { border-color: #e11d48; color: #fff; }
+      .o-d-head { font-size: 12.5px; }
+      .o-d-head b { font-size: 14px; }
+      .o-d-head .o-sub { display: block; margin-top: 2px; }
+      .o-d-meta { font-size: 10.5px; color: #a5979d; font-family: 'JetBrains Mono', monospace; margin-top: 5px; word-break: break-all; }
+      .o-d-sec { margin-top: 15px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+      .o-d-sec h3 { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #8d7f85; margin: 0 0 9px; }
+      .o-d-act { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; font-size: 11.5px; padding: 5px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+      .o-d-act b { font-size: 12px; }
+      .o-d-act time { font-size: 9px; color: #75686e; margin-top: 2px; }
+      .o-d-unread { font-size: 10.5px; color: #e9e0e4; margin-bottom: 6px; }
+      .o-d-sess { font-size: 11px; color: #a5979d; margin-bottom: 5px; }
+      .o-btn.danger { border-color: rgba(251, 113, 133, 0.5); color: #fb7185; }
+      .o-btn.danger:hover { border-color: #fb7185; background: rgba(251, 113, 133, 0.12); color: #fff; }
 
       #ownerToast {
         position: fixed;
@@ -272,6 +397,64 @@ import '../styles/global.css';
         z-index: 50;
       }
       #ownerToast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      .o-feature-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 14px; }
+      .o-feature, .o-strategy {
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 11px;
+        padding: 11px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .o-feature-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .o-feature-benefits {
+        margin: 7px 0 0;
+        padding-left: 18px;
+        font-size: 11.5px;
+        color: #a89aa0;
+        line-height: 1.6;
+      }
+      .o-strategy-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 10.5px; color: #6f5f66; }
+      .o-form { display: grid; gap: 10px; }
+      .o-form-row { display: flex; flex-direction: column; gap: 4px; }
+      .o-form-row.full { grid-column: 1 / -1; }
+      .o-form-row label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #8d7f85;
+      }
+      .o-form input[type="text"],
+      .o-form input[type="number"],
+      .o-form select,
+      .o-form textarea {
+        padding: 10px;
+        border-radius: 9px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(0, 0, 0, 0.35);
+        color: #fff;
+        font: inherit;
+        font-size: 12.5px;
+        outline: none;
+      }
+      .o-form input:focus, .o-form select:focus, .o-form textarea:focus { border-color: rgba(225, 29, 72, 0.55); }
+      .o-form textarea { resize: vertical; min-height: 58px; }
+      .o-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .o-form button {
+        justify-self: start;
+        padding: 9px 15px;
+        border-radius: 9px;
+        border: none;
+        background: linear-gradient(135deg, #e11d48, #be185d);
+        color: #fff;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .o-tier-checks { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+      .o-tier-check { display: inline-flex; gap: 6px; align-items: center; font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #b3a6ac; }
+      .o-tier-check input { accent-color: #e11d48; }
 
       @media (max-width: 760px) {
         .o-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }

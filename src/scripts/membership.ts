@@ -336,6 +336,25 @@ export function featuresForTier(tier: Tier): FeatureKey[] {
   return FEATURE_ORDER.filter((key) => TIER_RANK[FEATURES[key].minTier] <= rank);
 }
 
+/* ------------------------------------------------------------------ */
+/* Tabs & locked-section previews                                       */
+/* ------------------------------------------------------------------ */
+
+export type TabId = 'overview' | 'execution' | 'terminal' | 'playbook';
+
+/**
+ * Locked-preview feature set per tab: the features whose teaser cards and
+ * capability rows appear in the locked section behind the lock overlay.
+ * `execution` is the Desk feature set plus `pair` — pairing is part of
+ * execution.
+ */
+export const TAB_PREVIEW_FEATURES: Record<TabId, FeatureKey[]> = {
+  overview: [],
+  execution: ['live_trade', 'execution_usage', 'upload_strategy', 'pair'],
+  terminal: ['terminal_section2', 'analytical_chart', 'ai_chat', 'signals', 'oi_cot', 'cdtc', 'news_custom_ai', 'indicator_download'],
+  playbook: [],
+};
+
 export function can(feature: FeatureKey): boolean {
   const user = getCurrentUser();
   if (!user?.username) return false;
@@ -398,6 +417,13 @@ export function unreadNotificationCount(): number {
 /* ------------------------------------------------------------------ */
 
 const PLANS_ANCHOR = '/member/#membership';
+
+/**
+ * Persisted tail of every feature-lock popup: locked sections stay visible,
+ * so the popup ends with this sentence telling the member why.
+ */
+export const LOCK_MESSAGE =
+  'برای دسترسی به این بخش باید اشتراک تهیه کنید. — Subscribe for access to this section.';
 
 export function openFeatureLock(feature: FeatureKey): void {
   if (typeof document === 'undefined') return;
@@ -506,6 +532,17 @@ export function openFeatureLock(feature: FeatureKey): void {
   card.appendChild(meta);
   card.appendChild(btn);
   card.appendChild(close);
+
+  // Locked sections stay visible: the popup ends with the persisted note.
+  const note = document.createElement('p');
+  note.style.fontFamily = '"JetBrains Mono",monospace';
+  note.style.fontSize = '11px';
+  note.style.lineHeight = '1.6';
+  note.style.color = '#8a7a82';
+  note.style.margin = '14px 0 0';
+  note.textContent = LOCK_MESSAGE;
+  card.appendChild(note);
+
   overlay.appendChild(card);
   host.appendChild(overlay);
 }

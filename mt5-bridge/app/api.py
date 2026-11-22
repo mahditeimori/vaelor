@@ -58,6 +58,16 @@ class PropToggle(BaseModel):
     enabled: bool = True
 
 
+class KillStateRequest(BaseModel):
+    """Website control for the MT5-connection kill switch.
+
+    While armed, the bridge supervisor keeps MetaTrader 5 disconnected and
+    never re-attaches it; disarming lets it reconnect as usual.
+    """
+
+    enabled: bool
+
+
 class LiveConfigPayload(BaseModel):
     """The market the live desk trades: timeframe, symbols and strategy."""
 
@@ -450,6 +460,27 @@ def kill(request: Request, payload: KillRequest) -> dict:
         return engine_of(request).kill(payload)
     except Exception as exc:
         raise _fail(exc) from exc
+
+
+@app.post("/api/kill-state", dependencies=[Depends(require_token)])
+def kill_state_post(request: Request, payload: KillStateRequest) -> dict:
+    """Arm/disarm the connection kill switch (site → bridge pairing).
+
+    The supervisor reads this every cycle and enforces it: while armed it
+    disconnects MT5 (sim broker) and keeps the connection down.
+    """
+    engine = engine_of(request)
+    engine.store.set_kv("mt5_kill", "1" if payload.enabled else "0")
+    engine.store.audit(
+        "safety.kill_switch",
+        {"source": "website", "mode": "connection", "enabled": payload.enabled},
+    )
+    return {"ok": True, "enabled": engine.kill_enabled()}
+
+
+@app.get("/api/kill-state", dependencies=[Depends(require_token)])
+def kill_state_get(request: Request) -> dict:
+    return {"ok": True, "enabled": engine_of(request).kill_enabled()}
 
 
 @app.post("/api/live", dependencies=[Depends(require_token)])

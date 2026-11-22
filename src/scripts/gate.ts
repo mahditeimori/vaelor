@@ -108,7 +108,7 @@ function applySectionGates(): void {
     overlay.style.cssText =
       'position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;gap:10px;' +
       'align-items:center;justify-content:center;text-align:center;padding:22px;' +
-      'background:rgba(7,4,6,0.92);backdrop-filter:blur(4px);border-radius:inherit';
+      'background:rgba(7,4,6,0.82);backdrop-filter:blur(2px);border-radius:inherit';
 
     const kicker = document.createElement('div');
     kicker.textContent = 'VAELOR · MEMBERSHIP';
@@ -118,6 +118,19 @@ function applySectionGates(): void {
     const title = document.createElement('div');
     title.textContent = FEATURES[key].label;
     title.style.cssText = 'font-family:"Playfair Display",serif;font-size:20px;color:#fff';
+
+    // Bilingual "persisted" hint shown right after the title: the darker
+    // overlay above already mutes the content behind, so tell visitors how
+    // to get this section.
+    const sub = document.createElement('div');
+    const subPersian = document.createElement('p');
+    subPersian.textContent = 'برای دسترسی به این بخش باید اشتراک تهیه کنید.';
+    subPersian.style.cssText = 'color:#c7c2bc;font-size:12px;font-family:Inter;margin:0';
+    const subEnglish = document.createElement('p');
+    subEnglish.textContent = 'Subscribe for access to this section.';
+    subEnglish.style.cssText =
+      'color:#7d7774;font-size:11px;font-style:italic;margin:4px 0 0';
+    sub.append(subPersian, subEnglish);
 
     const body = document.createElement('p');
     body.textContent = FEATURES[key].freeFallback;
@@ -137,7 +150,7 @@ function applySectionGates(): void {
       openFeatureLock(key);
     });
 
-    overlay.append(kicker, title, body, btn);
+    overlay.append(kicker, title, sub, body, btn);
     node.appendChild(overlay);
     // Keep the gate visible above the section's own stacking context.
     if (getComputedStyle(node).position === 'static') node.style.position = 'relative';

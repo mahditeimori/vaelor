@@ -210,6 +210,25 @@ import '../styles/global.css';
       .vaelor-border-bright {
         border-color: #592e42;
       }
+      .owner-strategies-host { margin-bottom: 1.5rem; }
+      .owner-strategies-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9.5px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #e11d48;
+        margin: 0 0 6px;
+      }
+      .owner-strategy-card {
+        border: 1px solid rgba(225, 29, 72, 0.25);
+        border-radius: 10px;
+        padding: 9px 11px;
+        background: rgba(225, 29, 72, 0.05);
+        margin-bottom: 6px;
+      }
+      .owner-strategy-card b { display: block; font-size: 13px; }
+      .owner-strategy-card span { display: block; font-size: 9.5px; color: #8d7f85; margin-top: 2px; }
+      .owner-strategy-card p { margin: 4px 0 0; font-size: 11.5px; color: #a89aa0; line-height: 1.5; }
     </style>
   </head>
   <body class="bg-vaelor-mesh matrix-streaks min-h-screen font-sans selection:bg-rose-600 selection:text-white flex flex-col">
@@ -426,6 +445,17 @@ import '../styles/global.css';
               <i class="fa-solid fa-shield-check"></i>
               <span id="kill-switch-label">SAFETY GATES: ARMED</span>
             </button>
+          </div>
+        </div>
+
+        <div id="kill-switch-card" class="mt-6 p-5 rounded-2xl bg-[#130b0f]/90 border border-[#331d27]">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="text-xs font-mono uppercase tracking-widest text-rose-400">اتصال سیستم به متاتریدر</div>
+              <h3 class="text-base font-semibold text-white mt-1">قطع دستی ارتباط و اجازه‌ی دسترسی</h3>
+              <p class="text-xs text-slate-400 leading-relaxed mt-1.5">این کلید، اتصال سیستم شما با متاتریدر را بر (به‌صورت کامل) قطع می‌کند — هیچ دستوری به صورت خودکار از سایت به متاتریدر ارسال نمی‌شود.</p>
+            </div>
+            <input type="checkbox" id="kill-switch" class="mt-1 w-5 h-5 cursor-pointer accent-rose-500" />
           </div>
         </div>
 
@@ -684,10 +714,13 @@ import '../styles/global.css';
             </div>
           </div>
         </div>
+        <div id="teaser-execution" class="teaser-grid"></div>
+        <div id="cap-table-execution" class="cap-table-root"></div>
       </section>
 
       <!-- TAB 3: LIVE TERMINAL -->
       <section id="view-terminal" data-gate="terminal_section2" class="tab-view hidden space-y-6">
+        <div id="owner-strategies" class="owner-strategies-host hidden"></div>
         <div class="bg-[#130b0f]/95 border border-[#592e42] rounded-2xl p-6 shadow-xl">
           <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
             <div>
@@ -726,6 +759,8 @@ import '../styles/global.css';
             </table>
           </div>
         </div>
+        <div id="teaser-terminal" class="teaser-grid"></div>
+        <div id="cap-table-terminal" class="cap-table-root"></div>
       </section>
 
       <!-- TAB 4: PLAYBOOK -->
@@ -867,6 +902,8 @@ import '../styles/global.css';
           <p class="text-[11px] text-slate-400 leading-relaxed">
             The token is kept in this browser only and sent to your own instance, never to ours.
           </p>
+          <div id="teaser-pair" class="teaser-grid"></div>
+          <div id="cap-table-pair" class="cap-table-root"></div>
         </div>
 
         <div class="flex items-center justify-between gap-3 pt-2">

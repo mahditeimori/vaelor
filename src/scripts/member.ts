@@ -15,8 +15,11 @@
  *     (`vaelor.bridge.pairing` → { url, token }).
  */
 import {
+  FEATURES,
+  LOCK_MESSAGE,
   PLANS,
   PLAN_ORDER,
+  TAB_PREVIEW_FEATURES,
   TIER_RANK,
   can,
   getCurrentUser,
@@ -26,6 +29,7 @@ import {
   requiredTier,
   type FeatureKey,
   type MemberUser,
+  type TabId,
   type Tier,
 } from './membership';
 import { signOut, syncSession } from './auth-client';
@@ -249,10 +253,60 @@ function showToast(msg: string, type: 'info' | 'success' | 'error' = 'info'): vo
 }
 
 /* ------------------------------------------------------------------ */
+/* Owner-managed strategies (read-only, Terminal tab)                  */
+/* ------------------------------------------------------------------ */
+
+const esc = (v: unknown): string =>
+  String(v ?? '').replace(/[&<>"']/g, (c) =>
+    c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '"' ? '&quot;' : '&#39;',
+  );
+
+interface OwnerStrategyRow {
+  title: string;
+  description: string;
+  strategyId?: string;
+  addedAt?: number;
+}
+
+/** Read-only: strategies the owner adds to `strategies:owner` surface here. */
+async function loadOwnerStrategies(): Promise<void> {
+  const host = document.getElementById('owner-strategies');
+  if (!host) return;
+  try {
+    const res = await fetch('/api/owner/strategies', {
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const payload = (await res.json()) as { strategies?: OwnerStrategyRow[] };
+    const strategies = Array.isArray(payload.strategies) ? payload.strategies : [];
+    if (!strategies.length) {
+      host.innerHTML = '';
+      host.classList.add('hidden');
+      return;
+    }
+    host.classList.remove('hidden');
+    host.innerHTML =
+      `<div class="owner-strategies-title">OWNER STRATEGIES</div>` +
+      strategies
+        .map(
+          (s) => `
+            <div class="owner-strategy-card">
+              <b>${esc(s.title)}</b>
+              <span>${esc(s.strategyId ?? '')}${s.addedAt ? ` · ${esc(new Date(s.addedAt).toLocaleString())}` : ''}</span>
+              ${s.description ? `<p>${esc(s.description)}</p>` : ''}
+            </div>`,
+        )
+        .join('');
+  } catch {
+    /* read-only: leave the area empty rather than blocking the page */
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Tabs                                                                */
 /* ------------------------------------------------------------------ */
-type TabId = 'overview' | 'execution' | 'terminal' | 'playbook';
-
 const TABS: TabId[] = ['overview', 'execution', 'terminal', 'playbook'];
 
 /** Which entitlement a tab needs. `null` means it is part of every plan. */
@@ -264,18 +318,22 @@ const TAB_FEATURE: Record<TabId, FeatureKey | null> = {
 };
 
 function switchTab(tabId: string): void {
-  const feature = TAB_FEATURE[tabId as TabId] ?? null;
-  // A locked tab explains itself instead of switching, so the member never
-  // lands on a desk they cannot use.
+  const tab = tabId as TabId;
+  const feature = TAB_FEATURE[tab] ?? null;
+  // A locked tab still switches: the section stays visible, the body gets
+  // the muted lock styles, and the teaser cards + capability table sit in
+  // the section behind the lock overlay.
   if (feature && !can(feature)) {
     openFeatureLock(feature);
-    return;
+    renderTeaserCards(feature);
+    renderCapTable(feature);
   }
   state.activeTab = tabId;
   for (const view of TABS) {
     const el = document.getElementById(`view-${view}`);
     if (el) el.classList.toggle('hidden', view !== tabId);
   }
+  paintTabBodyLock();
   const active = 'nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 bg-rose-600/25 border border-rose-500 text-white shadow-[0_0_12px_rgba(225,29,72,0.35)]';
   const idle = 'nav-pill-btn px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-white/5 border border-transparent';
   for (const view of TABS) {
@@ -283,6 +341,130 @@ function switchTab(tabId: string): void {
     if (btn) btn.className = view === tabId ? active : idle;
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ------------------------------------------------------------------ */
+/* Locked-section previews — teaser cards + capability table           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The locked-preview section id for a gated feature: the tab whose section
+ * previews it, or the feature id when the feature keeps its own containers
+ * (the `pair` feature previews in the bridge modal).
+ */
+function previewTab(feature: FeatureKey): string {
+  for (const tab of TABS) {
+    if (TAB_PREVIEW_FEATURES[tab].includes(feature)) {
+      // `pair` is part of the execution set, but its teaser/cap cards live
+      // in the pairing fields of the bridge modal.
+      if (feature === 'pair') return 'pair';
+      return tab;
+    }
+  }
+  return feature;
+}
+
+/** The features whose cards/rows a locked section previews. */
+function previewFeatures(tab: string, feature: FeatureKey): FeatureKey[] {
+  const known: FeatureKey[] | undefined = TAB_PREVIEW_FEATURES[tab as TabId];
+  return known ? known : [feature];
+}
+
+/** Show a locked tab's section fully; the terminal section stays dim. */
+function paintTabBodyLock(): void {
+  for (const view of TABS) {
+    const feature = TAB_FEATURE[view];
+    const el = document.getElementById(`view-${view}`);
+    if (!el) continue;
+    const locked = Boolean(feature && !can(feature));
+    el.classList.toggle('pointer-events-none', locked);
+    if (view === 'terminal') {
+      el.classList.toggle('opacity-40', locked);
+      el.classList.toggle('blur-sm', locked);
+    }
+  }
+}
+
+/** One muted teaser card per locked feature, behind the lock overlay. */
+function renderTeaserCards(feature: FeatureKey): void {
+  const tab = previewTab(feature);
+  const host = document.getElementById(`teaser-${tab}`);
+  if (!host) return;
+  host.replaceChildren();
+
+  for (const key of previewFeatures(tab, feature)) {
+    const def = FEATURES[key];
+    if (!def) continue;
+
+    const card = document.createElement('div');
+    card.className =
+      'teaser-card pointer-events-auto flex items-center gap-3 rounded-xl border border-[#331d27] bg-[#160b11]/90 px-4 py-3 cursor-pointer';
+    card.dataset.feature = key;
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+
+    const icon = document.createElement('i');
+    icon.className = 'fa-solid fa-lock text-amber-400 text-xs shrink-0 line-through opacity-50';
+    icon.setAttribute('aria-hidden', 'true');
+
+    const label = document.createElement('span');
+    label.className = 'text-xs font-medium text-slate-300';
+    label.textContent = def.label;
+
+    const tip = document.createElement('span');
+    tip.className = 'teaser-tip text-[10px] italic text-slate-500 ml-auto cursor-pointer select-none';
+    tip.setAttribute('title', 'Dismiss this card');
+    tip.textContent = `Blocked — requires ${getPlan(def.minTier).name} plan.`;
+
+    card.append(icon, label, tip);
+    card.addEventListener('click', (event) => {
+      showToast(LOCK_MESSAGE, 'error');
+      if (event.target === tip) card.remove();
+    });
+    host.appendChild(card);
+  }
+}
+
+/** Small Feature / Needs / Status table inside a locked section. */
+function renderCapTable(feature: FeatureKey): void {
+  const tab = previewTab(feature);
+  const host = document.getElementById(`cap-table-${tab}`);
+  if (!host) return;
+  host.replaceChildren();
+
+  const table = document.createElement('table');
+  table.className = 'w-full text-left border-collapse font-mono text-[11px] text-slate-400';
+  const thead = document.createElement('thead');
+  thead.className = 'border-b border-[#331d27]';
+  const headerRow = document.createElement('tr');
+  for (const name of ['Feature', 'Needs', 'Status']) {
+    const th = document.createElement('th');
+    th.className = 'py-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400';
+    th.textContent = name;
+    headerRow.appendChild(th);
+  }
+  thead.appendChild(headerRow);
+
+  const tbody = document.createElement('tbody');
+  for (const key of previewFeatures(tab, feature)) {
+    const def = FEATURES[key];
+    if (!def) continue;
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-[#331d27]/60 last:border-b-0 hover:bg-white/[0.02] transition';
+    const nameCell = document.createElement('td');
+    nameCell.className = 'py-2 px-3 text-slate-300';
+    nameCell.textContent = def.label;
+    const needsCell = document.createElement('td');
+    needsCell.className = 'py-2 px-3 text-slate-400';
+    needsCell.textContent = getPlan(def.minTier).name;
+    const statusCell = document.createElement('td');
+    statusCell.className = `py-2 px-3 font-bold ${can(key) ? 'text-emerald-400' : 'text-amber-400'}`;
+    statusCell.textContent = can(key) ? 'Active' : 'Locked';
+    tr.append(nameCell, needsCell, statusCell);
+    tbody.appendChild(tr);
+  }
+  table.append(thead, tbody);
+  host.appendChild(table);
 }
 
 /* ------------------------------------------------------------------ */
@@ -867,6 +1049,54 @@ async function toggleKillSwitch(): Promise<void> {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Connection kill switch (اتصال سیستم به متاتریدر)                     */
+/* ------------------------------------------------------------------ */
+interface KillSwitchState {
+  ok?: boolean;
+  enabled?: boolean;
+}
+
+async function loadKillSwitch(): Promise<void> {
+  try {
+    const res = await fetch('/api/mt5/kill-state', { credentials: 'same-origin' });
+    const data = (await res.json().catch(() => null)) as KillSwitchState | null;
+    const box = document.getElementById('kill-switch') as HTMLInputElement | null;
+    if (res.ok && data && box) box.checked = data.enabled === true;
+  } catch {
+    // Best-effort: the checkbox keeps its rendered state if the read fails.
+  }
+}
+
+async function saveKillSwitch(enabled: boolean): Promise<void> {
+  try {
+    const res = await fetch('/api/mt5/kill', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ enabled, pairing: readPairing() }),
+    });
+    const data = (await res.json().catch(() => null)) as KillSwitchState | null;
+    if (!res.ok || !data?.ok) {
+      showToast('The kill switch change was rejected. Please try again.', 'error');
+      return;
+    }
+    const box = document.getElementById('kill-switch') as HTMLInputElement | null;
+    if (box) box.checked = data.enabled === true;
+    showToast(
+      enabled
+        ? 'MT5 connection kill switch ON — the bridge keeps MetaTrader 5 disconnected.'
+        : 'MT5 connection kill switch OFF — the bridge may reconnect to your terminal.',
+      enabled ? 'error' : 'success',
+    );
+    if (enabled) {
+      await refreshBridgeConnection();
+    }
+  } catch (err) {
+    showToast(`Kill switch change failed: ${message(err)}`, 'error');
+  }
+}
+
 function paintMode(): void {
   const badge = document.getElementById('exec-mode-badge');
   const text = document.getElementById('exec-mode-text');
@@ -1141,6 +1371,8 @@ g.toggleAccordion = toggleAccordion;
 g.toggleAllExecutionAccordions = toggleAllExecutionAccordions;
 g.toggleExecutionMode = toggleExecutionMode;
 g.toggleKillSwitch = toggleKillSwitch;
+g.loadKillSwitch = loadKillSwitch;
+g.saveKillSwitch = saveKillSwitch;
 g.refreshBridgeConnection = refreshBridgeConnection;
 g.copyCommand = copyCommand;
 g.selectOrderSide = selectOrderSide;
@@ -1192,6 +1424,7 @@ function applyEntitlements(): void {
   }
 
   paintTabLocks();
+  paintTabBodyLock();
   gatePairingFields();
   renderMembership(tier);
 }
@@ -1231,17 +1464,21 @@ function gatePairingFields(): void {
   for (const input of inputs) input.disabled = !allowed;
   if (pairButton) {
     pairButton.disabled = !allowed;
-    pairButton.classList.toggle('opacity-50', !allowed);
+    pairButton.classList.toggle('opacity-80', !allowed);
     pairButton.classList.toggle('cursor-not-allowed', !allowed);
   }
 
   if (allowed) {
     existing?.remove();
-    host.classList.remove('pointer-events-none');
+    host.classList.remove('opacity-80', 'pointer-events-none');
     return;
   }
 
-  host.classList.add('pointer-events-none');
+  // Locked pairing fields stay readable but muted (opacity-80); the pair
+  // teaser cards and the capability row sit behind the lock note.
+  host.classList.add('opacity-80', 'pointer-events-none');
+  renderTeaserCards('pair');
+  renderCapTable('pair');
   if (existing) return;
 
   const note = document.createElement('div');
@@ -1395,12 +1632,21 @@ async function mountDesign(): Promise<void> {
   setBridgePill('unpaired', 'BRIDGE: NOT PAIRED');
   applyDataMode();
   applyEntitlements();
+  void loadOwnerStrategies();
 
   const symbolSelect = document.getElementById('ticket-symbol') as HTMLSelectElement | null;
   if (symbolSelect) curatedOptions = symbolSelect.innerHTML;
 
   document.getElementById('ticket-volume')?.addEventListener('input', updateOrderButtonLabel);
   document.getElementById('ticket-symbol')?.addEventListener('change', updateSymbolQuotes);
+
+  const killBox = document.getElementById('kill-switch') as HTMLInputElement | null;
+  if (killBox) {
+    killBox.addEventListener('change', () => {
+      void saveKillSwitch(killBox.checked);
+    });
+  }
+  await loadKillSwitch();
 
   switchTab('overview');
   renderPositionsTable();
