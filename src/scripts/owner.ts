@@ -19,7 +19,6 @@ import {
   getSubscriptionRemainingSeconds,
   getUsers,
   setSubscription,
-  type MemberUser,
   type Tier,
 } from './membership';
 
@@ -177,6 +176,11 @@ async function grant(
   void renderRequests();
   renderActivity();
   const synced = await grantOnServer({ username, tier, days, requestId: options.requestId });
+  if (synced) {
+    serverMembers = null;
+    membersFetchAttempted = false;
+    renderMembers();
+  }
   toast(
     synced
       ? `${username}: ${tier}, ${days} days granted.`
@@ -188,6 +192,11 @@ async function revoke(username: string): Promise<void> {
   setSubscription(username, { tier: 'free', status: 'canceled', startedAt: null, expiresAt: null });
   renderMembers();
   const synced = await grantOnServer({ username, tier: 'free' });
+  if (synced) {
+    serverMembers = null;
+    membersFetchAttempted = false;
+    renderMembers();
+  }
   toast(synced ? `${username}: plan set to free.` : `${username}: cleared locally only.`);
 }
 
@@ -220,42 +229,100 @@ function unlock(): void {
 /* Members                                                            */
 /* ------------------------------------------------------------------ */
 
+let serverMembers: ServerMember[] | null = null;
+let membersFetchAttempted = false;
+
+interface MemberRow {
+  username: string;
+  name: string;
+  email: string;
+  tier: string;
+  status: string;
+  expiresAt: number | null;
+  createdAt: number;
+}
+
+function memberRows(): MemberRow[] {
+  const rows: MemberRow[] = [];
+  const seen = new Set<string>();
+  for (const m of serverMembers ?? []) {
+    const username = (m.username || m.email || '').trim();
+    if (!username || seen.has(username)) continue;
+    seen.add(username);
+    const fallbackName = [m.firstName, m.lastName].filter(Boolean).join(' ').trim();
+    rows.push({
+      username,
+      name: (m.name || fallbackName || username).trim(),
+      email: m.email,
+      tier: m.subscription?.tier ?? 'free',
+      status: m.subscription?.status ?? 'active',
+      expiresAt: m.subscription?.expiresAt ?? null,
+      createdAt: m.createdAt ?? 0,
+    });
+  }
+  for (const u of getUsers()) {
+    const username = (u.username || '').trim();
+    if (!username || seen.has(username)) continue;
+    seen.add(username);
+    const sub = getSubscription(username);
+    rows.push({
+      username,
+      name: `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || username,
+      email: u.email ?? '',
+      tier: sub.tier,
+      status: sub.status,
+      expiresAt: sub.expiresAt,
+      createdAt: 0,
+    });
+  }
+  return rows.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Pull the authoritative KV directory once per page load (server wins on plan). */
+async function loadServerMembers(): Promise<void> {
+  if (serverMembers !== null || membersFetchAttempted) return;
+  membersFetchAttempted = true;
+  const payload = await ownerFetchJson<{ ok?: boolean; members?: ServerMember[] }>('/api/owner/members', {
+    headers: { accept: 'application/json' },
+  });
+  if (!payload?.ok || !Array.isArray(payload.members)) return;
+  serverMembers = payload.members;
+  renderMembers();
+}
+
 function renderMembers(): void {
   const body = $('ownerMembers');
   if (!body) return;
-  const users = getUsers();
-  if (!users.length) {
+  const rows = memberRows();
+  if (!rows.length) {
     body.innerHTML = '<tr><td colspan="6" class="o-empty">No registered members yet. Accounts created on the login console appear here.</td></tr>';
-    return;
-  }
-  body.innerHTML = users
-    .map((u: MemberUser) => {
-      const sub = getSubscription(u.username);
-      const remaining = getSubscriptionRemainingSeconds();
-      const paid = sub.tier !== 'free' && sub.status !== 'canceled';
-      const left =
-        paid && sub.expiresAt
-          ? `${Math.max(0, Math.ceil((sub.expiresAt - Date.now()) / 86400_000))} d`
-          : '—';
-      const activity = lastActivity(u.username);
-      const name = `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.username;
-      return `<tr>
+  } else {
+    body.innerHTML = rows
+      .map((row) => {
+        const paid = row.tier !== 'free' && row.status !== 'canceled';
+        const left =
+          paid && row.expiresAt
+            ? `${Math.max(0, Math.ceil((row.expiresAt - Date.now()) / 86400_000))} d`
+            : '—';
+        const activity = lastActivity(row.username);
+        return `<tr>
         <td>
-          <b data-detail="${esc(u.username)}" class="o-user-link">${esc(name)}</b>
-          <span class="o-sub">@${esc(u.username)} · ${esc(u.email ?? 'no email')}</span>
+          <b data-detail="${esc(row.username)}" class="o-user-link">${esc(row.name)}</b>
+          <span class="o-sub">@${esc(row.username)} · ${esc(row.email || 'no email')}</span>
         </td>
-        <td><span class="o-tag ${paid ? 'ok' : ''}">${paid ? esc(sub.status) : 'free'}</span></td>
+        <td><span class="o-tag ${paid ? 'ok' : ''}">${paid ? esc(row.status) : 'free'}</span></td>
         <td>${left}</td>
-        <td>${notifKeyCount(u.username)}</td>
+        <td>${notifKeyCount(row.username)}</td>
         <td>${activity ? new Date(activity).toLocaleString() : '—'}</td>
         <td class="o-actions">
-          <button type="button" data-grant="30" data-user="${esc(u.username)}">+30d</button>
-          <button type="button" data-grant="365" data-user="${esc(u.username)}">+365d</button>
-          <button type="button" data-revoke data-user="${esc(u.username)}">free</button>
+          <button type="button" data-grant="30" data-user="${esc(row.username)}">+30d</button>
+          <button type="button" data-grant="365" data-user="${esc(row.username)}">+365d</button>
+          <button type="button" data-revoke data-user="${esc(row.username)}">free</button>
         </td>
       </tr>`;
-    })
-    .join('');
+      })
+      .join('');
+  }
 
   body.querySelectorAll<HTMLButtonElement>('[data-grant]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -275,23 +342,14 @@ function renderMembers(): void {
     if (user) link.addEventListener('click', () => void renderUserDetail(user));
   });
 
-  const total = users.length;
-  const paidCount = users.filter((u) => {
-    const s = getSubscription(u.username);
-    return s.tier !== 'free' && s.status !== 'canceled';
-  }).length;
+  const total = rows.length;
+  const paidCount = rows.filter((r) => r.tier !== 'free' && r.status !== 'canceled').length;
+  const operatorPaid = rows.filter((r) => r.tier === 'operator' && r.status !== 'canceled').length;
+  const deskPaid = rows.filter((r) => r.tier === 'desk' && r.status !== 'canceled').length;
   const stat = (id: string, value: string) => {
     const node = $(id);
     if (node) node.textContent = value;
   };
-  const operatorPaid = users.filter((u) => {
-    const s = getSubscription(u.username);
-    return s.tier === 'operator' && s.status !== 'canceled';
-  }).length;
-  const deskPaid = users.filter((u) => {
-    const s = getSubscription(u.username);
-    return s.tier === 'desk' && s.status !== 'canceled';
-  }).length;
   stat('oMembersTotal', String(total));
   stat('oMembersPaid', String(paidCount));
   stat('oMembersFree', String(total - paidCount));
@@ -299,6 +357,8 @@ function renderMembers(): void {
   const mrr = operatorPaid * getPlan('operator').price + deskPaid * getPlan('desk').price;
   stat('oMembersMrr', `$${mrr.toLocaleString()}`);
   void remainingUnused;
+
+  void loadServerMembers();
 }
 
 /* ------------------------------------------------------------------ */
@@ -426,6 +486,7 @@ async function deleteUser(username: string): Promise<void> {
     return;
   }
   toast(`@${username} deleted.`);
+  if (serverMembers) serverMembers = serverMembers.filter((m) => m.username !== username);
   renderMembers();
   const panel = $('ownerUserDetail');
   if (panel) panel.hidden = true;
@@ -805,6 +866,8 @@ function mountConsole(): void {
   void loadOwnerStrategies();
   attachOwnerManagerForms();
   $('ownerRefresh')?.addEventListener('click', () => {
+    serverMembers = null;
+    membersFetchAttempted = false;
     renderMembers();
     void renderRequests();
     renderActivity();
