@@ -437,6 +437,10 @@ async function loadUserDetail(username: string, body: HTMLElement): Promise<void
   const unread = notifs.filter((n) => n.read === false).length;
 
   const sessions = serverMember ? (payload?.sessions ?? []).filter((s) => s.userId === serverMember.id) : [];
+  const remoteRequests = await fetchRemoteRequests();
+  const userRequests = (remoteRequests ?? readRequests())
+    .filter((r) => r.status === 'pending' && (r.username === username || (email && r.email === email)))
+    .sort((a, b) => b.at - a.at);
 
   body.innerHTML = `
     <header class="o-d-head">
@@ -456,6 +460,19 @@ async function loadUserDetail(username: string, body: HTMLElement): Promise<void
         </div>`,
       ).join('') || '<p class="o-empty">No notifications recorded.</p>'}
     </section>
+    ${userRequests.length
+      ? `<section class="o-d-sec">
+          <h3>Upgrade requests</h3>
+          ${userRequests
+            .map(
+              (r) => `<div class="o-d-act">
+                <div><b>${esc(r.planName)}</b> <span class="o-sub">${esc(r.price)}</span></div>
+                <time>${esc(new Date(r.at).toLocaleString())}</time>
+              </div>`,
+            )
+            .join('')}
+        </section>`
+      : ''}
     ${sessions.length
       ? `<section class="o-d-sec">
           <h3>Sessions</h3>
