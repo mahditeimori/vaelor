@@ -1,18 +1,15 @@
-# Vaelor MT5 bridge --- install the background service.
+# Vaelor MT5 bridge --- optional hidden logon task (mainly for a cloud VPS).
 #
-# Registers a Windows scheduled task that keeps the bridge running with no
-# console window:
-#   * starts at every logon,
-#   * repeats every 5 minutes (restarts the bridge if it ever dies),
-#   * restarts on failure,
-#   * never starts a second instance while one is running.
+#   .\install-service.ps1            install (starts hidden now)
+#   .\install-service.ps1 -Uninstall remove the task and stop the bridge
 #
-#   .\install-service.ps1            install (and start)
-#   .\install-service.ps1 -Uninstall remove the task
+# This registers ONE task that runs pythonw.exe at logon. There is no
+# powershell.exe in the task, no one-minute repetition, no restart loop and no
+# console window. On a normal desktop you do not need this at all: close
+# run.cmd to disconnect, or use the website's kill switch.
 #
-# The task runs in YOUR user session, so MetaTrader 5 launches and trades as
-# the account owner. Closing the terminal or this browser does not stop it:
-# the bridge relaunches terminal64.exe and logs the account back in.
+# MetaTrader is NOT relaunched unless the .env file explicitly contains
+# MT5_AUTO_CONNECT=1 (intended for a headless VPS).
 
 param(
     [int]$Port = 8899,
@@ -21,7 +18,9 @@ param(
 
 Set-Location -Path $PSScriptRoot
 $TaskName = "Vaelor MT5 Bridge"
-$runner   = Join-Path $PSScriptRoot "service-run.ps1"
+$launcher = Join-Path $PSScriptRoot "start-bridge.py"
+$pythonw  = Join-Path $PSScriptRoot ".venv\Scripts\pythonw.exe"
+$stop     = Join-Path $PSScriptRoot "service-run.ps1"
 
 function Write-Step($text) { Write-Host "==> $text" -ForegroundColor Cyan }
 
@@ -35,34 +34,39 @@ if ($Uninstall) {
     } else {
         Write-Host "  Scheduled task '$TaskName' was not installed." -ForegroundColor Yellow
     }
-    Write-Host "  The bridge itself is still running --- stop it with:"
-    Write-Host "    .\service-run.ps1 -Stop"
+    if (Test-Path $stop) {
+        & $stop -Stop -Port $Port | Out-Null
+    }
+    Write-Host "  The bridge was stopped. Nothing will restart it automatically."
     exit 0
 }
 
 # ----------------------------------------------------------------- install
-if (-not (Test-Path $runner)) {
-    Write-Host "  service-run.ps1 is missing --- run this script from the bridge folder." -ForegroundColor Red
+if (-not (Test-Path $launcher)) {
+    Write-Host "  start-bridge.py is missing --- run this script from the bridge folder." -ForegroundColor Red
+    exit 1
+}
+if (-not (Test-Path $pythonw)) {
+    Write-Host "  .venv\Scripts\pythonw.exe not found." -ForegroundColor Red
+    Write-Host "  Run .\run.cmd once to create the environment, then retry." -ForegroundColor Yellow
     exit 1
 }
 
 $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
 if ($existing) {
     Write-Step "Updating the existing task"
+    Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false
 }
 
+# pythonw.exe has no console at all; start-bridge.py writes the log itself.
 $action = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$runner`" -Port $Port"
+    -Execute $pythonw `
+    -Argument "`"$launcher`"" `
+    -WorkingDirectory $PSScriptRoot
 
-# 1 -- start at every logon
+# One quiet start at logon. No repetition, no PowerShell, no visible window.
 $atLogon = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
-
-# 2 -- safety net: check every 5 minutes, forever (restarts a dead bridge)
-$every5 = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
-    -RepetitionInterval (New-TimeSpan -Minutes 1) `
-    -RepetitionDuration (New-TimeSpan -Days 3650)
 
 $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" `
     -LogonType Interactive -RunLevel Limited
@@ -70,40 +74,33 @@ $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" 
 $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -StartWhenAvailable `
-    -MultipleInstances Ignore `
-    -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) `
-    -ExecutionTimeLimit ([TimeSpan]::Zero)
+    -MultipleInstances IgnoreNew `
+    -ExecutionTimeLimit ([TimeSpan]::Zero) `
+    -Hidden
 
 Write-Step "Registering the scheduled task '$TaskName'"
 Register-ScheduledTask -TaskName $TaskName `
-    -Action $action -Trigger @($atLogOn, $every5) `
+    -Action $action -Trigger @($atLogon) `
     -Principal $principal -Settings $settings `
-    -Description "Keeps the Vaelor MT5 bridge running in the background so the desk can trade without a console window." | Out-Null
+    -Description "Starts the Vaelor MT5 bridge hidden at logon (pythonw, no console, no repeating checks)." | Out-Null
 
 Write-Step "Starting the bridge"
 Start-ScheduledTask -TaskName $TaskName
 Start-Sleep -Seconds 4
 
 $state = (Get-ScheduledTask -TaskName $TaskName).State
-$info = Get-ScheduledTaskInfo -TaskName $TaskName
-$lastResult = '0x{0:X}' -f $info.LastTaskResult
-
 Write-Host ""
-Write-Host "  Vaelor MT5 bridge --- background service" -ForegroundColor Yellow
+Write-Host "  Vaelor MT5 bridge --- hidden logon task" -ForegroundColor Yellow
 Write-Host "  ------------------------------------------------"
 Write-Host "  Task         : $TaskName ($state)"
-Write-Host "  Last result  : $lastResult  (0x0 = running fine)"
 Write-Host "  URL          : http://127.0.0.1:$Port"
 Write-Host "  Log          : $(Join-Path $PSScriptRoot 'logs\bridge.log')"
 Write-Host "  ------------------------------------------------"
 Write-Host ""
-Write-Host "  From now on you can close this window, close the website and even"
-Write-Host "  close MetaTrader 5 --- the bridge relaunches the terminal and keeps"
-Write-Host "  the desk running."
+Write-Host "  The task starts one hidden pythonw process at logon."
+Write-Host "  It does not run every minute and never opens a PowerShell window."
 Write-Host ""
-Write-Host "  Manage it with:"
-Write-Host "    .\service-run.ps1 -Status     status"
-Write-Host "    .\service-run.ps1 -Stop       stop the bridge"
-Write-Host "    .\install-service.ps1 -Uninstall   remove the service"
+Write-Host "  Remove it completely with:"
+Write-Host "    .\install-service.ps1 -Uninstall"
 Write-Host ""
 exit 0

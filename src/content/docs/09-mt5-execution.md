@@ -48,7 +48,7 @@ Windows user, including broker-branded folders and portable copies.
 
 ## 5.3 Quick start
 
-1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.3.1).
+1. Download [`vaelor-mt5-bridge.zip`](/downloads/vaelor-mt5-bridge.zip?v=1.3.2).
 2. Unzip it to a folder you control, for example `C:\Vaelor\mt5-bridge`.
 3. Double-click `run.cmd`. The first run creates `.venv`, installs dependencies
    and writes `.env`; the console prints a URL and a token and saves both to
@@ -65,31 +65,38 @@ The page then polls the bridge automatically. There is no refresh button by
 design — the account, book, strategies, signals and audit log all update in
 place.
 
-### 5.3.1 Run it as a background service
+### 5.3.1 Stopping and restarting
 
-The console window is only a launcher. To keep the desk running with no window
-at all, run once from the bridge folder:
+On a normal desktop the console window **is** the connection:
+
+- keep `run.cmd` open while you trade;
+- close it, press `Ctrl+C`, or turn on the website's **kill switch** to stop the
+  bridge and disconnect this computer completely;
+- start `run.cmd` again when you want to reconnect.
+
+Nothing runs every minute, no PowerShell window is scheduled, and MetaTrader is
+never relaunched in the background. The kill switch also removes any old
+`Vaelor MT5 Bridge` logon task, so it cannot come back on its own.
+
+If you *want* a hidden bridge on a headless Windows VPS, install the optional
+logon task once:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install-service.ps1
 ```
 
-That registers a Windows scheduled task (**Vaelor MT5 Bridge**) which starts the
-bridge hidden at every logon, checks it every minute, restarts it if it dies,
-and keeps MetaTrader 5 attached — **if you close the terminal, the bridge
-relaunches `terminal64.exe` and logs the account back in**. You can then close
-the console, close the website and close MetaTrader; positions stay with the
-broker and the bridge keeps scanning for new signals and moving stops.
+It runs one hidden `pythonw.exe` at logon — no PowerShell host, no repetition.
+Remove it and stop the bridge with:
 
 ```powershell
+.\install-service.ps1 -Uninstall
 .\service-run.ps1 -Status          # is it running? pid, log, task state
 .\service-run.ps1 -Stop            # stop the bridge
-.\install-service.ps1 -Uninstall   # remove the scheduled task
 ```
 
-Pressing **Disconnect** on the Execution page is respected: supervision stays
-off until you connect again. Set `MT5_AUTO_CONNECT=0` in `.env` to disable
-automatic re-attach entirely. Logs are written to `logs\bridge.log`.
+Automatic re-attach is opt-in: set `MT5_AUTO_CONNECT=1` only on the VPS. On a
+desktop (the default `0`) closing MetaTrader is respected. Logs are written to
+`logs\bridge.log`.
 
 ## 5.3.2 Run the bridge on a cloud VPS (no local shell at all)
 

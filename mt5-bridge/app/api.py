@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import hmac
+import inspect
+import os
+import subprocess
+import threading
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -138,15 +142,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Vaelor MT5 Bridge", version=VERSION, lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=SETTINGS.allowed_origins,
-    allow_origin_regex=SETTINGS.allowed_origin_regex,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-    allow_credentials=False,
-    max_age=600,
-)
+_cors_options: dict[str, Any] = {
+    "allow_origins": SETTINGS.allowed_origins,
+    "allow_origin_regex": SETTINGS.allowed_origin_regex,
+    "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    "allow_headers": ["*"],
+    "allow_credentials": False,
+    "max_age": 600,
+}
+# Chrome sends Private Network Access preflights for an HTTPS page calling this
+# loopback bridge. Newer Starlette enforces it itself; older versions are
+# handled by the middleware below.
+if "allow_private_network" in inspect.signature(CORSMiddleware.__init__).parameters:
+    _cors_options["allow_private_network"] = True
+app.add_middleware(CORSMiddleware, **_cors_options)
 
 
 @app.middleware("http")
@@ -464,23 +473,58 @@ def kill(request: Request, payload: KillRequest) -> dict:
 
 @app.post("/api/kill-state", dependencies=[Depends(require_token)])
 def kill_state_post(request: Request, payload: KillStateRequest) -> dict:
-    """Arm/disarm the connection kill switch (site → bridge pairing).
+    """Arm/disarm the connection kill switch (browser → local bridge).
 
-    The supervisor reads this every cycle and enforces it: while armed it
-    disconnects MT5 (sim broker) and keeps the connection down.
+    Arming disconnects MT5 immediately and disables every automatic re-attach.
+    The browser calls this directly; a Cloudflare Function cannot reach the
+    user's loopback bridge.
     """
-    engine = engine_of(request)
-    engine.store.set_kv("mt5_kill", "1" if payload.enabled else "0")
-    engine.store.audit(
-        "safety.kill_switch",
-        {"source": "website", "mode": "connection", "enabled": payload.enabled},
-    )
-    return {"ok": True, "enabled": engine.kill_enabled()}
+    return engine_of(request).set_kill_switch(payload.enabled)
 
 
 @app.get("/api/kill-state", dependencies=[Depends(require_token)])
 def kill_state_get(request: Request) -> dict:
     return {"ok": True, "enabled": engine_of(request).kill_enabled()}
+
+
+def _remove_autostart_task() -> bool:
+    """Delete the legacy logon task so a kill switch cannot be undone by it."""
+    if os.name != "nt":
+        return False
+    try:
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        result = subprocess.run(
+            ["schtasks", "/Delete", "/TN", "Vaelor MT5 Bridge", "/F"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            creationflags=flags,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
+
+
+@app.post("/api/shutdown", dependencies=[Depends(require_token)])
+def shutdown(request: Request) -> dict:
+    """Kill switch final step: detach MT5, remove auto-start, stop the bridge.
+
+    The HTTP response is returned first; the process then exits. With the
+    bridge gone the website can no longer reach this computer at all. There is
+    no background task left to restart it — start `run.cmd` once to come back.
+    """
+    engine = engine_of(request)
+    engine.set_kill_switch(True)
+    task_removed = _remove_autostart_task()
+    engine.store.audit("bridge.shutdown", {"reason": "website kill switch", "taskRemoved": task_removed})
+
+    def _exit() -> None:
+        os._exit(0)
+
+    timer = threading.Timer(0.8, _exit)
+    timer.daemon = True
+    timer.start()
+    return {"ok": True, "shutdown": True, "enabled": True, "taskRemoved": task_removed}
 
 
 @app.post("/api/live", dependencies=[Depends(require_token)])

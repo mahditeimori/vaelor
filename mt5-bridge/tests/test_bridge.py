@@ -325,18 +325,32 @@ class EngineTests(unittest.TestCase):
         self.store.close()
         self.tmp.cleanup()
 
-    def test_disconnect_stops_supervision_and_connect_rearms_it(self) -> None:
+    def test_disconnect_disarms_auto_connect(self) -> None:
         """Closing MT5 from the website must stop the supervisor from silently
-        relaunching the terminal; an explicit connect arms it again."""
-        self.assertTrue(self.engine._auto_connect_enabled())
+        relaunching the terminal."""
+        self.store.set_kv("mt5_auto_connect", "1")
 
         self.engine.disconnect_mt5()
         self.assertEqual(self.store.get_kv("mt5_auto_connect"), "0")
-        self.assertFalse(self.engine._auto_connect_enabled())
 
-        # Simulate what connect_mt5(auto=False) writes once MT5 has attached.
+    def test_kill_switch_overrides_auto_connect_and_survives_restart(self) -> None:
+        """The connection kill switch must beat MT5_AUTO_CONNECT and clear the
+        remembered terminal, so a bridge restart cannot relaunch MetaTrader."""
+        from app.config import SETTINGS
+
         self.store.set_kv("mt5_auto_connect", "1")
-        self.assertTrue(self.engine._auto_connect_enabled())
+        self.store.set_kv("mt5_connected_path", r"C:\Program Files\MetaTrader 5\terminal64.exe")
+
+        self.engine.set_kill_switch(True)
+        self.assertTrue(self.engine.kill_enabled())
+        self.assertFalse(self.engine._auto_connect_enabled())
+        self.assertEqual(self.store.get_kv("mt5_auto_connect"), "0")
+        self.assertEqual(self.store.get_kv("mt5_connected_path"), "")
+
+        self.engine.set_kill_switch(False)
+        self.assertFalse(self.engine.kill_enabled())
+        if SETTINGS.mt5_auto_connect:
+            self.assertTrue(self.engine._auto_connect_enabled())
 
     def test_supervisor_target_prefers_saved_terminal_and_login(self) -> None:
         """The supervisor must reuse the terminal the user picked, plus the

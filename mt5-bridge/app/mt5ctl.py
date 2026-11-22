@@ -486,6 +486,32 @@ class MT5Session:
             self._retry_after = now + min(60.0, 5.0 + (now - self.last_attempt))
             return False
 
+    def peek(self) -> bool:
+        """Report liveness without ever reconnecting or launching a terminal.
+
+        Read-only polling (``/api/status``, positions, quotes) must never wake
+        MetaTrader. Only an explicit Connect, or the opt-in VPS supervisor, may
+        call :meth:`check`/``initialize``.
+        """
+        if mt5 is None:
+            self.connected = False
+            return False
+        with self._lock:
+            if not self.connected:
+                return False
+            try:
+                account = mt5.account_info()
+                terminal = mt5.terminal_info()
+            except Exception:
+                account, terminal = None, None
+            if account is not None and terminal is not None and terminal.connected:
+                if self.account_login is not None and account.login != self.account_login:
+                    self.account_changed = True
+                return True
+            self.connected = False
+            self.last_error = "terminal connection lost"
+            return False
+
     def status(self) -> dict[str, Any]:
         account = None
         terminal = None

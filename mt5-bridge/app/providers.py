@@ -605,6 +605,11 @@ def build_provider(store: Store) -> tuple[Provider, str]:
 
     requested = SETTINGS.mode if SETTINGS.mode in {"auto", "simulation", "live"} else "auto"
 
+    if store.get_kv("mt5_kill") == "1":
+        provider = SimProvider(store)
+        provider.reason = "MT5 kill switch armed — MetaTrader will not be started"
+        return provider, requested
+
     if requested == "simulation":
         provider = SimProvider(store)
         provider.reason = "simulation mode selected in .env (BRIDGE_MODE=simulation)"
@@ -616,6 +621,18 @@ def build_provider(store: Store) -> tuple[Provider, str]:
     if mt5 is None:
         provider = SimProvider(store)
         provider.reason = "MetaTrader5 Python package is not installed"
+        return provider, requested
+
+    # Desktop default: start in simulation and never discover or launch a
+    # terminal at startup. MetaTrader opens only when the user presses Connect.
+    # A headless VPS opts in with MT5_AUTO_CONNECT=1.
+    if not SETTINGS.mt5_auto_connect:
+        provider = SimProvider(store)
+        provider.reason = (
+            "bridge restarted — press Connect on the Execution page to re-attach"
+            if connected_to
+            else "not connected yet — press Connect on the Execution page"
+        )
         return provider, requested
 
     if not (connected_to or terminal):

@@ -60,7 +60,14 @@ function Stop-Bridge {
         return
     }
     Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Milliseconds 800
+    Start-Sleep -Milliseconds 600
+    # The venv python.exe can be a launcher for a child process; stop whoever
+    # still owns the port as well so no orphan keeps the website connected.
+    $conn = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($conn -and $conn.OwningProcess -ne $procId) {
+        Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Milliseconds 400
     if (Test-Path $pidFile) { Remove-Item $pidFile -Force -ErrorAction SilentlyContinue }
     Write-Host "  Bridge stopped (pid $procId)." -ForegroundColor Green
 }
@@ -80,16 +87,27 @@ function Start-Bridge {
     }
     New-Item -ItemType Directory -Path $logDir -Force | Out-Null
     $env:BRIDGE_PORT = "$Port"
-$hostBind = if ($env:BRIDGE_HOST) { $env:BRIDGE_HOST } else { "127.0.0.1" }
 
-    # Start detached: no console, output goes to the log file.
-    $proc = Start-Process -FilePath $python `
-        -ArgumentList @("-m", "uvicorn", "app.api:app", "--host", $hostBind, "--port", "$Port", "--log-level", "info") `
-        -WorkingDirectory $PSScriptRoot `
-        -WindowStyle Hidden `
-        -RedirectStandardOutput $logFile `
-        -RedirectStandardError (Join-Path $logDir "bridge-error.log") `
-        -PassThru
+    # Use pythonw + start-bridge.py: no console window and no PowerShell host.
+    # start-bridge.py appends its own output to logs\bridge.log.
+    $launcher = Join-Path $PSScriptRoot "start-bridge.py"
+    $pythonw  = Join-Path $PSScriptRoot ".venv\Scripts\pythonw.exe"
+    if ((Test-Path $pythonw) -and (Test-Path $launcher)) {
+        $proc = Start-Process -FilePath $pythonw `
+            -ArgumentList @("`"$launcher`"") `
+            -WorkingDirectory $PSScriptRoot `
+            -WindowStyle Hidden `
+            -PassThru
+    } else {
+        $hostBind = if ($env:BRIDGE_HOST) { $env:BRIDGE_HOST } else { "127.0.0.1" }
+        $proc = Start-Process -FilePath $python `
+            -ArgumentList @("-m", "uvicorn", "app.api:app", "--host", $hostBind, "--port", "$Port", "--log-level", "info") `
+            -WorkingDirectory $PSScriptRoot `
+            -WindowStyle Hidden `
+            -RedirectStandardOutput $logFile `
+            -RedirectStandardError (Join-Path $logDir "bridge-error.log") `
+            -PassThru
+    }
     Set-Content -Path $pidFile -Value $proc.Id -Encoding ascii
 
     $deadline = (Get-Date).AddSeconds(45)
@@ -117,7 +135,7 @@ if ($Status) {
     Write-Host "  URL         : http://127.0.0.1:$Port"
     Write-Host "  Process id  : $(if ($procId) { $procId } else { '---' })"
     Write-Host "  Log file    : $logFile"
-    Write-Host "  Scheduled   : $(if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) { 'installed' } else { 'not installed --- run .\install-service.ps1' })"
+    Write-Host "  Logon task  : $(if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) { 'installed (hidden pythonw, logon only)' } else { 'not installed (normal desktop setup)' })"
     Write-Host "  ------------------------------------------------"
     Write-Host ""
     exit 0

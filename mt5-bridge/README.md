@@ -39,44 +39,41 @@ copy .env.example .env
 .\.venv\Scripts\python.exe -m uvicorn app.api:app --host 127.0.0.1 --port 8899
 ```
 
-## Background service (no console window)
+## Desktop: run.cmd is the switch
 
-The console window is only a launcher — the trading engine runs inside the
-bridge process. To run without a window, install the service once:
+On a normal desktop, keep the `run.cmd` console open while you trade. Closing
+it (or pressing `Ctrl+C`) stops the bridge and disconnects the website from
+this computer. There is no scheduled task, no PowerShell popup and no
+background MetaTrader relaunch.
+
+The website's **kill switch** does the same thing from the member desk: it
+disconnects MT5, stops the bridge, removes any legacy logon task and leaves no
+route back to the PC. Start `run.cmd` again to reconnect.
+
+## Optional hidden logon task (VPS / headless)
+
+Only for a machine that must run 24/7 (a cloud Windows VPS):
 
 ```powershell
 cd mt5-bridge
 powershell -ExecutionPolicy Bypass -File .\install-service.ps1
 ```
 
-This registers the Windows scheduled task **Vaelor MT5 Bridge**, which:
-
-- starts the bridge hidden at every logon and checks it every minute,
-- restarts it if the process ever dies (and on failure),
-- never starts a second instance while one is running,
-- keeps MetaTrader 5 attached: **if you close terminal64.exe the bridge
-  relaunches it and logs the account back in** (`MT5_AUTO_CONNECT=1`),
-- logs everything to `mt5-bridge\logs\bridge.log`.
-
-After that you can close the console, close the website and even close
-MetaTrader — the desk keeps running. Your open positions live at the broker,
-so they stay managed regardless; the bridge only needs to be alive to place
-new orders, move stops and run the auto-execution scan.
-
-Manage it with:
+The task runs one hidden `pythonw.exe` at logon. It does **not** run every
+minute, does **not** use PowerShell, and does **not** restart the bridge in a
+loop. Logs go to `mt5-bridge\logs\bridge.log`.
 
 ```powershell
 .\service-run.ps1 -Status          # running? pid, log, task state
 .\service-run.ps1                  # start hidden (idempotent)
 .\service-run.ps1 -Stop            # stop the bridge
-.\install-service.ps1 -Uninstall   # remove the scheduled task
+.\install-service.ps1 -Uninstall   # remove the task and stop the bridge
 ```
 
-An explicit **Disconnect** on the Execution page is respected: supervision
-stays off until you press **Connect** again. Set `MT5_AUTO_CONNECT=0` in
-`.env` to disable supervised re-attach entirely. The bridge still binds to
-`127.0.0.1` only - the website reaches it through the browser on the same
-machine, so no port is ever exposed to the internet.
+Automatic re-attach is opt-in with `MT5_AUTO_CONNECT=1` (default `0`). An
+explicit **Disconnect** or the website kill switch is always respected. The
+bridge binds to `127.0.0.1` on a desktop; the website reaches it through the
+browser on the same machine, so no port is exposed to the internet.
 
 ## Cloud-hosted bridge (Windows VPS)
 

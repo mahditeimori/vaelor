@@ -1069,30 +1069,74 @@ async function loadKillSwitch(): Promise<void> {
 }
 
 async function saveKillSwitch(enabled: boolean): Promise<void> {
+  const box = document.getElementById('kill-switch') as HTMLInputElement | null;
+  const pairing = readPairing();
   try {
+    // 1. Persist the choice so the checkbox survives a reload / another browser.
     const res = await fetch('/api/mt5/kill', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ enabled, pairing: readPairing() }),
+      body: JSON.stringify({ enabled }),
     });
     const data = (await res.json().catch(() => null)) as KillSwitchState | null;
     if (!res.ok || !data?.ok) {
+      if (box) box.checked = !enabled;
       showToast('The kill switch change was rejected. Please try again.', 'error');
       return;
     }
-    const box = document.getElementById('kill-switch') as HTMLInputElement | null;
     if (box) box.checked = data.enabled === true;
-    showToast(
-      enabled
-        ? 'MT5 connection kill switch ON — the bridge keeps MetaTrader 5 disconnected.'
-        : 'MT5 connection kill switch OFF — the bridge may reconnect to your terminal.',
-      enabled ? 'error' : 'success',
-    );
+
+    // 2. Talk to the local bridge from THIS browser. Cloudflare cannot reach
+    //    the user's loopback address, which is why the old switch did nothing.
+    let bridge: 'unpaired' | 'armed' | 'unreachable' = 'unpaired';
+    if (pairing) {
+      try {
+        await bridgeRequest(pairing, '/api/kill-state', {
+          method: 'POST',
+          body: JSON.stringify({ enabled }),
+        });
+        bridge = 'armed';
+      } catch {
+        bridge = 'unreachable';
+      }
+
+      if (enabled && bridge === 'armed') {
+        // 3. Stop the bridge process and remove any logon task. After this the
+        //    website has no route to this computer until run.cmd is started.
+        try {
+          await bridgeRequest(pairing, '/api/shutdown', {
+            method: 'POST',
+            body: '{}',
+          });
+        } catch {
+          // The process normally exits before the reply arrives — that is success.
+        }
+        state.linked = false;
+        setBridgePill('offline', `BRIDGE: ${hostOf(pairing.url)} STOPPED`);
+        applyDataMode();
+      }
+    }
+
     if (enabled) {
-      await refreshBridgeConnection();
+      showToast(
+        bridge === 'armed'
+          ? 'Kill switch ON — MetaTrader disconnected, bridge stopped, auto-start removed. No connection remains.'
+          : bridge === 'unreachable'
+            ? 'Kill switch ON — no local bridge was reachable, so this computer is already disconnected.'
+            : 'Kill switch ON — saved. No bridge is paired, so there is no local connection.',
+        'error',
+      );
+    } else {
+      showToast(
+        bridge === 'armed'
+          ? 'Kill switch OFF — start run.cmd if the bridge was stopped, then press Connect.'
+          : 'Kill switch OFF — start run.cmd on your computer, then press Connect.',
+        'success',
+      );
     }
   } catch (err) {
+    if (box) box.checked = !enabled;
     showToast(`Kill switch change failed: ${message(err)}`, 'error');
   }
 }

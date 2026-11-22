@@ -29,7 +29,7 @@ except Exception:  # pragma: no cover
 DATA_DIR = Path(os.environ.get("BRIDGE_DATA_DIR", BRIDGE_ROOT / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-VERSION = "1.3.1"
+VERSION = "1.3.2"
 
 
 def _bool(name: str, default: bool = False) -> bool:
@@ -71,10 +71,10 @@ class Settings:
     mt5_password: str | None = os.environ.get("MT5_PASSWORD")
     mt5_server: str | None = os.environ.get("MT5_SERVER")
 
-    # Headless supervision: the bridge may attach to MetaTrader 5 on its own
-    # (launching the terminal if the user closed it) so it keeps trading after
-    # the console window or the terminal is closed.
-    mt5_auto_connect: bool = _bool("MT5_AUTO_CONNECT", True)
+    # Headless supervision is opt-in. A desktop install must never relaunch
+    # MetaTrader behind the user's back; a cloud VPS that must keep trading
+    # 24/7 sets MT5_AUTO_CONNECT=1 explicitly.
+    mt5_auto_connect: bool = _bool("MT5_AUTO_CONNECT", False)
     mt5_portable: bool = _bool("MT5_PORTABLE", False)
 
     db_path: Path = Path(os.environ.get("BRIDGE_DB", DATA_DIR / "bridge.db"))

@@ -4,6 +4,10 @@
 #   .\run.ps1 -Port 9000   start on a different port
 #   .\run.ps1 -Setup       only create the venv, install deps and .env
 #
+# This is the normal desktop launcher: one console, no scheduled task, no
+# background PowerShell. Close the window (or use the website kill switch) to
+# disconnect completely; run it again when you want to reconnect.
+#
 # First run: creates .venv (Python 3.11+ via uv or the py launcher), installs
 # requirements, writes .env from .env.example, prints the pairing token.
 # Every failure path prints a clear message and exits non-zero; run.cmd keeps
@@ -206,8 +210,8 @@ Write-Host "  Saved to   : token.txt and connect.txt (next to run.cmd)"
 Write-Host "  ------------------------------------------------"
 Write-Host "  Paste URL + token into the site's Execution page."
 Write-Host "  Keep this window open while you trade. Press Ctrl+C to stop."
-Write-Host "  To close every window and keep trading, run install-service.ps1 once" -ForegroundColor DarkGray
-Write-Host "  (background task; relaunches MetaTrader 5 if you close it)." -ForegroundColor DarkGray
+Write-Host "  Closing this window disconnects the website from this computer." -ForegroundColor DarkGray
+Write-Host "  Nothing restarts automatically; run run.cmd again when you need it." -ForegroundColor DarkGray
 Write-Host ""
 
 # As soon as the server answers, open the Connect page in the default

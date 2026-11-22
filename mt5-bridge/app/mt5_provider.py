@@ -80,7 +80,7 @@ class MT5Provider(Provider):
         return self.session.last_error or ""
 
     def status(self) -> dict:
-        healthy = self.session.check()
+        healthy = self.session.peek()
         account = self.session.status().get("account")
         terminal = self.session.status().get("terminal")
         return {
@@ -105,7 +105,7 @@ class MT5Provider(Provider):
         }
 
     def ensure(self) -> None:
-        if not self.session.check():
+        if not self.session.peek():
             raise BrokerError(
                 self.session.last_error or "MetaTrader 5 is not connected",
                 hint="Reconnect the terminal from the Execution page.",
@@ -243,7 +243,7 @@ class MT5Provider(Provider):
 
     # -------------------------------------------------------------- positions
     def positions(self) -> list[dict]:
-        if not self.session.check():
+        if not self.session.peek():
             return []
         out = []
         for p in mt5.positions_get() or []:
@@ -271,7 +271,7 @@ class MT5Provider(Provider):
         return out
 
     def orders(self) -> list[dict]:
-        if not self.session.check():
+        if not self.session.peek():
             return []
         out = []
         for o in mt5.orders_get() or []:
@@ -299,7 +299,7 @@ class MT5Provider(Provider):
         return out
 
     def history(self, days: int = 30) -> list[dict]:
-        if not self.session.check():
+        if not self.session.peek():
             return []
         # MT5 reads these datetimes in the terminal's server time zone, which
         # can be ahead of UTC. Widen the window by a day on each side so a deal

@@ -121,6 +121,11 @@ class TradingEngine:
         from .mt5_provider import MT5Provider
         from .mt5ctl import MT5Session
 
+        if self.kill_enabled():
+            raise RiskError(
+                "the MT5 connection kill switch is armed — disarm it on the website first"
+            )
+
         session = MT5Session()
         info = session.connect(
             path, login=login, password=password, server=server, portable=portable
@@ -170,6 +175,7 @@ class TradingEngine:
             },
         )
         self.last_error = None
+        self._ensure_supervisor()
         return {"ok": True, "provider": self.provider.status()}
 
     def disconnect_mt5(self) -> dict:
@@ -209,6 +215,32 @@ class TradingEngine:
         """
         return self.store.get_kv("mt5_kill") == "1"
 
+    def set_kill_switch(self, enabled: bool) -> dict:
+        """Arm/disarm the connection kill switch (site → bridge).
+
+        Arming is enforced immediately, not on the next supervisor tick:
+        MetaTrader is detached, the terminal is forgotten, and auto-connect is
+        disabled so a bridge restart cannot bring it back.
+        """
+        from .mt5_provider import MT5Provider
+
+        self.store.set_kv("mt5_kill", "1" if enabled else "0")
+        if enabled:
+            if isinstance(self.provider, MT5Provider):
+                self.disconnect_mt5()
+            else:
+                self.provider = SimProvider(self.store)
+                self.provider.reason = "MT5 kill switch armed — MetaTrader will not be started"
+            self.store.set_kv("mt5_auto_connect", "0")
+            self.store.set_kv("mt5_connected_path", "")
+        else:
+            self.store.set_kv("mt5_auto_connect", "1")
+        self.store.audit(
+            "safety.kill_switch",
+            {"source": "website", "mode": "connection", "enabled": enabled},
+        )
+        return {"ok": True, "enabled": enabled}
+
     # ------------------------------------------------------------- lifecycle
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -216,10 +248,9 @@ class TradingEngine:
         self._stop.clear()
         self._thread = threading.Thread(target=self._loop, name="engine-tick", daemon=True)
         self._thread.start()
-        self._supervisor = threading.Thread(
-            target=self._supervise_mt5, name="engine-supervisor", daemon=True
-        )
-        self._supervisor.start()
+        # Headless re-attach is opt-in (MT5_AUTO_CONNECT=1, normally only on a
+        # cloud VPS). A desktop install must not wake MetaTrader every 10s.
+        self._ensure_supervisor()
 
     def stop(self) -> None:
         self._stop.set()
@@ -227,8 +258,21 @@ class TradingEngine:
             self._thread.join(timeout=2)
 
     # ---------------------------------------------------------- supervision
+    def _ensure_supervisor(self) -> None:
+        """Start the 10s re-attach loop only when headless mode is requested."""
+        if not SETTINGS.mt5_auto_connect or self.kill_enabled():
+            return
+        if self._supervisor and self._supervisor.is_alive():
+            return
+        self._supervisor = threading.Thread(
+            target=self._supervise_mt5, name="engine-supervisor", daemon=True
+        )
+        self._supervisor.start()
+
     def _auto_connect_enabled(self) -> bool:
-        """Auto-attach is on unless the user explicitly disconnected."""
+        """Auto-attach is opt-in and off while the kill switch is armed."""
+        if self.kill_enabled():
+            return False
         if not SETTINGS.mt5_auto_connect:
             return False
         return self.store.get_kv("mt5_auto_connect") != "0"
@@ -263,7 +307,12 @@ class TradingEngine:
 
                 if isinstance(self.provider, MT5Provider):
                     self.disconnect_mt5()
-                continue
+                # Stop supervising entirely. The user must press Connect (or
+                # re-run the bridge) after disarming; nothing wakes MT5 in the
+                # background.
+                return
+            if not self._auto_connect_enabled():
+                return
             try:
                 from .mt5_provider import MT5Provider
 

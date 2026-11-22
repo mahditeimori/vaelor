@@ -34,6 +34,7 @@ const INCLUDED = [
   'run.cmd',
   'service-run.ps1',
   'install-service.ps1',
+  'start-bridge.py',
 ];
 
 const FOLDERS = [
@@ -80,28 +81,34 @@ FIRST RUN
 5. On the site, pick your terminal from the detected list and connect. If
    the terminal is logged in, the account appears immediately.
 
-KEEP THE WINDOW OPEN - OR RUN IT AS A SERVICE
---------------------------------------------
-The console window IS the bridge. While you trade with the window open you can
-minimise it, but closing it stops the bridge and the page goes offline.
+KEEP THE WINDOW OPEN - OR USE THE KILL SWITCH
+---------------------------------------------
+The console window IS the bridge. Keep it open while you trade; closing it
+(or pressing Ctrl+C) stops the bridge and disconnects the website from your PC.
 
-Prefer to close everything? Install the background service once:
+The member desk also has a KILL SWITCH:
+  * it disconnects MetaTrader 5,
+  * stops the bridge process,
+  * removes any old "Vaelor MT5 Bridge" logon task,
+  * and leaves no connection from the website to your computer.
+
+Nothing restarts by itself and MetaTrader is never relaunched in the
+background. To reconnect, double-click run.cmd once.
+
+OPTIONAL HEADLESS LOGON TASK (VPS ONLY)
+---------------------------------------
+Only if this machine must run 24/7 without a console:
 
   powershell -ExecutionPolicy Bypass -File install-service.ps1
 
-That registers a Windows scheduled task ("Vaelor MT5 Bridge") that
-  * starts the bridge with no console window,
-  * starts again at every logon and checks every minute,
-  * restarts the bridge if it ever dies,
-  * and keeps MetaTrader 5 attached: if you close the terminal, the bridge
-    launches it again and logs the account back in.
+It runs ONE hidden pythonw.exe at logon. There is no PowerShell host, no
+one-minute repetition and no restart loop. Remove it with:
+  install-service.ps1 -Uninstall
+  service-run.ps1 -Status
+  service-run.ps1 -Stop
 
-After that you can close the console, close the website and even close
-MetaTrader 5 - the desk keeps running and keeps trading.
-Manage it with:
-  service-run.ps1 -Status      status
-  service-run.ps1 -Stop        stop the bridge
-  install-service.ps1 -Uninstall  remove the service
+Automatic MetaTrader re-attach is opt-in: set MT5_AUTO_CONNECT=1 only on the
+VPS. On a desktop (default 0) closing MetaTrader is respected.
 
 ABOUT AUTOTRADING
 -----------------

@@ -19,7 +19,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <span class="badge ex-badge" id="modeBadge">MODE —</span>
         <span class="badge ex-badge" id="tradeBadge">TRADING —</span>
         <span class="badge ex-badge" id="cloudBadge">CLOUD —</span>
-        <a class="badge ex-badge warm" href="/downloads/vaelor-mt5-bridge.zip?v=1.3.1" download>Download bridge .zip</a>
+        <a class="badge ex-badge warm" href="/downloads/vaelor-mt5-bridge.zip?v=1.3.2" download>Download bridge .zip</a>
         <a class="badge ex-badge warm" href="/docs/09-mt5-execution">Setup manual</a>
       </div>
 
@@ -70,7 +70,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             A small package that runs on your PC. It connects to the MetaTrader 5 already installed
             on your machine — no broker API keys, no cloud custody.
           </p>
-          <a class="ex-btn primary" href="/downloads/vaelor-mt5-bridge.zip?v=1.3.1" download>
+          <a class="ex-btn primary" href="/downloads/vaelor-mt5-bridge.zip?v=1.3.2" download>
             Download vaelor-mt5-bridge.zip
           </a>
         </article>
@@ -82,10 +82,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             installed. The first run creates a private Python environment and installs
             dependencies, then the console prints a URL and a token — and saves them to
             <code>connect.txt</code> next to <code>run.cmd</code> so you can copy them any time.
-            You can close that window later: run <code>install-service.ps1</code> once to install
-            the bridge as a hidden background service that starts at logon, restarts itself, and
-            relaunches MetaTrader 5 if you close it. If port 8899 is busy, the launcher picks a
-            free port by itself.
+            Keep that window open while you trade. Closing it — or using the
+            <b>kill switch</b> on the member desk — stops the bridge and disconnects this computer
+            completely. Nothing restarts by itself and MetaTrader is never relaunched in the
+            background.
             <b>No local process wanted?</b> The same bridge can run on a cloud Windows VPS that
             has MetaTrader 5 — see docs <code>09-mt5-execution</code> section 5.3.2, then pair via
             <code>http://&lt;vps-ip&gt;:8899/pair</code>.
@@ -93,8 +93,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <pre class="ex-code">URL   : http://127.0.0.1:8899
 Token : &lt;random string&gt;
 
-# optional: run headless, close every window
-powershell -ExecutionPolicy Bypass -File .\install-service.ps1</pre>
+# done — keep this console open while connected
+# close it (or press Ctrl+C) to disconnect completely</pre>
         </article>
         <article class="ex-step">
           <span class="ex-step-num">3</span>
