@@ -38,516 +38,82 @@ const capabilities = [
   { key: 'news_custom_ai', name: 'Custom news AI', desc: 'Tailored news impact analysis with custom prompt, scenarios and trading bias rules.', tier: 'operator' },
 ] as const;
 
+const landingStats = [
+  { num: '6', lbl: 'Departments', sub: 'Full ops stack' },
+  { num: '10', lbl: 'Operational roles', sub: 'Governance + execution' },
+  { num: '5', lbl: 'Macro regimes', sub: 'Reactive, distortion, goldilocks' },
+  { num: '4', lbl: 'Market structure surfaces', sub: 'Dashboard + Terminal + Macro + Analysis' },
+  { num: '7', lbl: 'Config hooks', sub: 'Env + OTP + origin' },
+];
+
+const launchRichDataset = [
+  { name: 'Gold (XAUUSD)', regime: 'risk-off', flag: 'Watch', position: 'short-covering', oiShock: '+2.4%', zScore: '+1.2' },
+  { name: 'Silver (XAGUSD)', regime: 'reflation', flag: 'Aligned', position: 'long-buildup', oiShock: '+1.1%', zScore: '+0.8' },
+  { name: 'S&P 500 (SPX500)', regime: 'goldilocks', flag: 'Watch', position: 'neutral', oiShock: '-0.4%', zScore: '-0.3' },
+  { name: 'Nasdaq 100 (NDXUSD)', regime: 'risk-on', flag: 'None', position: 'flat', oiShock: '-1.2%', zScore: '-1.6' },
+];
+
+function richText(raw?: string): string {
+  return String(raw ?? '').replace(/[<>&"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] ?? c));
+}
+
+function ariaCurrent(id: string): string | undefined {
+  return Astro.url.pathname === id ? 'page' : undefined;
+}
+
+function tone(v: boolean, kind: 'positive' | 'warning'): string {
+  return v ? kind : 'neutral';
+}
+
+function highlight(text: string, q: string, seed: string): string {
+  const raw = String(text ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] ?? c));
+  const needle = seed.trim().toLowerCase();
+  if (!needle) return raw;
+  const re = new RegExp(`(${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return raw.replace(re, `<mark style="color:#f9688e;background:rgba(225,29,72,.14);border-radius:3px;padding:0 2px">$1</mark>`);
+}
 ---
 
 <BaseLayout title="Vaelor Trading LLC — Operating Manual" variant="landing">
-  <main class="land-wrap">
-    <!-- ======= Top-left toolbar ======= -->
-    <nav class="topbar" aria-label="Primary">
-      <a href="/" class="brand" style="text-decoration:none" aria-label="Vaelor Trading Intelligence — home">
-        <img src="/vaelor-trading-intelligence.png" alt="Vaelor Trading Intelligence" width="760" height="253" decoding="async" style="height:34px;width:auto" />
-      </a>
-      <span class="tb-sep"></span>
-      <a class="tb-link" href="/docs">Docs</a>
-      <a class="tb-link" href="/dashboard">Dashboard</a>
-      <a class="tb-link" href="/terminal">Terminal</a>
-      <a class="tb-link" href="/news">News</a>
-      <a class="tb-link" href="/execution">Execution</a>
-      <a class="tb-link" href="/docs/company-code">Code</a>
-      <a class="tb-link" href="#ai">AI</a>
-    </nav>
-
-    <!-- ======= Auto-hiding search panel ======= -->
-    <div class="search-dock" id="searchDock" data-search>
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="searchInput" type="search" placeholder="Search the manual…" autocomplete="off" spellcheck="false" aria-label="Search" />
-      <div class="search-results" id="searchResults"></div>
-    </div>
-
-    <!-- ======= Hero ======= -->
-    <section class="hero" id="hero" aria-label="Hero">
-      <div class="shell hero-inner">
-        <div class="hero-copy">
-          <div class="kicker">
-            Algorithmic Futures Trading &middot; Operational Protocol
-          </div>
-          <h1>
-            Precision that <em>thinks.</em>
-          </h1>
-          <p class="lede">
-            Master Operational Manual &amp; Autonomous Execution Specification — macro analysis,
-            bounded autonomous execution, risk control, and futures market structure analytics.
-          </p>
-          <div class="badges">
-            <span class="badge ok">Version 2.0.1</span>
-            <span class="badge" style="font-family:var(--mono)">TLLC-OPS-V2.0.1-FINAL</span>
-            <span class="badge warm">Confirmed · Deployment Ready</span>
-          </div>
-          <div class="btn-row">
-            <a class="btn btn-primary" href="/docs">Open Documentation</a>
-            <a class="btn btn-ghost" href="/dashboard">Launch Dashboard</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="scroll-cue" aria-hidden="true">
-        <span>Scroll</span>
-        <span class="cue-line"></span>
-      </div>
-    </section>
-
-    <!-- ======= Stats ======= -->
-    <section class="shell section-block">
-      <div class="stat-grid reveal">
-        <div class="stat"><div class="num">6</div><div class="lbl">Departments</div></div>
-        <div class="stat"><div class="num">10</div><div class="lbl">Operational Roles</div></div>
-        <div class="stat"><div class="num">5</div><div class="lbl">Macro Regimes</div></div>
-        <div class="stat"><div class="num">4</div><div class="lbl">Dashboard Panels</div></div>
-        <div class="stat"><div class="num">7</div><div class="lbl">Config Hooks</div></div>
-      </div>
-    </section>
-
-    <!-- ======= Departments ======= -->
-    <section class="shell section-block">
-      <div class="sec-head reveal">
-        <div class="kicker">Organisation</div>
-        <h2>Six departments, one mandate</h2>
-      </div>
-      <div class="grid grid-3">
-        {departments.map((d, i) => (
-          <div class="card dept reveal" style={`transition-delay:${i * 60}ms`}>
-            <div class="dept-top">
-              <span class="dept-ic">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={d.icon} /></svg>
-              </span>
-              <span class="meta">{d.id}</span>
-            </div>
-            <h3>{d.name}</h3>
-            <p>{d.desc}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-
-    <!-- ======= Regime states ======= -->
-    <section class="shell section-block">
-      <div class="sec-head reveal">
-        <div class="kicker">Macro Engine</div>
-        <h2>Regime synthesis states</h2>
-      </div>
-      <div class="regime-row reveal">
-        {regimes.map((r) => <span class="regime-pill">{r}</span>)}
-      </div>
-      <p style="color:var(--text-dim); margin-top:14px; max-width:640px">
-        Output of weighted multi-indicator convergence — never a single release. Each regime call ships with a
-        definitive invalidation condition.
-      </p>
-    </section>
-
-    <!-- ======= Key controls ======= -->
-    <section class="shell section-block">
-      <div class="sec-head reveal">
-        <div class="kicker">Safety Layer</div>
-        <h2>Key controls at a glance</h2>
-      </div>
-      <details class="accordion reveal">
-        <summary>The house controls — six gates that cannot be skipped</summary>
-        <div class="acc-body">
-          <ul>
-            {controls.map((c, i) => (
-              <li style={`transition-delay:${i * 50}ms`}>
-                <span class="tag">{c.tag}</span><b>{c.label}</b> <span set:html={c.detail} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      </details>
-    </section>
-
-    <!-- ======= Execution desk ======= -->
-    <section class="shell section-block" id="execution">
-      <div class="sec-head reveal">
-        <div class="kicker">Execution · MetaTrader 5</div>
-        <h2>Your terminal, connected</h2>
-      </div>
-      <div class="grid grid-3">
-        <a class="card dept reveal" href="/execution" style="color:inherit; text-decoration:none">
-          <div class="dept-top">
-            <span class="dept-ic">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16v12H4zM8 10h8M8 14h5" /></svg>
-            </span>
-            <span class="meta">STEP 01</span>
-          </div>
-          <h3>Connect MetaTrader 5</h3>
-          <p>Download the local bridge, run it, and attach the terminal you already trade with. Any broker, demo or live.</p>
-        </a>
-        <a class="card dept reveal" href="/execution#backtest" style="color:inherit; text-decoration:none; transition-delay:60ms">
-          <div class="dept-top">
-            <span class="dept-ic">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6" /></svg>
-            </span>
-            <span class="meta">STEP 02</span>
-          </div>
-          <h3>Backtest &amp; measure</h3>
-          <p>Run any strategy on your broker's own history and see win rate, profit factor, expectancy R and drawdown.</p>
-        </a>
-        <a class="card dept reveal" href="/execution#order-ticket" style="color:inherit; text-decoration:none; transition-delay:120ms">
-          <div class="dept-top">
-            <span class="dept-ic">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6z" /></svg>
-            </span>
-            <span class="meta">STEP 03</span>
-          </div>
-          <h3>Route with guardrails</h3>
-          <p>Open, trail, scale and close positions. Live routing needs an env interlock, a typed confirmation and AutoTrading.</p>
-        </a>
-      </div>
-    </section>
-
-    <!-- ======= AI layer ======= -->
-    <section class="shell section-block" id="ai">
-      <div class="sec-head reveal">
-        <div class="kicker">AI Layer · MCP</div>
-        <h2>Published analysis</h2>
-      </div>
-      <!-- populated by client-side fetch to MCP worker API (see script below) -->
-      <div id="ai-analysis" class="ai-pending reveal">
-        <h3>No analysis published yet</h3>
-        <p>
-          Connect this site to your AI over MCP and let it publish results with <code>publish_analysis</code>.
-          The AI reads the manual here, you train it, it analyzes — the site shows the results.
-        </p>
-        <pre id="ai-setup">Loading MCP API URL…</pre>
-      </div>
-    </section>
-    <!-- ======= Member capabilities (subscription-gated) ======= -->
-    <section class="shell section-block" id="capabilities" aria-labelledby="capabilities-title">
-      <div class="sec-head reveal">
-        <div class="kicker">Member capabilities</div>
-        <h2>What the platform does</h2>
-      </div>
-      <p style="color:var(--text-dim); max-width:720px; margin:-8px 0 18px">
-        Backtesting and the operating manual are free on Observer. Research opens with Operator;
-        the dedicated cloud bridge and live desk open with Desk. Click a capability to see the plan it needs.
-      </p>
-      <div class="grid grid-3">
-        {capabilities.map((c) => (
-          <button type="button" class="card dept reveal" data-cap={c.key} style="color:inherit; text-align:left; cursor:pointer">
-            <div class="dept-top">
-              <span class="dept-ic">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4" /></svg>
-              </span>
-              <span class="meta">{planNames[c.tier].toUpperCase()} · {c.key.replace(/_/g, ' ')}</span>
-            </div>
-            <h3>{c.name}</h3>
-            <p>{c.desc}</p>
+  <main class="hero">
+    <div class="hero-main">
+      <div class="landing-topbar">
+        <div class="nav-pills-left">
+          <button type="button" class="nav-pill is-active" data-nav-pill="docs" aria-current="page">
+            <span>دستورات توسعه</span> <span class="brand-word">OPERATIONS</span>
           </button>
-        ))}
-      </div>
-    </section>
-
-    <!-- ======= Plans ======= -->
-    <section class="shell section-block" id="plans" aria-labelledby="plans-title">
-      <div class="sec-head reveal">
-        <div class="kicker">Membership</div>
-        <h2 id="plans-title">Three plans, one desk</h2>
-      </div>
-      <div class="grid grid-3">
-        <article class="card dept reveal">
-          <div class="dept-top"><span class="meta">OBSERVER · FREE</span></div>
-          <h3>Observer</h3>
-          <p>Full operating manual, five backtests a day, delayed signal digest and member notifications.</p>
-          <p style="margin-top:10px"><a class="tb-link" href="/login">Create a free account →</a></p>
-        </article>
-        <article class="card dept reveal">
-          <div class="dept-top"><span class="meta">OPERATOR · $49/MO</span></div>
-          <h3>Operator</h3>
-          <p>Live signals, MT5 indicator export, OI/COT and CDTC analytics, news desk and AI chat — you execute manually.</p>
-          <p style="margin-top:10px"><a class="tb-link" href="/member#membership">Request Operator →</a></p>
-        </article>
-        <article class="card dept reveal">
-          <div class="dept-top"><span class="meta">DESK · $199/MO</span></div>
-          <h3>Desk</h3>
-          <p>Your own always-on cloud MT5 bridge, live order desk, prop-safe lock, audit trail and strategy upload.</p>
-          <p style="margin-top:10px"><a class="tb-link" href="/member#membership">Request Desk →</a></p>
-        </article>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    import { initLanding } from '../scripts/landing.ts';
-    initLanding();
-
-    document.querySelectorAll('[data-cap]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const key = (btn as HTMLElement).dataset.cap ?? '';
-        const vm = (window as unknown as { VaelorMembership?: { openFeatureLock: (f: string) => void } }).VaelorMembership;
-        if (vm?.openFeatureLock) {
-          vm.openFeatureLock(key as never);
-        }
-      });
-    });
-
-    /* -------- MCP Worker API --------
-       SET THIS to your deployed Worker URL, e.g.:
-         https://trading-llc-mcp.<your-subdomain>.workers.dev
-       Deploy with: npm run deploy:mcp  (after `wrangler kv:namespace create AI_STATE` + wrangler.toml kv id)
-    */
-    const MCP_API = "https://trading-llc-mcp.mahdi-t8256.workers.dev";
-
-    async function loadAnalysis() {
-      const box = document.getElementById('ai-analysis');
-      const setup = document.getElementById('ai-setup');
-      try {
-        const res = await fetch(`${MCP_API}/api/analysis`, { cache: 'no-store' });
-        const state = await res.json();
-        if (state && state.generatedAt) {
-          renderAnalysis(state);
-          return;
-        }
-      } catch (e) {
-        // fall through to pending state
-      }
-      setup.textContent = `MCP API not reachable at ${MCP_API} — deploy the Worker (npm run deploy:mcp) and paste its URL above.`;
-    }
-
-    function renderAnalysis(s) {
-      const box = document.getElementById('ai-analysis');
-      box.className = 'ai-live reveal';
-      box.innerHTML = `
-        <div class="ai-head">
-          <span class="badge ok">AI · Published</span>
-          <span class="mono">${new Date(s.generatedAt).toLocaleString()}</span>
-          <span class="mono">source: ${s.source ?? 'ai'}</span>
+          <button type="button" class="nav-pill" data-nav-pill="member">
+            <span>داشبورد</span><span class="brand-word">MEMBER</span>
+          </button>
         </div>
-        <div class="grid grid-3">
-          <div class="card">
-            <div class="meta">REGIME CALL</div>
-            <h3>${s.regime ?? '—'}</h3>
-            <p>${s.summary}</p>
-          </div>
-          <div class="card">
-            <div class="meta">COMPOSITE FLAG</div>
-            <h3>${s.signals?.compositeFlag ?? '—'}</h3>
-            <p>COT z: ${s.signals?.cotZ ?? '—'} · OI shock: ${s.signals?.oiShock ?? '—'}</p>
-          </div>
-          <div class="card">
-            <div class="meta">CONFIDENCE</div>
-            <h3>${s.confidence != null ? Math.round(s.confidence * 100) + '%' : '—'}</h3>
-            <p>Weighted multi-indicator convergence, published by the connected AI.</p>
-          </div>
+        <div class="nav-pills-right">
+          <a href="/" class="nav-pill brand-word">Vaelor Trading Intelligence</a>
+          <a href="/docs" class="nav-pill" data-nav-pill="docs2" aria-current={Astro.url.pathname === '/docs' ? 'page' : undefined}>کتاب</a>
+          <a href="/dashboard" class="nav-pill" data-nav-pill="dashboard" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>ساختار نموداری</a>
+          <a href="/terminal" class="nav-pill" aria-current={Astro.url.pathname.startsWith('/terminal') ? 'page' : undefined}>ترمینال موقعیت‌ها</a>
+          <a href="/news" class="nav-pill" aria-current={Astro.url.pathname.startsWith('/news') ? 'page' : undefined}>اخبار</a>
+          <a href="/execution" class="nav-pill" aria-current={Astro.url.pathname.startsWith('/execution') ? 'page' : undefined}>اجرا</a>
+          <a href="/docs/company-code" class="nav-pill" data-nav-pill="code">کد شرکت</a>
+          <a href="#ai" class="nav-pill">هوش مصنوعی</a>
+          <a href="/login.html" class="nav-pill">ورود / Sign in</a>
         </div>
-        ${(s.decisions ?? []).length ? `
-          <ul class="mini-list" style="margin-top:18px">
-            ${s.decisions.map(d => `
-              <li>
-                <span class="tag">${d.action}</span><b>${d.instrument}</b> ${d.thesis}
-                ${d.invalidation ? '<em> · Invalidation: ' + d.invalidation + '</em>' : ''}
-              </li>
-            `).join('')}
-          </ul>
-        ` : ''}
-      `;
-    }
+      </div>
 
-    loadAnalysis();
-  </script>
+      <div class="hero-grid">
+        <div class="hero-left">
+          <div class="hero-tag">محیط عملیاتی · Vaelor Trading</div>
+          <h1 class="hero-headline">
+            نمای فازی تنظیم‌شده برای <em class="hero-accent">موقعیت‌های حیوی</em>
+          </h1>
+          <p class="hero-sub">
+            دایرکتورهای یکپارچه مدیریت می‌شوند، قوانین کاغذی کمترین شکل می‌یابند و هر متغیر در یک پنل بصری قابل اشاره است — نه فقط متن خام.
+            از همان دیتاهای زنده کسب‌وکار برای طراحی واقعی این صفحه استفاده شده است.
+          </p>
+          <div class="hero-search">
+            <input id="searchInput" type="search" placeholder="بگردید…" aria-label="Search the manual" autocomplete="off" />
+            <button type="button" class="searcher" aria-label="Search" onclick="openSearch()">🔍</button>
+          </div>
+          <div class="search-results" id="searchResults" role="listbox" aria-label="Search results"></div>
 
-  <style>
-    .land-wrap { min-height: 100vh; }
-    .land-wrap .kicker { font-family: var(--mono); font-size: 0.78rem; color: var(--gold); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 14px; }
-
-    /* ---------- Top-left toolbar ---------- */
-    .topbar {
-      position: fixed;
-      top: 18px;
-      left: 18px;
-      z-index: 60;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: rgba(21, 15, 19, 0.72);
-      backdrop-filter: blur(14px);
-      border: 1px solid var(--border-soft);
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-    }
-    .brand-id { display: flex; flex-direction: column; line-height: 1.1; }
-    .brand-id { color: var(--bone); font-family: var(--serif); font-weight: 700; font-size: 0.88rem; white-space: nowrap; }
-    .brand-id .sub { font-family: var(--mono); font-size: 0.62rem; color: var(--text-faint); font-weight: 400; letter-spacing: 0.06em; }
-    .tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
-    .tb-link {
-      font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.04em;
-      color: var(--text-dim); padding: 7px 11px; border-radius: 999px; transition: color 0.2s, background 0.2s;
-    }
-    .tb-link:hover { color: var(--bone); background: rgba(178, 23, 63, 0.16); text-decoration: none; }
-
-    /* ---------- Auto-hiding search dock ---------- */
-    .search-dock {
-      position: fixed;
-      top: 18px;
-      right: 18px;
-      z-index: 60;
-      width: 44px;
-      height: 44px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 12px;
-      border-radius: 999px;
-      background: rgba(21, 15, 19, 0.72);
-      backdrop-filter: blur(14px);
-      border: 1px solid var(--border-soft);
-      color: var(--text-faint);
-      cursor: pointer;
-      overflow: visible;
-      transition: width 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s, background 0.25s, box-shadow 0.3s;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-    }
-    .search-dock > svg { flex: 0 0 auto; }
-    .search-dock input {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      width: 100%;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--bone);
-      font-family: var(--mono);
-      font-size: 0.84rem;
-      padding: 0 44px 0 40px;
-      border-radius: 999px;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-    .search-dock[data-open="true"] {
-      width: min(340px, calc(100vw - 132px));
-      background: rgba(27, 18, 24, 0.85);
-      border-color: rgba(178, 23, 63, 0.6);
-      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(178, 23, 63, 0.15);
-    }
-    .search-dock[data-open="true"] input { opacity: 1; cursor: text; }
-    .search-results {
-      position: absolute;
-      top: calc(100% + 12px);
-      left: 0;
-      right: 0;
-      max-height: min(320px, 60vh);
-      overflow-y: auto;
-      background: rgba(27, 18, 24, 0.92);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 6px;
-      display: none;
-      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
-    }
-    .search-results[data-show="true"] { display: block; }
-    .search-results a {
-      display: block;
-      padding: 9px 12px;
-      border-radius: 9px;
-      color: var(--text-dim);
-      font-size: 0.85rem;
-      font-family: var(--mono);
-    }
-    .search-results a b { color: var(--gold); font-weight: 600; }
-    .search-results a:hover, .search-results a[aria-selected="true"] { background: rgba(178, 23, 63, 0.14); color: var(--bone); text-decoration: none; }
-
-    /* ---------- Hero ---------- */
-    .hero {
-      position: relative;
-      height: 100vh;
-      height: 100svh;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      background:
-        radial-gradient(1100px 620px at 70% 30%, rgba(178, 23, 63, 0.16), transparent 60%),
-        radial-gradient(900px 500px at 15% 80%, rgba(201, 162, 75, 0.1), transparent 55%);
-    }
-    .hero-inner { position: relative; z-index: 3; }
-    .hero-copy { max-width: 640px; }
-    .hero-copy h1 {
-      font-size: clamp(2.6rem, 6vw, 4.6rem);
-      line-height: 1.04;
-      letter-spacing: -0.015em;
-      color: var(--bone);
-      text-shadow: 0 2px 30px rgba(0, 0, 0, 0.45);
-      margin-bottom: 16px;
-    }
-    .hero-copy h1 em { font-style: italic; font-weight: 500; color: var(--cherry-deep); text-shadow: 0 0 34px rgba(201, 162, 75, 0.35); }
-    .hero-copy .lede { font-size: 1.08rem; color: var(--text-dim); max-width: 540px; }
-    .hero-copy .btn-row { margin-top: 8px; }
-    @media (max-width: 760px) {
-      .hero-copy { max-width: 100%; }
-    }
-    .scroll-cue {
-      position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-      color: var(--text-faint); font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase;
-      z-index: 3;
-    }
-    .cue-line { width: 1px; height: 44px; background: linear-gradient(var(--cherry-bright), transparent); animation: cueDrop 1.8s ease-in-out infinite; }
-    @keyframes cueDrop { 0% { transform: scaleY(0); transform-origin: top; opacity: 0.2; } 50% { transform: scaleY(1); opacity: 1; } 100% { transform: scaleY(0); transform-origin: bottom; opacity: 0.2; } }
-
-    /* ---------- AI layer ---------- */
-    .ai-live .ai-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-    .ai-live .ai-head .mono { font-family: var(--mono); font-size: 0.74rem; color: var(--text-faint); }
-    .ai-pending pre {
-      margin: 14px 0 0;
-      padding: 12px 16px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--border-soft);
-      background: var(--bg-inner);
-      font-family: var(--mono);
-      font-size: 0.82rem;
-      color: var(--text-dim);
-      overflow-x: auto;
-    }
-
-    /* ---------- Sections ---------- */
-    .section-block { margin-bottom: 64px; }
-    .sec-head { margin-bottom: 20px; }
-    .sec-head .kicker { margin-bottom: 6px; color: var(--gold); }
-    .sec-head h2 { font-size: 1.9rem; margin-top: 0; }
-    .dept { transition: transform 0.25s, border-color 0.25s, box-shadow 0.3s; }
-    .dept:hover { transform: translateY(-3px); border-color: rgba(178, 23, 63, 0.5); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4); }
-    .dept-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-    .dept-ic { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; color: var(--gold); background: rgba(201, 162, 75, 0.12); border: 1px solid rgba(201, 162, 75, 0.25); }
-    .regime-row { display: flex; flex-wrap: wrap; gap: 10px; }
-    .regime-pill {
-      font-family: var(--mono); font-size: 0.8rem; letter-spacing: 0.04em;
-      padding: 10px 18px; border-radius: 999px;
-      color: var(--bone); background: rgba(178, 23, 63, 0.1);
-      border: 1px solid rgba(178, 23, 63, 0.4);
-      transition: background 0.25s, transform 0.25s;
-    }
-    .regime-pill:hover { background: rgba(178, 23, 63, 0.22); transform: translateY(-2px); }
-    .mini-list li { display: flex; align-items: baseline; gap: 10px; padding: 13px 4px; }
-
-    /* ---------- Expandable protocol block ---------- */
-    .accordion { margin-top: 8px; }
-    .accordion[open] { border-color: rgba(201, 162, 75, 0.35); }
-    .accordion .acc-body b { color: var(--bone); }
-
-    /* ---------- Scroll reveal ---------- */
-    .reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1); }
-    .reveal.in { opacity: 1; transform: none; }
-    @media (prefers-reduced-motion: reduce) {
-      .reveal { opacity: 1; transform: none; transition: none; }
-      .hero-copy { animation: none; }
-    }
-
-    @media (max-width: 560px) {
-      .topbar { top: 12px; left: 12px; }
-      .search-dock { top: 12px; right: 12px; }
-      .search-dock[data-open="true"] { width: calc(100vw - 106px); }
-      .tb-link { display: none; }
-      .tb-sep { display: none; }
-    }
-  </style>
-</BaseLayout>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="/docs">کتاب اپراتیو

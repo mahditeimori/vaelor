@@ -7,10 +7,11 @@ interface Props {
 const { title, description = 'Vaelor Trading LLC — Master Operational Manual & Autonomous Execution Specification', variant = 'default' } = Astro.props;
 const pageTitle = `${title} — Vaelor Trading LLC`;
 import '../styles/global.css';
+import '../styles/ui-enhancements.css';
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="fa">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,7 +19,10 @@ import '../styles/global.css';
     <meta name="color-scheme" content="dark" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Vazirmatn:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/vaelor-icon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -32,6 +36,7 @@ import '../styles/global.css';
     </script>
   </head>
   <body class={variant}>
+    <div class="bg-matrix" aria-hidden="true"></div>
     {variant !== 'landing' && (
       <header class="site-header">
         <a href="/" class="brand" aria-label="Vaelor Trading Intelligence — home">
@@ -44,14 +49,12 @@ import '../styles/global.css';
           />
         </a>
         <nav class="nav-links" aria-label="Primary">
-          <a href="/" class="nav-link" aria-current={Astro.url.pathname === '/' ? 'page' : undefined}>Overview</a>
-          <a href="/docs" class="nav-link" aria-current={Astro.url.pathname.startsWith('/docs') ? 'page' : undefined}>Documentation</a>
-          <a href="/dashboard" class="nav-link" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>Dashboard</a>
-          <a href="/terminal" class="nav-link" aria-current={Astro.url.pathname.startsWith('/terminal') ? 'page' : undefined}>Terminal</a>
-          <a href="/news" class="nav-link" aria-current={Astro.url.pathname.startsWith('/news') ? 'page' : undefined}>News</a>
-          <a href="/execution" class="nav-link" aria-current={Astro.url.pathname.startsWith('/execution') ? 'page' : undefined}>Execution</a>
-          <a href="/ai" class="nav-link" aria-current={Astro.url.pathname.startsWith('/ai') ? 'page' : undefined}>AI</a>
-          <a href="/login.html" class="nav-link" aria-current={Astro.url.pathname.startsWith('/login') ? 'page' : undefined}>Sign in</a>
+          <a href="/" class="nav-link" aria-current={Astro.url.pathname === '/' ? 'page' : undefined}>مشخصات</a>
+          <a href="/dashboard" class="nav-link" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>داشبورد مشتری</a>
+          <a href="/terminal" class="nav-link" aria-current={Astro.url.pathname.startsWith('/terminal') ? 'page' : undefined}>ترمینال</a>
+          <a href="/execution" class="nav-link" aria-current={Astro.url.pathname.startsWith('/execution') ? 'page' : undefined}>اجرا</a>
+          <a href="/ai" class="nav-link" aria-current={Astro.url.pathname.startsWith('/ai') ? 'page' : undefined}>هوش مصنوعی</a>
+          <a href="/login.html" class="nav-link" aria-current={Astro.url.pathname.startsWith('/login') ? 'page' : undefined}>ورود / Sign in</a>
         </nav>
       </header>
     )}
@@ -77,8 +80,8 @@ import '../styles/global.css';
       </div>
     </footer>
     <script>
-    import { mountMatrixBg } from '../scripts/matrix-bg.ts';
-    mountMatrixBg();
-  </script>
-</body>
+      import { mountMatrixBg } from '../scripts/matrix-bg.ts';
+      mountMatrixBg();
+    </script>
+  </body>
 </html>

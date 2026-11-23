@@ -1,0 +1,34 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const features = [
+  { id: 'signals', title: 'سیگنال‌های زنده', desc: 'ورودی، استاپ و تارگت روی چارت‌های خودکار از هفته قبلی نمایش می‌دهد.', icon: 'fa-solid fa-gauge-high', span: '7x2', action: '/execution#backtest', badge: 'Operator' },
+  { id: 'terminal', title: 'ترمینال لایو', desc: 'در یک صفحه قیمت بازار، پوزیشن‌ها، استور معمولی و پوزیشن‌های لایو ببینید.', icon: 'fa-solid fa-terminal', span: '7x2', action: '/execution', badge: 'Desk' },
+  { id: 'strategy', title: 'استراتژی‌های مالک', desc: 'با معیارهای مالک باز می‌کنند: دیدارش باش، کپوش ویوپ‌بی. محصول اضافی معو‌تینی می‌کند.', icon: 'fa-solid fa-sitemap', span: '5x2', action: '/member#membership', badge: 'Desk' },
+  { id: 'ai', title: 'هوش مصنوعی', desc: 'سوالات MCP به Worker رو می‌پرسید یا تحلیل‌های رجیستر شده را می‌خوانید.', icon: 'fa-solid fa-brain', span: '5x1', action: '/ai', badge: 'Desk' },
+  { id: 'news', title: 'اخبار و تحلیل', desc: 'انعطاف‌پذیر مقایسه روی شعله‌های قیمت، توضیح خودکار و نقاط بازیافت.', icon: 'fa-solid fa-newspaper', span: '4x2', action: '/news', badge: 'Operator' },
+  { id: 'search', title: 'جستجو', desc: 'تعادل سریع بین بخش‌های سایت با پیکربندی قابل تکرار. بیشتر دکمه‌ها باز می‌شوند.', icon: 'fa-solid fa-magnifying-glass', span: '3x1', action: '/docs', badge: '' },
+];
+---
+
+<BaseLayout title="داشبورد مشتری · Member Dashboard" description="داشبورد یکپارچه یک داشبورد مشتری با دریچه‌های لایو، سیگنال‌های زنده و دسترسی به همه سطوح سایت.">
+  <main class="member-dash-wrap">
+    <div class="md-head reveal">
+      <div>
+        <div class="md-kicker">داشبورد مشتری · Vaelor Trading</div>
+        <h1>خلاصه حساب و دسترسی زنده</h1>
+        <p class="md-sub">
+          همه چیز از درون سایت برمی‌داریم: پوزیشن‌ها، سیگنال‌ها، استراتژی‌ها و ابزارهای اجرایی — بدون صفحه کپی‌شده.
+        </p>
+      </div>
+      <div class="md-header-chip">
+        <div><span class="md-headline">0 پوزیشن</span><span class="muted">اکثر صفحات شابویند تبدیل می‌شوند</span></div>
+        <span class="muted">LIVE</span>
+      </div>
+    </div>
+
+    <section class="live-strip reveal" aria-label="Trade summary">
+      <div class="live-stat"><div class="label">پوزیشن‌های زنده</div><div class="value gold" id="md-positions">0</div><div class="muted">معتدل بازار (خودکار)</div></div>
+      <div class="live-stat"><div class="label">سیگنال‌های زنده</div><div class="value" id="md-signals">—</div><div class="muted">هفته فعلی</div></div>
+      <div class="live-stat"><div class="label">درخواست خرید</div><div class="value gold" id="md-orders">—</div><div class="muted">ریپان</div></div>
+      <div class="live-stat"><div class="label">پیکربندی معتمد شد</div><div class="value gold" id="md-config">0</div><div class="muted">کانفیگ خارجی سپرم
