@@ -19,6 +19,7 @@ import {
   readJson,
   requestIp,
   resolveEmail,
+  sameOriginError,
   sessionCookie,
   tooManyAttempts,
   verifyPassword,
@@ -36,6 +37,8 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   if (await tooManyAttempts(env, `login-ip:${ip}`, 40, 900)) {
     return fail(429, 'rate_limited', 'Too many attempts from this network. Try again in 15 minutes.');
   }
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
 
   const body = await readJson<Body>(request);
   if (!body) return fail(400, 'bad_request', 'Expected a JSON body.');

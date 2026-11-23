@@ -243,7 +243,7 @@ function showToast(msg: string, type: 'info' | 'success' | 'error' = 'info'): vo
     icon = '<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>';
   }
   toast.className = `pointer-events-auto flex items-start gap-3 p-4 rounded-xl bg-[#160b11]/95 backdrop-blur-md border-2 ${borderColor} text-xs font-mono text-white shadow-2xl transition-all duration-300`;
-  toast.innerHTML = `<div class="mt-0.5 text-sm">${icon}</div><div class="flex-1 leading-relaxed">${msg}</div>`;
+  toast.innerHTML = `<div class="mt-0.5 text-sm">${icon}</div><div class="flex-1 leading-relaxed">${esc(msg)}</div>`;
   container.appendChild(toast);
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -941,9 +941,9 @@ function renderPositionsTable(): void {
           : '';
         return `
         <tr class="hover:bg-white/[0.02] transition">
-          <td class="py-3.5 px-4 text-slate-300">${pos.id}${sampleCls}</td>
-          <td class="py-3.5 px-4 font-bold text-white">${pos.symbol}</td>
-          <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded border text-xs ${sideCls}">${pos.side}</span></td>
+          <td class="py-3.5 px-4 text-slate-300">${esc(pos.id)}${sampleCls}</td>
+          <td class="py-3.5 px-4 font-bold text-white">${esc(pos.symbol)}</td>
+          <td class="py-3.5 px-4"><span class="px-2.5 py-0.5 rounded border text-xs ${sideCls}">${esc(pos.side)}</span></td>
           <td class="py-3.5 px-4 text-white">${pos.lots.toFixed(2)}</td>
           <td class="py-3.5 px-4 text-slate-200">${pos.entry.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
           <td class="py-3.5 px-4 text-slate-400 text-xs">${formatLevel(pos.sl)} / ${formatLevel(pos.tp)}</td>

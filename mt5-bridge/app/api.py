@@ -180,10 +180,8 @@ async def private_network_access(request: Request, call_next):
 def require_token(
     request: Request,
     x_bridge_token: str | None = Header(default=None),
-    token: str | None = Query(default=None),
 ) -> None:
-    supplied = x_bridge_token or token or ""
-    if not hmac.compare_digest(supplied, SETTINGS.token):
+    if not x_bridge_token or not hmac.compare_digest(x_bridge_token, SETTINGS.token):
         raise HTTPException(status_code=401, detail="invalid bridge token")
 
 

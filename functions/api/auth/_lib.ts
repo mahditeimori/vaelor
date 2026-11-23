@@ -109,11 +109,37 @@ export function isSecureRequest(request: Request): boolean {
 export async function readJson<T>(request: Request): Promise<T | null> {
   try {
     const text = await request.text();
-    if (!text) return null;
+    if (!text || text.length > MAX_JSON_BYTES) return null;
     return JSON.parse(text) as T;
   } catch {
     return null;
   }
+}
+
+const MAX_JSON_BYTES = 262_144;
+
+/** Require POST/PUT/DELETE state changes to originate from our own origin. */
+export function sameOriginError(request: Request, env: Env): string | null {
+  const expected = originOf(request, env);
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+  if (origin) {
+    try {
+      const parsed = new URL(origin);
+      return `${parsed.protocol}//${parsed.host}` !== expected ? 'origin_mismatch' : null;
+    } catch {
+      return 'origin_mismatch';
+    }
+  }
+  if (referer) {
+    try {
+      const parsed = new URL(referer, expected);
+      return parsed.origin !== expected ? 'referer_mismatch' : null;
+    } catch {
+      return 'referer_mismatch';
+    }
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ */

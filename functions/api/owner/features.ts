@@ -11,7 +11,7 @@
  * renderable and addressable in the owner dashboard.
  */
 import type { Env, Handler } from '../auth/_lib';
-import { fail, getSessionContext, isOwnerEmail, json, readJson } from '../auth/_lib';
+import { fail, getSessionContext, isOwnerEmail, json, readJson, requestIp, sameOriginError, tooManyAttempts } from '../auth/_lib';
 
 export const FEATURES_KV_KEY = 'features:owner';
 
@@ -62,6 +62,15 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   const context = await getSessionContext(request, env);
   if (!context) return fail(401, 'not_authenticated');
   if (!isOwnerEmail(env, context.user.email)) return fail(403, 'not_owner', 'Owner access required.');
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
+  if (await tooManyAttempts(env, `owner-feature:${context.user.id}`, 10, 3600)) {
+    return fail(429, 'rate_limited', 'Too many feature edits. Try again later.');
+  }
+  const ip = requestIp(request);
+  if (await tooManyAttempts(env, `owner-feature:${ip}`, 60, 3600)) {
+    return fail(429, 'rate_limited', 'Too many feature edits from this network.');
+  }
 
   const body = await readJson<PostBody>(request);
   const input = body?.feature;

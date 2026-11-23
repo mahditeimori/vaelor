@@ -8,7 +8,7 @@
  * this record is saved.
  */
 import type { Handler } from '../auth/_lib';
-import { fail, getSessionContext, json, readJson } from '../auth/_lib';
+import { fail, getSessionContext, json, readJson, sameOriginError } from '../auth/_lib';
 
 interface KillToggleRequest {
   enabled?: boolean;
@@ -17,6 +17,8 @@ interface KillToggleRequest {
 export const onRequestPost: Handler = async ({ request, env }) => {
   const context = await getSessionContext(request, env);
   if (!context) return fail(401, 'not_authenticated');
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
 
   const payload: KillToggleRequest = (await readJson<KillToggleRequest>(request)) ?? {};
   const enabled = payload.enabled === true;

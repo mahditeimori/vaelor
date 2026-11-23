@@ -9,7 +9,7 @@
  * /api/owner/members).
  */
 import type { Env, Handler, SessionRecord } from '../../auth/_lib';
-import { fail, getSessionContext, isOwnerEmail, json, readJson } from '../../auth/_lib';
+import { fail, getSessionContext, isOwnerEmail, json, readJson, requestIp, sameOriginError, tooManyAttempts } from '../../auth/_lib';
 import { findMember, listKeys, MAX_SESSIONS, type KVWithList } from '../members';
 
 interface DeleteBody {
@@ -22,6 +22,15 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   const context = await getSessionContext(request, env);
   if (!context) return fail(401, 'not_authenticated');
   if (!isOwnerEmail(env, context.user.email)) return fail(403, 'not_owner', 'Owner access required.');
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
+  if (await tooManyAttempts(env, `owner-delete:${context.user.id}`, 5, 3600)) {
+    return fail(429, 'rate_limited', 'Too many delete requests. Try again later.');
+  }
+  const ip = requestIp(request);
+  if (await tooManyAttempts(env, `owner-delete:${ip}`, 30, 3600)) {
+    return fail(429, 'rate_limited', 'Too many delete requests from this network.');
+  }
 
   const body = await readJson<DeleteBody>(request);
   const username = String(body?.username ?? '').trim();

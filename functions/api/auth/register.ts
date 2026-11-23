@@ -21,6 +21,7 @@ import {
   normaliseUsername,
   readJson,
   requestIp,
+  sameOriginError,
   sessionCookie,
   tooManyAttempts,
 } from './_lib';
@@ -40,6 +41,8 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   if (await tooManyAttempts(env, `register:${ip}`, 12, 3600)) {
     return fail(429, 'rate_limited', 'Too many sign-up attempts. Try again in an hour.');
   }
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
 
   const body = await readJson<Body>(request);
   if (!body) return fail(400, 'bad_request', 'Expected a JSON body.');

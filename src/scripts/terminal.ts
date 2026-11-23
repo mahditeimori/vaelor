@@ -92,6 +92,11 @@ function $(id: string): HTMLElement {
 
 const el = (id: string): HTMLElement | null => document.getElementById(id);
 
+const esc = (v: string | number | null | undefined): string =>
+  String(v ?? '').replace(/[&<>"']/g, (c) =>
+    c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '"' ? '&quot;' : '&#39;',
+  );
+
 const POLL_INTERVAL_MS = 60_000;
 const TV_LOAD_TIMEOUT_MS = 15000;
 
@@ -132,7 +137,7 @@ const current = (): InstrumentState | null =>
 /* Formatting                                                          */
 /* ------------------------------------------------------------------ */
 
-const fmt = (n: number | null): string =>
+const fmt = (n?: number | null): string =>
   n == null ? '—' : Math.round(n).toLocaleString('en-US');
 
 const fmtSigned = (n: number | null): string =>
@@ -954,7 +959,7 @@ function cotSvg(rows: CotSeriesRow[], width: number, height: number, main: boole
         .map(
           (v) =>
             `<text x="${padL - 8}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" class="fv-axis">` +
-            `${Math.round(v).toLocaleString('en-US')}</text>`,
+            `${esc(Math.round(v).toLocaleString('en-US'))}</text>`,
         )
         .join('')
     : '';
@@ -963,7 +968,7 @@ function cotSvg(rows: CotSeriesRow[], width: number, height: number, main: boole
         .map(
           (i, k) =>
             `<text x="${x(i).toFixed(1)}" y="${height - 6}" ` +
-            `text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}" class="fv-axis">${pts[i].date}</text>`,
+            `text-anchor="${k === 0 ? 'start' : k === 2 ? 'end' : 'middle'}" class="fv-axis">${esc(pts[i].date)}</text>`,
         )
         .join('')
     : '';
@@ -987,16 +992,16 @@ function renderFinviz(inst: InstrumentState): void {
   if (main) {
     main.innerHTML =
       `<div class="fv-head">
-        <span class="fv-title">${inst.finvizCode} · ${inst.displayName} · weekly COT structure</span>
+        <span class="fv-title">${esc(inst.finvizCode)} · ${esc(inst.displayName)} · weekly COT structure</span>
         <span class="fv-last">
-          <b style="color:#ef5350">${fmt(last?.commNet)}</b> commercial ·
-          <b style="color:#26a69a">${fmt(last?.nonCommNet)}</b> large specs
+          <b style="color:#ef5350">${esc(fmt(last?.commNet))}</b> commercial ·
+          <b style="color:#26a69a">${esc(fmt(last?.nonCommNet))}</b> large specs
         </span>
       </div>` +
       cotSvg(rows, 1000, 300, true) +
       `<div class="fv-foot">
-        Commercials (red) vs large speculators (green) · CFTC report ${inst.cot?.reportDate ?? '—'} ·
-        Δ commercial w/w ${fmtSigned(delta)} · source: live CFTC feed
+        Commercials (red) vs large speculators (green) · CFTC report ${esc(inst.cot?.reportDate ?? '—')} ·
+        Δ commercial w/w ${esc(fmtSigned(delta))} · source: live CFTC feed
       </div>`;
   }
 
@@ -1011,9 +1016,9 @@ function renderFinviz(inst: InstrumentState): void {
     .map((i) => {
       const r = i.cot?.series ?? [];
       const l = r.at(-1);
-      return `<div class="finviz-thumb" data-thumb="${i.finvizCode}" title="Show ${i.displayName} in the main panel">
-        <span class="thumb-label">${i.finvizCode}</span>
-        <span class="thumb-val" style="color:${(l?.commNet ?? 0) >= 0 ? '#26a69a' : '#ef5350'}">${fmt(l?.commNet)}</span>
+      return `<div class="finviz-thumb" data-thumb="${esc(i.finvizCode)}" title="Show ${esc(i.displayName)} in the main panel">
+        <span class="thumb-label">${esc(i.finvizCode)}</span>
+        <span class="thumb-val" style="color:${(l?.commNet ?? 0) >= 0 ? '#26a69a' : '#ef5350'}">${esc(fmt(l?.commNet))}</span>
         ${cotSvg(r, 320, 120, false)}
       </div>`;
     })

@@ -12,7 +12,7 @@
  *   { title, description, strategyId, visibleTiers: string[], addedAt: number }
  */
 import type { Env, Handler } from '../auth/_lib';
-import { fail, getSessionContext, isOwnerEmail, json, readJson } from '../auth/_lib';
+import { fail, getSessionContext, isOwnerEmail, json, readJson, requestIp, sameOriginError, tooManyAttempts } from '../auth/_lib';
 
 export const STRATEGIES_KV_KEY = 'strategies:owner';
 
@@ -61,6 +61,15 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   const context = await getSessionContext(request, env);
   if (!context) return fail(401, 'not_authenticated');
   if (!isOwnerEmail(env, context.user.email)) return fail(403, 'not_owner', 'Owner access required.');
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
+  if (await tooManyAttempts(env, `owner-strategy:${context.user.id}`, 10, 3600)) {
+    return fail(429, 'rate_limited', 'Too many strategy edits. Try again later.');
+  }
+  const ip = requestIp(request);
+  if (await tooManyAttempts(env, `owner-strategy:${ip}`, 60, 3600)) {
+    return fail(429, 'rate_limited', 'Too many strategy edits from this network.');
+  }
 
   const body = await readJson<PostBody>(request);
   const input = body?.strategy;

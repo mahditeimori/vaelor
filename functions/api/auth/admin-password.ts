@@ -18,6 +18,9 @@ import {
   normaliseEmail,
   putUser,
   readJson,
+  requestIp,
+  sameOriginError,
+  tooManyAttempts,
 } from './_lib';
 
 interface Body {
@@ -30,6 +33,15 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   if (!context) return fail(401, 'not_authenticated');
   if (!isOwnerEmail(env, context.user.email)) {
     return fail(403, 'not_owner', 'Owner access required.');
+  }
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
+  if (await tooManyAttempts(env, `admin-password:${context.user.id}`, 5, 3600)) {
+    return fail(429, 'rate_limited', 'Too many reset requests. Try again later.');
+  }
+  const ip = requestIp(request);
+  if (await tooManyAttempts(env, `admin-password:${ip}`, 12, 3600)) {
+    return fail(429, 'rate_limited', 'Too many reset requests from this network.');
   }
 
   const body = await readJson<Body>(request);

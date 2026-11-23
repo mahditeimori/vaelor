@@ -12,6 +12,9 @@ import {
   json,
   putUser,
   readJson,
+  requestIp,
+  sameOriginError,
+  tooManyAttempts,
   verifyPassword,
 } from './_lib';
 
@@ -23,6 +26,15 @@ interface Body {
 export const onRequestPost: Handler = async ({ request, env }) => {
   const context = await getSessionContext(request, env);
   if (!context) return fail(401, 'not_authenticated');
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
+  if (await tooManyAttempts(env, `password:${context.user.id}`, 6, 900_000)) {
+    return fail(429, 'rate_limited', 'Too many password attempts. Try again in 15 minutes.');
+  }
+  const ip = requestIp(request);
+  if (await tooManyAttempts(env, `password:${ip}`, 12, 3600)) {
+    return fail(429, 'rate_limited', 'Too many password attempts from this network.');
+  }
 
   const body = await readJson<Body>(request);
   if (!body) return fail(400, 'bad_request', 'Expected a JSON body.');

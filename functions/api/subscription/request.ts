@@ -13,6 +13,7 @@ import {
   randomToken,
   readJson,
   requestIp,
+  sameOriginError,
   tooManyAttempts,
 } from '../auth/_lib';
 
@@ -47,10 +48,15 @@ const CATALOGUE: Record<PlanId, { name: string; monthly: number; annual: number 
 export const onRequestPost: Handler = async ({ request, env }) => {
   const context = await getSessionContext(request, env);
   if (!context) return fail(401, 'not_authenticated');
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
 
   const { user } = context;
-  if (await tooManyAttempts(env, `subreq:${user.id}`, 5, 3600)) {
+  if (await tooManyAttempts(env, `subreq:${user.id}`, 6, 3600)) {
     return fail(429, 'rate_limited', 'You already sent several requests. Wait an hour or email the desk.');
+  }
+  if (await tooManyAttempts(env, `subreq:${requestIp(request)}`, 30, 3600)) {
+    return fail(429, 'rate_limited', 'Too many upgrade requests from this network.');
   }
 
   const body = await readJson<Body>(request);

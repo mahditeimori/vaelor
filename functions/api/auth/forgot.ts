@@ -17,6 +17,7 @@ import {
   randomToken,
   readJson,
   requestIp,
+  sameOriginError,
   tooManyAttempts,
 } from './_lib';
 
@@ -31,6 +32,8 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   if (await tooManyAttempts(env, `forgot:${ip}`, 6, 3600)) {
     return fail(429, 'rate_limited', 'Too many reset requests. Try again later.');
   }
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
 
   const body = await readJson<Body>(request);
   const email = normaliseEmail(body?.email ?? '');

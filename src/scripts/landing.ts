@@ -36,7 +36,7 @@ export function initLanding(): void {
   /* ---------- auto-hiding search dock ---------- */
   const dock = document.getElementById('searchDock');
   const input = document.getElementById('searchInput') as HTMLInputElement | null;
-  const results = document.getElementById('searchResults');
+  const results = document.getElementById('searchResults')!;
   if (!dock || !input || !results) return;
 
   let hideTimer = 0;

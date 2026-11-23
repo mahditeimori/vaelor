@@ -18,6 +18,7 @@ import {
   putSubscription,
   readJson,
   resolveEmail,
+  sameOriginError,
   type SubscriptionRecord,
 } from '../auth/_lib';
 import { REQUEST_INDEX, type UpgradeRequest } from './request';
@@ -36,6 +37,8 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   const context = await getSessionContext(request, env);
   if (!context) return fail(401, 'not_authenticated');
   if (!isOwnerEmail(env, context.user.email)) return fail(403, 'not_owner', 'Owner access required.');
+  const originError = sameOriginError(request, env);
+  if (originError) return fail(403, originError);
 
   const body = await readJson<Body>(request);
   if (!body) return fail(400, 'bad_request', 'Expected a JSON body.');
