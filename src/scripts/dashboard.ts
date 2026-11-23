@@ -468,6 +468,135 @@ function renderAll(): void {
   renderOi(inst);
   updateComposite(inst);
   renderAges(inst);
+  updateKpi();
+}
+
+function toast(message: string): void {
+  let el = document.getElementById('dashToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'dashToast';
+    el.className = 'kpi-strip o-btn ghost dash-toast';
+    el.style.cssText = 'position:fixed;right:22px;bottom:22px;z-index:40;padding:12px 16px;border:1px solid rgba(226,69,108,0.45);background:rgba(12,8,12,0.97);font-family:var(--mono);font-size:0.66rem;color:#f5f0f2;';
+    document.body.appendChild(el);
+  }
+  el.textContent = message;
+  el.classList.add('show');
+  window.setTimeout(() => el?.classList.remove('show'), 1800);
+}
+
+/* ------------------------------------------------------------------ */
+/* Market KPIs + data export                                           */
+/* ------------------------------------------------------------------ */
+
+interface Kpi {
+  close: number | null;
+  changePct: number | null;
+  range: number | null;
+  volume: number | null;
+  atr: number | null;
+  volPct: number | null;
+  position: 'flat' | 'long' | 'short';
+}
+
+function kpiFor(bars: Bar[]): Kpi {
+  const last = bars.at(-1);
+  const prev = bars.at(-2);
+  const range = last ? last.high - last.low : null;
+  const close = last?.close ?? null;
+  const changePct = prev && prev.close ? (close! - prev.close) / prev.close : null;
+  const volume = last?.volume ?? null;
+  const atrVal = atr(bars);
+  const recent = bars.slice(-20).map((b) => b.close).filter(Boolean);
+  const volPct = close ? ((close / (recent.reduce((a, b) => a + b, 0) / recent.length) - 1) * 100) : null;
+  return {
+    close,
+    changePct,
+    range,
+    volume,
+    atr: atrVal || null,
+    volPct: volPct === null ? null : Math.round(volPct),
+    position: last ? (close! > last.open ? 'long' : close! < last.open ? 'short' : 'flat') : 'flat',
+  };
+}
+
+function updateKpi(): void {
+  const host = el('kpiStrip');
+  if (!host) return;
+  const inst = current();
+  const bars = inst ? activeBars() : [];
+  const k = kpiFor(bars);
+  const volColor = k.volPct == null ? '' : k.volPct >= 5 ? '#5bd4a0' : k.volPct < -5 ? '#e0656b' : '';
+  const cell = (cls: string, kk: string, vv: string, s?: string) =>
+    `<div class="kpi-item ${cls}" data-kpi="${kk}"><span class="k">${kk}</span><span class="v">${vv}</span>${s ? `<span class="s">${s}</span>` : ''}</div>`;
+  host.innerHTML = [
+    cell('live', 'current price', k.close == null ? '—' : `$${fmt(k.close!, 2)}`, 'as of week close'),
+    cell(k.changePct == null ? 'muted' : k.changePct > 0 ? 'live' : 'muted', '24h change', k.changePct == null ? '—' : `${fmtPct(k.changePct)}`),
+    cell('live', 'range', k.range == null ? '—' : `${fmt(k.range!, 4)}`, 'High/Low spread'),
+    cell(k.volume == null ? 'muted' : 'live', 'volume', k.volume == null ? '—' : fmt(k.volume)),
+    cell(k.atr == null ? 'muted' : 'live', 'ATR', k.atr == null ? '—' : fmt(k.atr, 3), '14-period avg') ,
+    cell(k.volPct != null ? 'live' : 'muted', 'volatility', k.volPct == null ? '—' : `${k.volPct >= 0 ? '+' : ''}${k.volPct}%`, 'deviation vs mean'),
+    cell(k.position === 'flat' ? 'muted' : 'live', 'position', k.position),
+  ].join('');
+}
+
+function csvEscape(v: string | number | boolean): string {
+  return `"${String(v).replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(): void {
+  const inst = current();
+  if (!inst) return;
+  const bars = barsCache.get(inst.id) ?? [];
+  const lines = ['Date,Open,High,Low,Close,Volume'];
+  for (const b of bars) {
+    lines.push([b.date, b.open, b.high, b.low, b.close, b.volume].map(csvEscape).join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `vaelor-${inst.id}-market-${activeBars().length}bars.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1200);
+  toast(`Downloaded ${bars.length} bars for ${inst.id}.`);
+}
+
+function openShortcuts(): void {
+  let modal = el('shortcutsModal');
+  if (!modal) {
+    const m = document.createElement('div');
+    m.id = 'shortcutsModal';
+    m.className = 'shortcuts-modal';
+    m.innerHTML = `<div class="shortcuts-card">
+      <h3>Keyboard shortcuts</h3>
+      <div><code>A</code> Analyze all instruments</div>
+      <div><code>R</code> Refresh market data</div>
+      <div><code>E</code> Export CSV for active instrument</div>
+      <div><code>S</code> Show/hide volume</div>
+      <button class="shortcuts-close">✕</button>
+    </div>`;
+    document.body.appendChild(m);
+    modal = m;
+  }
+  modal.hidden = false;
+  const card = modal.querySelector('.shortcuts-card')!;
+  const close = modal.querySelector('.shortcuts-close')!;
+  close.addEventListener('click', () => { modal!.hidden = true; });
+  modal.addEventListener('mousedown', (e) => { if (e.target === modal) modal!.hidden = true; }, { once: true });
+}
+
+function handleDashboardKeys(e: KeyboardEvent): void {
+  const target = e.target as HTMLElement | null;
+  if (target?.tagName === 'INPUT' || target?.tagName === 'SELECT' || target?.tagName === 'TEXTAREA') return;
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.key.toLowerCase() === 'a') { e.preventDefault(); void runAnalysis(); }
+  if (e.key.toLowerCase() === 'r') { e.preventDefault(); void poll(); }
+  if (e.key.toLowerCase() === 'e') { e.preventDefault(); downloadCsv(); }
+  if (e.key.toLowerCase() === 's') { e.preventDefault(); const v = el<HTMLInputElement>('volToggle'); if (v) v.click(); }
+  if (e.key.toLowerCase() === 'x') { e.preventDefault(); openShortcuts(); }
 }
 
 /* ------------------------------------------------------------------ */
@@ -888,6 +1017,11 @@ function renderStatus(): void {
 }
 
 function wireControls(): void {
+  el('dashRefreshBtn')?.addEventListener('click', () => void poll());
+  el('dashCsvBtn')?.addEventListener('click', () => downloadCsv());
+  el('dashShortcutsBtn')?.addEventListener('click', () => openShortcuts());
+  window.addEventListener('keydown', handleDashboardKeys);
+
   const toggle = el('tfToggle');
   toggle?.addEventListener('click', (e) => {
     const btn = (e.target as HTMLElement).closest('button[data-tf]');
@@ -949,6 +1083,8 @@ async function poll(): Promise<void> {
     if (inst) {
       await refreshActiveBars(inst);
       renderAll();
+    } else {
+      updateKpi();
     }
   } catch {
     const status = el('dashStatus');

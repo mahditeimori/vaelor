@@ -40,6 +40,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         </div>
       </div>
       <span class="regime-chip" id="regimeChip">REGIME: —</span>
+        <div class="toolbar-actions">
+          <button type="button" class="o-btn o-btn-sm" id="dashRefreshBtn" aria-label="Refresh market data">Refresh</button>
+          <button type="button" class="o-btn o-btn-sm" id="dashCsvBtn" aria-label="Download price and COT data as CSV">CSV</button>
+          <button type="button" class="o-btn o-btn-sm" id="dashShortcutsBtn" aria-label="Keyboard shortcuts">Shortcuts</button>
+        </div>
+        <section class="kpi-strip" id="kpiStrip" aria-label="Market KPIs"></section>
     </div>
 
     <!-- Panel 1 · Price / Volume -->
@@ -451,7 +457,26 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     .an-table tr.an-row-active td { background: rgba(226, 69, 108, 0.08); }
     .an-table tr:last-child td { border-bottom: none; }
 
-    .an-disclaimer {
+    .shortcuts-modal {
+      position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; background:rgba(7,4,6,0.88);
+    }
+    .shortcuts-card { width:min(440px, 94vw); padding:28px; border-radius:14px; border:1px solid var(--border); background:var(--bg-panel); color:var(--text); }
+    .shortcuts-card h3 { margin:0 0 12px; }
+    .shortcuts-card code { background:var(--bg-inner); border:1px solid var(--border-soft); padding:2px 6px; border-radius:5px; color:var(--accent-warm); }
+    .shortcuts-close { position:absolute; top:10px; right:10px; background:transparent; border:none; color:var(--text-faint); font-size:1.3rem; cursor:pointer; }
+    .toolbar-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .o-btn.o-btn-sm { min-height:32px; padding:0 12px; font-size:0.68rem; }
+    .kpi-strip {
+      display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px;
+      padding:10px 16px; margin:-8px 0 18px; border-top:1px solid var(--border-soft);
+    }
+    .kpi-item { display:flex; flex-direction:column; gap:3px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--bg-raise); min-height:66px; }
+    .kpi-item .k { font-size:0.6rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-faint); margin-bottom:4px; }
+    .kpi-item .v { font-size:1rem; font-weight:700; color:var(--text); font-family:var(--mono); }
+    .kpi-item .s { font-size:0.58rem; color:var(--text-dim); }
+    .kpi-item .muted .v { color:var(--text-dim); }
+    .kpi-item.live .v { color:var(--text); }
+    .analyze-disclaimer {
       font-family: var(--mono);
       font-size: 0.64rem;
       line-height: 1.6;
