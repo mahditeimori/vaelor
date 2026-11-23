@@ -176,15 +176,12 @@ export function applyMemberGate(): void {
   }
 
   // The cookie is the source of truth. Once `/api/auth/me` answers, repaint
-  // with the server's tier instead of whatever the browser remembered.
+  // with the server's tier instead of whatever the browser remembered. A stale
+  // local mirror is already cleared by syncSession: repaint the anonymous
+  // view instead of reloading — an active login session must not bounce the
+  // page.
   void syncSession().then((result) => {
     if (result === 'unavailable') return;
-    if (result === 'signed-out' && hadLocalSession()) {
-      // Stale mirror (session expired or revoked elsewhere): reload once so
-      // the header and gates fall back to the anonymous view.
-      location.reload();
-      return;
-    }
     resetGates();
     run();
   });
@@ -206,10 +203,4 @@ function resetGates(): void {
   }
 }
 
-function hadLocalSession(): boolean {
-  try {
-    return window.localStorage.getItem('vaelor_active_session_v1') !== null;
-  } catch {
-    return false;
-  }
-}
+

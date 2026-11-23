@@ -25,6 +25,7 @@ import {
   getCurrentUser,
   getPlan,
   getTier,
+  isMember,
   openFeatureLock,
   requiredTier,
   type FeatureKey,
@@ -1656,8 +1657,14 @@ async function mountDesign(): Promise<void> {
   // mirror is only a cache, so it is refreshed before any identity is read.
   const synced = await syncSession();
   if (synced === 'signed-out') {
-    location.replace('/login.html?next=%2Fmember');
-    return;
+    // The server says signed out. If a local session mirror is still present
+    // (e.g., the login page just mirrored the session and the server has not
+    // caught up), continue as signed in instead of bouncing back to the login
+    // page — the active login session must not reload the page.
+    if (!isMember()) {
+      location.replace('/login.html?next=%2Fmember');
+      return;
+    }
   }
   user = getCurrentUser();
   if (!user?.username) {
