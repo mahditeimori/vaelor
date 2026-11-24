@@ -25,48 +25,47 @@ function richText(raw?: string): string {
 <BaseLayout title="Vaelor Trading LLC — Operating Manual" variant="landing">
   <main class="hero">
     <div class="hero-main">
-      <div class="landing-topbar">
-        <div class="nav-pills-left">
-          <button type="button" class="nav-pill is-active" data-nav-pill="docs" aria-current="page">
-            <span>دستورات توسعه</span> <span class="brand-word">OPERATIONS</span>
-          </button>
-          <button type="button" class="nav-pill" data-nav-pill="member">
-            <span>داشبورد</span><span class="brand-word">MEMBER</span>
-          </button>
+      <div class="landing-topbar nav-split">
+        <div class="nav-features">
+          <a href="/" class="nav-pill brand-word">Vaelor <span>TRADING INTELLIGENCE</span></a>
+          <a href="/docs" class="nav-pill" data-i18n="nav.docs">مستندات</a>
+          <a href="/dashboard" class="nav-pill" data-i18n="nav.dashboard">داشبورد مشتری</a>
+          <a href="/terminal" class="nav-pill" data-i18n="nav.terminal">ترمینال</a>
+          <a href="/execution" class="nav-pill" data-i18n="nav.execution">اجرا</a>
+          <a href="/news" class="nav-pill" data-i18n="nav.news">اخبار</a>
+          <a href="/ai" class="nav-pill" data-i18n="nav.ai">هوش مصنوعی</a>
         </div>
-        <div class="nav-pills-right">
-          <a href="/" class="nav-pill brand-word">Vaelor Trading Intelligence</a>
-          <a href="/docs" class="nav-pill" data-nav-pill="docs2" aria-current={Astro.url.pathname === '/docs' ? 'page' : undefined}>کتاب</a>
-          <a href="/dashboard" class="nav-pill" data-nav-pill="dashboard" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>ساختار نموداری</a>
-          <a href="/terminal" class="nav-pill" aria-current={Astro.url.pathname.startsWith('/terminal') ? 'page' : undefined}>ترمینال موقعیت‌ها</a>
-          <a href="/news" class="nav-pill" aria-current={Astro.url.pathname.startsWith('/news') ? 'page' : undefined}>اخبار</a>
-          <a href="/execution" class="nav-pill" aria-current={Astro.url.pathname.startsWith('/execution') ? 'page' : undefined}>اجرا</a>
-          <a href="/docs/company-code" class="nav-pill" data-nav-pill="code">کد شرکت</a>
-          <a href="#ai" class="nav-pill">هوش مصنوعی</a>
-          <a href="/login.html" class="nav-pill">ورود / Sign in</a>
+        <div class="nav-actions">
+          <div class="lang-toggle" aria-label="Language">
+            <button type="button" data-lang="fa" class="is-active">FA</button>
+            <button type="button" data-lang="en">EN</button>
+          </div>
+          <a href="/login.html" class="nav-signin" data-i18n="nav.signin">ورود / ثبت نام</a>
+          <a href="/member/dashboard" class="nav-cta" data-i18n="nav.openAccount">داشبورد مشتری</a>
         </div>
       </div>
 
       <div class="hero-grid">
         <div class="hero-left">
-          <div class="hero-tag">محیط عملیاتی · Vaelor Trading</div>
+          <div class="hero-tag" data-i18n="hero.tag">محیط عملیاتی · Vaelor Trading</div>
           <h1 class="hero-headline">
-            نمای فازی تنظیم‌شده برای <em class="hero-accent">موقعیت‌های حیوی</em>
+            <span data-i18n="hero.title1">نمای فازی تنظیم‌شده برای</span> <em class="hero-accent" data-i18n="hero.title2">موقعیت‌های حیوی</em>
           </h1>
-          <p class="hero-sub">
-            دایرکتورهای یکپارچه مدیریت می‌شوند، قوانین کاغذی کمترین شکل می‌یابند و هر متغیر در یک پنل بصری قابل اشاره است — نه فقط متن خام.
-            از همان دیتاهای زنده کسب‌وکار برای طراحی واقعی این صفحه استفاده شده است.
+          <p class="hero-sub" data-i18n="hero.sub">
+            دایرکتورهای یکپارچه، قوانین کاغذی کمتر و هر متغیر در یک پنل بصری قابل اشاره — نه فقط متن خام.
           </p>
-          <div class="hero-search">
-            <input id="searchInput" type="search" placeholder="بگردید…" aria-label="Search the manual" autocomplete="off" />
-            <button type="button" class="searcher" aria-label="Search" onclick="openSearch()">🔍</button>
+          <div class="hero-search" id="searchDock">
+            <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
+            <input id="searchInput" type="search" placeholder="جستجو در سایت…" data-i18n-ph="hero.search" aria-label="Search the site" autocomplete="off" />
+            <button type="button" class="search-clear" aria-label="Clear" onclick="closeSearch()">×</button>
+            <button type="button" class="searcher" aria-label="Search" onclick="openSearch()"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button>
           </div>
           <div class="search-results" id="searchResults" role="listbox" aria-label="Search results"></div>
 
           <div class="hero-actions">
-            <a class="btn btn-primary" href="/docs">کتاب اپراتیو</a>
-            <a class="btn btn-ghost" href="/execution">اجرا</a>
-            <a class="btn btn-ghost" href="/terminal">ترمینال موقعیت‌ها</a>
+            <a class="btn btn-primary" href="/docs" data-i18n="hero.docs">کتاب عملیاتی</a>
+            <a class="btn btn-ghost" href="/execution" data-i18n="nav.execution">اجرا</a>
+            <a class="btn btn-ghost" href="/terminal" data-i18n="hero.terminal">ترمینال موقعیتها</a>
           </div>
         </div>
 
@@ -98,13 +97,13 @@ function richText(raw?: string): string {
 
   <section class="dashboard-promo">
     <div class="dashboard-promo-body">
-      <div class="dashboard-promo-title">داشبورد مشتری — Member Dashboard</div>
-      <div class="dashboard-promo-desc">
-        خلاصه حساب و دسترسی زنده به پوزیشن‌ها و سیگنال‌های جدید — از داخل سایت، بدون صفحه کپی‌شده.
+      <div class="dashboard-promo-title" data-i18n="promo.title">داشبورد مشتری — Member Dashboard</div>
+      <div class="dashboard-promo-desc" data-i18n="promo.desc">
+        خلاصه حساب، پوزیشنها و سیگنالهای زنده — از داخل سایت، بدون صفحه کپیشده.
       </div>
     </div>
     <div class="dashboard-promo-action">
-      <a class="btn btn-primary" href="/member/dashboard">داشبورد مشتری</a>
+      <a class="btn btn-primary" href="/member/dashboard" data-i18n="promo.cta">داشبورد مشتری</a>
     </div>
   </section>
 
@@ -114,6 +113,7 @@ function richText(raw?: string): string {
 
     const input = document.getElementById('searchInput') as HTMLInputElement | null;
     const results = document.getElementById('searchResults');
+    const dock = document.getElementById('searchDock');
 
     function highlight(label: string, q: string): string {
       if (!q) return label;
@@ -137,7 +137,10 @@ function richText(raw?: string): string {
     }
 
     if (input && results) {
-      input.addEventListener('input', () => renderResults(input.value));
+      input.addEventListener('input', () => {
+        dock?.classList.toggle('has-value', input.value.length > 0);
+        renderResults(input.value);
+      });
       document.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (!target.closest('.hero-search') && !target.closest('#searchResults')) results.style.display = 'none';
@@ -149,5 +152,17 @@ function richText(raw?: string): string {
       renderResults(input?.value ?? '');
       results.style.display = 'flex';
     }
+
+    function closeSearch(): void {
+      if (!results) return;
+      results.style.display = 'none';
+      if (input) {
+        input.value = '';
+        dock?.classList.remove('has-value');
+      }
+    }
+
+    (window as unknown as { openSearch?: () => void; closeSearch?: () => void }).openSearch = openSearch;
+    (window as unknown as { openSearch?: () => void; closeSearch?: () => void }).closeSearch = closeSearch;
   </script>
 </BaseLayout>

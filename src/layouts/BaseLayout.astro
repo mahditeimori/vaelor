@@ -11,7 +11,7 @@ import '../styles/ui-enhancements.css';
 ---
 
 <!doctype html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -23,6 +23,7 @@ import '../styles/ui-enhancements.css';
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=Vazirmatn:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/vaelor-icon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -32,50 +33,48 @@ import '../styles/ui-enhancements.css';
       // Membership bootstrap: defines window.VaelorMembership before any page
       // module runs, then gates docs and locked sections once the DOM is ready.
       import { applyMemberGate } from '../scripts/gate.ts';
+      import { mountUI } from '../scripts/ui.ts';
       applyMemberGate();
+      mountUI();
     </script>
   </head>
   <body class={variant}>
+    <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
     <div class="bg-matrix" aria-hidden="true"></div>
     {variant !== 'landing' && (
       <header class="site-header">
-        <a href="/" class="brand" aria-label="Vaelor Trading Intelligence — home">
-          <img
-            src="/vaelor-trading-intelligence.png"
-            alt="Vaelor Trading Intelligence"
-            width="760"
-            height="253"
-            decoding="async"
-          />
-        </a>
-        <nav class="nav-links" aria-label="Primary">
-          <a href="/" class="nav-link" aria-current={Astro.url.pathname === '/' ? 'page' : undefined}>مشخصات</a>
-          <a href="/dashboard" class="nav-link" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>داشبورد مشتری</a>
-          <a href="/terminal" class="nav-link" aria-current={Astro.url.pathname.startsWith('/terminal') ? 'page' : undefined}>ترمینال</a>
-          <a href="/execution" class="nav-link" aria-current={Astro.url.pathname.startsWith('/execution') ? 'page' : undefined}>اجرا</a>
-          <a href="/ai" class="nav-link" aria-current={Astro.url.pathname.startsWith('/ai') ? 'page' : undefined}>هوش مصنوعی</a>
-          <a href="/login.html" class="nav-link" aria-current={Astro.url.pathname.startsWith('/login') ? 'page' : undefined}>ورود / Sign in</a>
-        </nav>
+        <div class="nav-split">
+          <div class="nav-features">
+            <a href="/" class="brand" aria-label="Vaelor home">
+              <img src="/vaelor-trading-intelligence.png" alt="Vaelor" width="760" height="253" decoding="async" />
+            </a>
+            <a href="/" class="nav-link" data-i18n="nav.home" aria-current={Astro.url.pathname === '/' ? 'page' : undefined}>نمای کلی</a>
+            <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>داشبورد مشتری</a>
+            <a href="/terminal" class="nav-link" data-i18n="nav.terminal" aria-current={Astro.url.pathname.startsWith('/terminal') ? 'page' : undefined}>ترمینال</a>
+            <a href="/execution" class="nav-link" data-i18n="nav.execution" aria-current={Astro.url.pathname.startsWith('/execution') ? 'page' : undefined}>اجرا</a>
+            <a href="/ai" class="nav-link" data-i18n="nav.ai" aria-current={Astro.url.pathname.startsWith('/ai') ? 'page' : undefined}>هوش مصنوعی</a>
+          </div>
+          <div class="nav-actions">
+            <div class="lang-toggle" aria-label="Language">
+              <button type="button" data-lang="fa" class="is-active">FA</button>
+              <button type="button" data-lang="en">EN</button>
+            </div>
+            <a href="/login.html" class="nav-signin" data-i18n="nav.signin">ورود / ثبت نام</a>
+            <a href="/member/dashboard" class="nav-cta" data-i18n="nav.openAccount">داشبورد مشتری</a>
+          </div>
+        </div>
       </header>
     )}
     <slot />
     <footer class="site-footer">
-      <div class="shell">
-        <div class="mono" style="font-family:var(--mono);font-size:0.72rem;letter-spacing:0.24em;text-transform:uppercase;color:var(--text-faint)">
-          Vaelor Trading Intelligence · Master Operational Manual
+      <div class="shell" style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;padding-top:18px;border-top:1px solid var(--border)">
+        <div class="mono" style="font-family:var(--mono);font-size:0.7rem;letter-spacing:0.12em;color:var(--text-faint)" data-i18n="footer.brand">
+          Vaelor Trading Intelligence
         </div>
-        <div class="mono" style="margin-top:8px;font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-faint)">
-          Version 2.0.1 · Standard Identifier <span style="color:var(--accent-warm)">TLLC-OPS-V2.0.1-FINAL</span> · Classification: Operational Protocol
-        </div>
-        <div style="margin-top:22px;padding-top:18px;border-top:1px solid rgba(201, 162, 75, 0.14)">
-          <div class="mono" style="font-size:0.68rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-faint)">
-            Private operator surface · Members see tools, never source
-          </div>
-          <div class="mono" style="margin-top:10px;font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-faint)">
-            <a href="/privacy" style="color:inherit">Privacy</a>
-            <span style="color:var(--accent-warm)"> · </span>
-            <a href="/terms" style="color:inherit">Terms</a>
-          </div>
+        <div class="mono" style="display:flex;gap:16px;font-size:0.7rem;letter-spacing:0.08em;color:var(--text-faint)">
+          <a href="/privacy" data-i18n="footer.privacy">حریم خصوصی</a>
+          <a href="/terms" data-i18n="footer.terms">شرایط</a>
+          <a href="/docs">docs</a>
         </div>
       </div>
     </footer>

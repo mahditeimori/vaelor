@@ -1,0 +1,101 @@
+---
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = 'Vaelor member dashboard — live access and execution tools.' } = Astro.props;
+import '../styles/global.css';
+import '../styles/ui-enhancements.css';
+---
+
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="dark" />
+    <title>{title} — Vaelor Trading LLC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Vazirmatn:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <script is:inline>
+      // Set direction before paint to avoid RTL flash.
+      try {
+        const lang = localStorage.getItem('vaelor.lang') === 'en' ? 'en' : 'fa';
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
+        document.documentElement.dataset.lang = lang;
+      } catch (_) {}
+    </script>
+    <script>
+      import { mountUI } from '../scripts/ui.ts';
+      mountUI();
+    </script>
+  </head>
+  <body class="md-body">
+    <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+    <div class="md-app">
+      <aside class="md-sidebar" aria-label="Member dashboard navigation">
+        <a href="/" class="md-brand" aria-label="Vaelor home">
+          <span class="md-brand-mark">V</span>
+          <span>
+            <span class="md-brand-name">VAELOR</span>
+            <span class="md-brand-sub">TRADING INTELLIGENCE</span>
+          </span>
+        </a>
+
+        <nav class="md-nav-group" aria-label="Dashboard sections">
+          <p class="md-nav-title" data-i18n="md.overview">نمای کلی</p>
+          <a href="/member/dashboard" class="md-nav-link is-active"><i class="fa-solid fa-house"></i><span data-i18n="md.overview">نمای کلی</span></a>
+          <a href="/member" class="md-nav-link"><i class="fa-solid fa-gauge-high"></i><span data-i18n="md.signals">سیگنال‌ها</span></a>
+          <a href="/execution" class="md-nav-link"><i class="fa-solid fa-terminal"></i><span data-i18n="md.terminal">ترمینال لایو</span></a>
+
+          <p class="md-nav-title" data-i18n="md.accounts">حساب‌ها</p>
+          <a href="/dashboard" class="md-nav-link"><i class="fa-solid fa-chart-column"></i><span data-i18n="md.overview">داشبورد ساختار</span></a>
+          <a href="/ai" class="md-nav-link"><i class="fa-solid fa-brain"></i><span data-i18n="md.ai">هوش مصنوعی</span></a>
+          <a href="/news" class="md-nav-link"><i class="fa-solid fa-newspaper"></i><span data-i18n="md.news">اخبار</span></a>
+
+          <p class="md-nav-title" data-i18n="md.settings">تنظیمات</p>
+          <a href="/privacy" class="md-nav-link"><i class="fa-solid fa-shield-halved"></i><span data-i18n="md.secure">حساب امن</span></a>
+          <a href="/login.html" class="md-nav-link"><i class="fa-solid fa-arrow-right-from-bracket"></i><span data-i18n="md.signout">خروج</span></a>
+        </nav>
+
+        <div class="md-sidebar-foot">
+          <div class="md-help-card">
+            <b data-i18n="md.help">نیاز به کمک دارید؟</b>
+            <span data-i18n="md.helpSub">تیم پشتیبانی آماده است.</span>
+            <a href="/docs">docs →</a>
+          </div>
+        </div>
+      </aside>
+
+      <div class="md-main">
+        <header class="md-topbar">
+          <div class="md-topbar-left">
+            <div class="md-search">
+              <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+              <input type="search" placeholder="جستجو…" data-i18n-ph="md.search" aria-label="Search" />
+            </div>
+          </div>
+          <div class="md-topbar-right">
+            <span class="md-chip"><span class="dot"></span><span data-i18n="md.live">LIVE</span></span>
+            <div class="lang-toggle" aria-label="Language">
+              <button type="button" data-lang="fa" class="is-active">FA</button>
+              <button type="button" data-lang="en">EN</button>
+            </div>
+            <a href="/login.html" class="nav-cta" data-i18n="nav.signin">ورود / ثبت نام</a>
+          </div>
+        </header>
+        <main class="md-content">
+          <slot />
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

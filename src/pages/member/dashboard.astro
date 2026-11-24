@@ -1,57 +1,64 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import MemberDashboardLayout from '../../layouts/MemberDashboardLayout.astro';
 
 const features = [
-  { id: 'signals', title: 'سیگنال‌های زنده', desc: 'ورودی، استاپ و تارگت روی چارت‌های خودکار از هفته قبلی نمایش می‌دهد.', icon: 'fa-solid fa-gauge-high', span: '7x2', action: '/execution#backtest', badge: 'Operator' },
-  { id: 'terminal', title: 'ترمینال لایو', desc: 'در یک صفحه قیمت بازار، پوزیشن‌ها، استور معمولی و پوزیشن‌های لایو ببینید.', icon: 'fa-solid fa-terminal', span: '7x2', action: '/execution', badge: 'Desk' },
-  { id: 'strategy', title: 'استراتژی‌های مالک', desc: 'با معیارهای مالک باز می‌کنند: دیدارش باش، کپوش ویوپ‌بی. محصول اضافی معو‌تینی می‌کند.', icon: 'fa-solid fa-sitemap', span: '5x2', action: '/member#membership', badge: 'Desk' },
-  { id: 'ai', title: 'هوش مصنوعی', desc: 'سوالات MCP به Worker رو می‌پرسید یا تحلیل‌های رجیستر شده را می‌خوانید.', icon: 'fa-solid fa-brain', span: '5x1', action: '/ai', badge: 'Desk' },
-  { id: 'news', title: 'اخبار و تحلیل', desc: 'انعطاف‌پذیر مقایسه روی شعله‌های قیمت، توضیح خودکار و نقاط بازیافت.', icon: 'fa-solid fa-newspaper', span: '4x2', action: '/news', badge: 'Operator' },
-  { id: 'search', title: 'جستجو', desc: 'تعادل سریع بین بخش‌های سایت با پیکربندی قابل تکرار. بیشتر دکمه‌ها باز می‌شوند.', icon: 'fa-solid fa-magnifying-glass', span: '3x1', action: '/docs', badge: '' },
+  { id: 'signals', title: 'سیگنال‌های زنده', desc: 'ورودی، استاپ و تارگت را روی آخرین کندل بسته شده میخوانیم.', icon: 'fa-solid fa-gauge-high', action: '/member', badge: 'Operator' },
+  { id: 'terminal', title: 'ترمینال لایو', desc: 'قیمت، پوزیشن‌ها و blotting اجرا را در یک صفحه ببینید.', icon: 'fa-solid fa-terminal', action: '/execution', badge: 'Desk' },
+  { id: 'strategy', title: 'استراتژی‌های مالک', desc: 'استراتژی‌های منتشرشده توسط مالک، با فیلتر سطح دسترسی.', icon: 'fa-solid fa-sitemap', action: '/member#membership', badge: 'Desk' },
+  { id: 'ai', title: 'هوش مصنوعی', desc: 'تحلیل‌های منتشرشده و سوالات MCP را ازworker بخوانید.', icon: 'fa-solid fa-brain', action: '/ai', badge: 'Operator' },
+  { id: 'news', title: 'اخبار و تحلیل', desc: 'تقویم اقتصادی و تحلیل خودکار رویدادهای اثرگذار.', icon: 'fa-solid fa-newspaper', action: '/news', badge: 'Operator' },
+  { id: 'search', title: 'جستجو', desc: 'دسترسی سریع به تمام بخش‌های سایت از نوار بالا.', icon: 'fa-solid fa-magnifying-glass', action: '/docs', badge: '' },
 ];
 
-// General-case study outcomes shown in the bar chart.
 const studies = [
   { label: 'برد · Win', count: 21 },
   { label: 'باخت · Loss', count: 11 },
-  { label: 'بی‌طرف · Breakeven', count: 3 },
-  { label: 'سفارش باطل · Invalidated', count: 6 },
+  { label: 'بیطرف · Breakeven', count: 3 },
+  { label: 'باطل · Invalidated', count: 6 },
   { label: 'در انتظار · Pending', count: 9 },
 ];
 const studiesMax = Math.max(...studies.map((s) => s.count), 1);
 
 const caseStudy = {
-  chip: 'مطالعه مرزی · CASE STUDY',
-  title: 'XAUUSD — حالت مرزی در بالای تریند (Borderline trendline)',
-  body: 'یک نوسان روبروی تریند طولانی‌مدت: ورود با تریگر پاشا (push trigger) در نقطه‌ای که شعله‌های قیمت دوباره می‌آیند، و استاپ هوشمند موازی با شکست تریند. حالت مرزی نیازمند بازبینی — این مطالعه آیا به اجرا راه یافته یا نه.',
-  tags: ['XAUUSD', 'تریند', 'مرزی', 'Borderline'],
+  title: 'XAUUSD — حالت مرزی بالای ترند',
+  body: 'نوسانی روبروی ترند بلندمدت: ورود با تریگر پاش در نقطهای که شعلهها دوباره برمیگردند، و استاپ هوشمند موازی با شکست ترند. حالت مرزی نیازمند بازبینی دستی است.',
+  tags: ['XAUUSD', 'ترند', 'مرزی', 'Borderline'],
 };
 ---
 
-<BaseLayout title="داشبورد مشتری · Member Dashboard" description="داشبورد یکپارچه یک داشبورد مشتری با دریچه‌های لایو، سیگنال‌های زنده و دسترسی به همه سطوح سایت.">
-  <main class="member-dash-wrap">
-    <div class="md-head reveal">
-      <div>
-        <div class="md-kicker">داشبورد مشتری · Vaelor Trading</div>
-        <h1>خلاصه حساب و دسترسی زنده</h1>
-        <p class="md-sub">
-          همه چیز از درون سایت برمی‌داریم: پوزیشن‌ها، سیگنال‌ها، استراتژی‌ها و ابزارهای اجرایی — بدون صفحه کپی‌شده.
-        </p>
-      </div>
-      <div class="md-header-chip">
-        <div><span class="md-headline">0 پوزیشن</span><span class="muted">اکثر صفحات شابویند تبدیل می‌شوند</span></div>
-        <span class="muted">LIVE</span>
-      </div>
+<MemberDashboardLayout title="داشبورد مشتری" description="داشبورد جداگانه عضو Vaelor با خلاصه حساب، ابزارها و دسترسی زنده.">
+  <section class="md-greeting reveal">
+    <div>
+      <div class="md-kicker">MEMBER DASHBOARD · VAELOR TRADING</div>
+      <h1><span data-i18n="md.hello">سلام</span>، <span data-i18n="md.welcome">به Vaelor خوش آمدید</span></h1>
+      <p data-i18n="md.welcomeSub">خلاصه حساب، دسترسی زنده و ابزارهای اجرایی شما در یکجا.</p>
     </div>
+    <div class="md-ring" aria-label="Secure profile"><span>100%</span></div>
+  </section>
 
-    <section class="live-strip reveal" aria-label="Trade summary">
-      <div class="live-stat"><div class="label">پوزیشن‌های زنده</div><div class="value gold" id="md-positions">0</div><div class="muted">معتدل بازار (خودکار)</div></div>
-      <div class="live-stat"><div class="label">سیگنال‌های زنده</div><div class="value" id="md-signals">—</div><div class="muted">هفته فعلی</div></div>
-      <div class="live-stat"><div class="label">درخواست خرید</div><div class="value gold" id="md-orders">—</div><div class="muted">ریپان</div></div>
-      <div class="live-stat"><div class="label">پیکربندی معتمد شد</div><div class="value gold" id="md-config">0</div><div class="muted">کانفیگ خارجی سپرم</div></div>
-    </section>
+  <section class="md-quick-actions reveal" aria-label="Quick actions">
+    <a href="/member" class="md-quick-action"><i class="fa-solid fa-arrow-down-to-bracket"></i><span data-i18n="md.deposit">واریز</span></a>
+    <a href="/execution" class="md-quick-action"><i class="fa-solid fa-arrow-up-from-bracket"></i><span data-i18n="md.withdraw">برداشت</span></a>
+    <a href="/dashboard" class="md-quick-action"><i class="fa-solid fa-arrow-right-arrow-left"></i><span data-i18n="md.transfer">انتقال</span></a>
+  </section>
 
-    <section class="md-features reveal" aria-label="Feature access">
+  <section class="live-strip reveal" aria-label="Trade summary">
+    <div class="live-stat"><div class="label" data-i18n="md.positions">پوزیشنهای زنده</div><div class="value gold" id="md-positions">—</div><div class="muted">از بریج متصل</div></div>
+    <div class="live-stat"><div class="label" data-i18n="md.openSignals">سیگنالهای زنده</div><div class="value" id="md-signals">—</div><div class="muted">آخرین کندل بسته</div></div>
+    <div class="live-stat"><div class="label" data-i18n="md.requests">درخواست خرید</div><div class="value gold" id="md-orders">—</div><div class="muted">پنل اعضا</div></div>
+    <div class="live-stat"><div class="label" data-i18n="md.config">پیکربندی</div><div class="value gold" id="md-config">—</div><div class="muted">پروفیل دسک</div></div>
+  </section>
+
+  <section class="md-account-grid reveal" aria-label="Account summary">
+    <div class="md-account-card"><div class="k" data-i18n="md.secure">حساب امن</div><div class="v">احراز هویت</div><div class="s">Vaelor · Operator</div></div>
+    <div class="md-account-card"><div class="k">Account status</div><div class="v" id="md-plan">—</div><div class="s">طرح فعلی شما</div></div>
+    <div class="md-account-card"><div class="k">Bridge</div><div class="v" id="md-bridge">—</div><div class="s">اتصال محلی / ابری</div></div>
+    <div class="md-account-card"><div class="k">Risk gates</div><div class="v" id="md-risk">—</div><div class="s">پیکربندی ریسک</div></div>
+  </section>
+
+  <section class="reveal" aria-label="Tool access">
+    <div class="md-section-title"><h2 data-i18n="md.features">دسترسی به ابزارها</h2><span>Tool access</span></div>
+    <div class="md-features">
       {features.map((f) => (
         <a class="md-feature" href={f.action}>
           <i class={`${f.icon} md-feature-icon`} aria-hidden="true"></i>
@@ -60,52 +67,46 @@ const caseStudy = {
           <span class="md-feature-desc">{f.desc}</span>
         </a>
       ))}
-    </section>
+    </div>
+  </section>
 
-    <section class="md-case reveal" aria-label="Borderline case study">
-      <span class="md-case-chip">{caseStudy.chip}</span>
-      <h3>{caseStudy.title}</h3>
-      <p class="md-case-body">{caseStudy.body}</p>
-      <div class="md-case-tags">
-        {caseStudy.tags.map((t) => <span class="md-tag">{t}</span>)}
-      </div>
-    </section>
+  <section class="md-case reveal" aria-label="Borderline case study">
+    <span class="md-case-chip" data-i18n="md.case">مطالعه مرزی</span>
+    <h3>{caseStudy.title}</h3>
+    <p class="md-case-body">{caseStudy.body}</p>
+    <div class="md-case-tags">
+      {caseStudy.tags.map((t) => <span class="md-tag">{t}</span>)}
+    </div>
+  </section>
 
-    <section class="md-studies reveal" aria-label="General-case study outcomes">
-      <div class="md-studies-head">
-        <h2>مطالعات حالت کلی <span class="muted">General-case studies</span></h2>
-        <span class="muted">دسته‌بندی بررسی‌های حالت کلی — خروجی‌های مطالعه</span>
-      </div>
-      <div class="md-bar-wrap">
-        <svg class="md-bar-chart" viewBox="0 0 520 180" role="img" aria-label="General-case study outcomes">
-          <defs>
-            <linearGradient id="mdBarGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#e0a84a" />
-              <stop offset="100%" stop-color="#a86626" />
-            </linearGradient>
-          </defs>
-          <g transform="translate(46,28)">
-            <line class="md-bar-axis" x1="0" y1="116" x2="468" y2="116" stroke="rgba(224,168,74,0.28)" stroke-width="1" />
-            {studies.map((s) => {
-              const h = Math.max((s.count / studiesMax) * 82, 10);
-              const x = studies.indexOf(s) * 104;
-              return (
-                <g key={s.label}>
-                  <rect class="md-bar" x={x} y={116 - h} width="56" height={h} fill="url(#mdBarGrad)" />
-                  <text class="md-bar-val" x={x + 28} y={112 - h} text-anchor="middle">{s.count}</text>
-                  <text class="md-bar-label" x={x + 28} y={116 + 15} text-anchor="middle">{s.label}</text>
-                </g>
-              );
-            })}
-          </g>
-        </svg>
-      </div>
-    </section>
-  </main>
-
-  <script is:inline>
-    // Self-contained page: show the reveal animations on load (the landing
-    // scroll-reveal observer is not loaded on this dedicated page).
-    document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
-  </script>
-</BaseLayout>
+  <section class="md-studies reveal" aria-label="General-case study outcomes">
+    <div class="md-studies-head">
+      <h2 data-i18n="md.studies">مطالعات حالت کلی</h2>
+      <span class="muted"> outcomes · آمار نمونه</span>
+    </div>
+    <div class="md-bar-wrap">
+      <svg class="md-bar-chart" viewBox="0 0 520 180" role="img" aria-label="General-case study outcomes">
+        <defs>
+          <linearGradient id="mdBarGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#22c55e" />
+            <stop offset="100%" stop-color="#064e3b" />
+          </linearGradient>
+        </defs>
+        <g transform="translate(46,28)">
+          <line class="md-bar-axis" x1="0" y1="116" x2="468" y2="116" stroke-width="1" />
+          {studies.map((s) => {
+            const h = Math.max((s.count / studiesMax) * 82, 10);
+            const x = studies.indexOf(s) * 104;
+            return (
+              <g key={s.label}>
+                <rect class="md-bar" x={x} y={116 - h} width="56" height={h} fill="url(#mdBarGrad)" />
+                <text class="md-bar-val" x={x + 28} y={112 - h} text-anchor="middle">{s.count}</text>
+                <text class="md-bar-label" x={x + 28} y={116 + 15} text-anchor="middle">{s.label}</text>
+              </g>
+            );
+          })}
+        </g>
+      </svg>
+    </div>
+  </section>
+</MemberDashboardLayout>

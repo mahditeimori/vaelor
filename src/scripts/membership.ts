@@ -461,6 +461,7 @@ export function openFeatureLock(feature: FeatureKey): void {
   card.style.maxWidth = '460px';
   card.style.width = '100%';
   card.style.boxShadow = '0 30px 80px -20px rgba(0,0,0,0.8)';
+  card.style.position = 'relative';
 
   const kicker = document.createElement('div');
   kicker.style.fontFamily = '"JetBrains Mono",monospace';
@@ -525,6 +526,15 @@ export function openFeatureLock(feature: FeatureKey): void {
   overlay.addEventListener('click', (event) => {
     if (event.target === overlay) overlay.remove();
   });
+
+  const closeX = document.createElement('button');
+  closeX.type = 'button';
+  closeX.className = 'close-btn';
+  closeX.setAttribute('data-close', '');
+  closeX.setAttribute('aria-label', 'Close');
+  closeX.innerHTML = '&times;';
+  closeX.addEventListener('click', () => overlay.remove());
+  card.appendChild(closeX);
 
   card.appendChild(kicker);
   card.appendChild(title);

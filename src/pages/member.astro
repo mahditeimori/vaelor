@@ -15,7 +15,7 @@ import '../styles/global.css';
     <!-- Google Fonts matching the original aesthetic: Playfair Display, Inter, JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&family=Vazirmatn:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
     <script is:inline>
@@ -52,6 +52,10 @@ import '../styles/global.css';
         background-color: #090507;
         color: #f8fafc;
         overflow-x: hidden;
+      }
+      html[lang="fa"] body,
+      html[dir="rtl"] body {
+        font-family: 'Vazirmatn', 'Inter', sans-serif !important;
       }
 
       ::selection {
@@ -267,6 +271,10 @@ import '../styles/global.css';
         </div>
 
         <div class="flex items-center gap-3">
+          <div class="lang-toggle" aria-label="Language">
+            <button type="button" data-lang="fa" class="is-active">FA</button>
+            <button type="button" data-lang="en">EN</button>
+          </div>
           <button onclick="refreshBridgeConnection()" id="bridge-status-pill" title="Re-check your cloud bridge connection" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-950/60 border border-amber-500/50 text-amber-200 text-xs font-mono hover:bg-amber-900/70 transition cursor-pointer">
             <span id="bridge-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
             <span id="bridge-text">BRIDGE: NOT PAIRED</span>
@@ -874,7 +882,7 @@ import '../styles/global.css';
     <!-- SIGN-IN & BRIDGE AUTH MODAL -->
     <div id="signin-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
       <div class="bg-[#140b10] border-2 border-[#592e42] rounded-2xl max-w-md w-full p-6 shadow-[0_0_50px_rgba(225,29,72,0.35)] space-y-5 relative">
-        <button onclick="closeSignInModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#331d27]/60 hover:bg-rose-600 text-slate-300 hover:text-white flex items-center justify-center transition">
+        <button onclick="closeSignInModal()" aria-label="Close" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#331d27]/60 hover:bg-rose-600 text-slate-300 hover:text-white flex items-center justify-center transition">
           <i class="fa-solid fa-xmark"></i>
         </button>
 
@@ -936,6 +944,8 @@ import '../styles/global.css';
 
     <script>
       import { mountMember } from '../scripts/member.ts';
+      import { mountUI } from '../scripts/ui.ts';
+      mountUI();
       mountMember();
     </script>
   </body>

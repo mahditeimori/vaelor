@@ -17,21 +17,7 @@ export const SEARCH_INDEX: SearchEntry[] = [
 ];
 
 export function initLanding(): void {
-  /* ---------- scroll reveals ---------- */
-  const reveals = Array.from(document.querySelectorAll<HTMLElement>('.reveal'));
-  if ('IntersectionObserver' in window && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) {
-          e.target.classList.add('in');
-          io.unobserve(e.target);
-        }
-      }
-    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-    reveals.forEach((el) => io.observe(el));
-  } else {
-    reveals.forEach((el) => el.classList.add('in'));
-  }
+  /* Scroll reveals are handled globally by src/scripts/ui.ts. */
 
   /* ---------- auto-hiding search dock ---------- */
   const dock = document.getElementById('searchDock');
