@@ -23,13 +23,13 @@ function richText(raw?: string): string {
 ---
 
 <BaseLayout title="Vaelor Trading LLC — Operating Manual" variant="landing">
-  <main class="hero">
+  <main class="hero scroll-reveal">
     <div class="hero-main">
       <div class="landing-topbar nav-split">
         <div class="nav-features">
           <a href="/" class="nav-pill brand-word">Vaelor <span>TRADING INTELLIGENCE</span></a>
           <a href="/docs" class="nav-pill" data-i18n="nav.docs">مستندات</a>
-          <a href="/dashboard" class="nav-pill" data-i18n="nav.dashboard">داشبورد مشتری</a>
+          <a href="/dashboard" class="nav-pill" data-i18n="nav.dashboard">تحلیل ماکرو</a>
           <a href="/terminal" class="nav-pill" data-i18n="nav.terminal">ترمینال</a>
           <a href="/execution" class="nav-pill" data-i18n="nav.execution">اجرا</a>
           <a href="/news" class="nav-pill" data-i18n="nav.news">اخبار</a>
@@ -45,15 +45,15 @@ function richText(raw?: string): string {
         </div>
       </div>
 
-      <div class="hero-grid">
-        <div class="hero-left">
-          <div class="hero-tag" data-i18n="hero.tag">محیط عملیاتی · Vaelor Trading</div>
+      <div class="hero-grid scroll-parallax">
+        <div class="hero-left scroll-reveal">
           <h1 class="hero-headline">
             <span data-i18n="hero.title1">نمای فازی تنظیم‌شده برای</span> <em class="hero-accent" data-i18n="hero.title2">موقعیت‌های حیوی</em>
           </h1>
           <p class="hero-sub" data-i18n="hero.sub">
             دایرکتورهای یکپارچه، قوانین کاغذی کمتر و هر متغیر در یک پنل بصری قابل اشاره — نه فقط متن خام.
           </p>
+          <div class="hero-tag" data-i18n="hero.tag">محیط عملیاتی · Vaelor Trading</div>
           <div class="hero-search" id="searchDock">
             <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
             <input id="searchInput" type="search" placeholder="جستجو در سایت…" data-i18n-ph="hero.search" aria-label="Search the site" autocomplete="off" />
@@ -69,7 +69,7 @@ function richText(raw?: string): string {
           </div>
         </div>
 
-        <div class="hero-right">
+        <div class="hero-right scroll-reveal">
           <div class="float-card">
             <div class="hc-name">TLLC · STATS</div>
             {landingStats.map((s) => (

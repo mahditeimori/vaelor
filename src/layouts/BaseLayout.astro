@@ -8,6 +8,7 @@ const { title, description = 'Vaelor Trading LLC — Master Operational Manual &
 const pageTitle = `${title} — Vaelor Trading LLC`;
 import '../styles/global.css';
 import '../styles/ui-enhancements.css';
+import '../styles/scroll-animations.css';
 ---
 
 <!doctype html>
@@ -40,6 +41,11 @@ import '../styles/ui-enhancements.css';
   </head>
   <body class={variant}>
     <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
+    <div class="site-mark" id="siteMark" aria-hidden="true">
+      <svg class="site-mark-svg" viewBox="0 0 120 60" width="120" height="60">
+        <path class="site-mark-path" d="M30 58 L60 8 L90 58" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
     <div class="bg-matrix" aria-hidden="true"></div>
     {variant !== 'landing' && (
       <header class="site-header">
@@ -49,7 +55,7 @@ import '../styles/ui-enhancements.css';
               <img src="/vaelor-trading-intelligence.png" alt="Vaelor" width="760" height="253" decoding="async" />
             </a>
             <a href="/" class="nav-link" data-i18n="nav.home" aria-current={Astro.url.pathname === '/' ? 'page' : undefined}>نمای کلی</a>
-            <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>داشبورد مشتری</a>
+            <a href="/dashboard" class="nav-link" data-i18n="nav.dashboard" aria-current={Astro.url.pathname.startsWith('/dashboard') ? 'page' : undefined}>تحلیل ماکرو</a>
             <a href="/terminal" class="nav-link" data-i18n="nav.terminal" aria-current={Astro.url.pathname.startsWith('/terminal') ? 'page' : undefined}>ترمینال</a>
             <a href="/execution" class="nav-link" data-i18n="nav.execution" aria-current={Astro.url.pathname.startsWith('/execution') ? 'page' : undefined}>اجرا</a>
             <a href="/ai" class="nav-link" data-i18n="nav.ai" aria-current={Astro.url.pathname.startsWith('/ai') ? 'page' : undefined}>هوش مصنوعی</a>

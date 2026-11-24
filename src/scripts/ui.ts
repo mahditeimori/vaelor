@@ -2,13 +2,14 @@
  * Shared UI layer: bilingual copy, scroll motion, close buttons, progress bar.
  * Idempotent — safe to import from every layout.
  */
+import { mountCollapsibles } from './collapsible.ts';
 
 type Lang = 'fa' | 'en';
 
 const DICT: Record<Lang, Record<string, string>> = {
   fa: {
     'nav.home': 'نمای کلی',
-    'nav.dashboard': 'داشبورد مشتری',
+    'nav.dashboard': 'تحلیل ماکرو',
     'nav.terminal': 'ترمینال',
     'nav.execution': 'اجرا',
     'nav.docs': 'مستندات',
@@ -63,7 +64,7 @@ const DICT: Record<Lang, Record<string, string>> = {
   },
   en: {
     'nav.home': 'Overview',
-    'nav.dashboard': 'Member dashboard',
+    'nav.dashboard': 'Macro Analysis',
     'nav.terminal': 'Terminal',
     'nav.execution': 'Execution',
     'nav.docs': 'Docs',
@@ -221,4 +222,5 @@ export function mountUI(): void {
   mountScrollProgress();
   mountReveals();
   mountClosers();
+  mountCollapsibles();
 }

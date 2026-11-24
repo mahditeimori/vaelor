@@ -40,30 +40,33 @@ import '../styles/ui-enhancements.css';
   </head>
   <body class="md-body">
     <div class="scroll-progress" id="scrollProgress" aria-hidden="true"></div>
-    <div class="md-app">
+    <div class="md-app" data-collapsible="md-sidebar" id="mdApp">
       <aside class="md-sidebar" aria-label="Member dashboard navigation">
         <a href="/" class="md-brand" aria-label="Vaelor home">
           <span class="md-brand-mark">V</span>
-          <span>
+          <span class="collapse-label">
             <span class="md-brand-name">VAELOR</span>
             <span class="md-brand-sub">TRADING INTELLIGENCE</span>
           </span>
         </a>
+        <button type="button" class="md-collapse-toggle" data-collapse-toggle aria-expanded="true" aria-label="Collapse panel" title="Collapse">
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
 
         <nav class="md-nav-group" aria-label="Dashboard sections">
-          <p class="md-nav-title" data-i18n="md.overview">نمای کلی</p>
-          <a href="/member/dashboard" class="md-nav-link is-active"><i class="fa-solid fa-house"></i><span data-i18n="md.overview">نمای کلی</span></a>
-          <a href="/member" class="md-nav-link"><i class="fa-solid fa-gauge-high"></i><span data-i18n="md.signals">سیگنال‌ها</span></a>
-          <a href="/execution" class="md-nav-link"><i class="fa-solid fa-terminal"></i><span data-i18n="md.terminal">ترمینال لایو</span></a>
+          <p class="md-nav-title collapse-label" data-i18n="md.overview">نمای کلی</p>
+          <a href="/member/dashboard" class="md-nav-link is-active" title="نمای کلی"><i class="fa-solid fa-house"></i><span class="collapse-label" data-i18n="md.overview">نمای کلی</span></a>
+          <a href="/member" class="md-nav-link" title="سیگنال‌ها"><i class="fa-solid fa-gauge-high"></i><span class="collapse-label" data-i18n="md.signals">سیگنال‌ها</span></a>
+          <a href="/execution" class="md-nav-link" title="ترمینال لایو"><i class="fa-solid fa-terminal"></i><span class="collapse-label" data-i18n="md.terminal">ترمینال لایو</span></a>
 
-          <p class="md-nav-title" data-i18n="md.accounts">حساب‌ها</p>
-          <a href="/dashboard" class="md-nav-link"><i class="fa-solid fa-chart-column"></i><span data-i18n="md.overview">داشبورد ساختار</span></a>
-          <a href="/ai" class="md-nav-link"><i class="fa-solid fa-brain"></i><span data-i18n="md.ai">هوش مصنوعی</span></a>
-          <a href="/news" class="md-nav-link"><i class="fa-solid fa-newspaper"></i><span data-i18n="md.news">اخبار</span></a>
+          <p class="md-nav-title collapse-label" data-i18n="md.accounts">حساب‌ها</p>
+          <a href="/dashboard" class="md-nav-link" title="داشبورد ساختار"><i class="fa-solid fa-chart-column"></i><span class="collapse-label" data-i18n="md.overview">داشبورد ساختار</span></a>
+          <a href="/ai" class="md-nav-link" title="هوش مصنوعی"><i class="fa-solid fa-brain"></i><span class="collapse-label" data-i18n="md.ai">هوش مصنوعی</span></a>
+          <a href="/news" class="md-nav-link" title="اخبار"><i class="fa-solid fa-newspaper"></i><span class="collapse-label" data-i18n="md.news">اخبار</span></a>
 
-          <p class="md-nav-title" data-i18n="md.settings">تنظیمات</p>
-          <a href="/privacy" class="md-nav-link"><i class="fa-solid fa-shield-halved"></i><span data-i18n="md.secure">حساب امن</span></a>
-          <a href="/login.html" class="md-nav-link"><i class="fa-solid fa-arrow-right-from-bracket"></i><span data-i18n="md.signout">خروج</span></a>
+          <p class="md-nav-title collapse-label" data-i18n="md.settings">تنظیمات</p>
+          <a href="/privacy" class="md-nav-link" title="حساب امن"><i class="fa-solid fa-shield-halved"></i><span class="collapse-label" data-i18n="md.secure">حساب امن</span></a>
+          <a href="/login.html" class="md-nav-link" title="خروج"><i class="fa-solid fa-arrow-right-from-bracket"></i><span class="collapse-label" data-i18n="md.signout">خروج</span></a>
         </nav>
 
         <div class="md-sidebar-foot">

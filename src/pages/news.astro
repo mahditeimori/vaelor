@@ -8,9 +8,9 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
   title="News · Economic Calendar"
   description="Weekly macroeconomic calendar for USD, EUR, GBP, DXY and Gold with Iran Jalali dates, Tehran and New York release times, and a pre-release USD/DXY fundamental prediction engine."
 >
-  <main class="shell nw-page" id="newsPage">
+  <main class="shell nw-page scroll-reveal" id="newsPage">
     <!-- ================= LOGO LOCKUP + HERO ================= -->
-    <section class="hero" style="padding-bottom:6px" aria-labelledby="newsHeroTitle">
+    <section class="hero scroll-reveal" style="padding-bottom:6px" aria-labelledby="newsHeroTitle">
       <img
         class="nw-logo"
         src="/vaelor-trading-intelligence.png"
@@ -20,7 +20,6 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
         decoding="async"
       />
 
-      <div class="kicker" style="margin-top:2px">Macro event monitor · weekly outlook</div>
       <h1 id="newsHeroTitle">News that moves markets.</h1>
       <p class="lede">
         High-impact and medium-impact economic releases for <b>USD</b>, <b>EUR</b>, <b>GBP</b>,
@@ -28,6 +27,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
         on the <b>Gregorian</b> or <b>Solar Hijri</b> calendar, plus a rule-based pre-release
         engine that calls the USD direction before the number drops.
       </p>
+      <div class="kicker" style="margin-top:2px">Macro event monitor · weekly outlook</div>
       <div class="nw-clockbox">
         <div class="nw-clock"><label>TEHRAN · ASIA/TEHRAN</label><strong id="tehranClock">--:--:--</strong></div>
         <div class="nw-clock"><label>NEW YORK · AMERICA/NEW_YORK</label><strong id="nyClock">--:--:--</strong></div>
@@ -54,7 +54,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     </section>
 
     <!-- ================= STATS ================= -->
-    <section class="nw-stats" aria-label="Week statistics">
+    <section class="nw-stats scroll-reveal" aria-label="Week statistics">
       <div class="nw-stat"><span>THIS WEEK · HIGH IMPACT</span><strong id="highCount">—</strong><em>Red-folder events</em></div>
       <div class="nw-stat"><span>THIS WEEK · MEDIUM IMPACT</span><strong id="mediumCount">—</strong><em>Orange-folder events</em></div>
       <div class="nw-stat"><span>WATCHLIST</span><strong>5</strong><em>USD · EUR · GBP · XAU · DXY</em></div>
@@ -63,7 +63,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     </section>
 
     <!-- ================= QUICK-ACTION TABS ================= -->
-    <div class="nw-tabs" role="tablist" aria-label="News sections">
+    <div class="nw-tabs scroll-reveal" role="tablist" aria-label="News sections">
       <button type="button" role="tab" id="nw-tab-calendar" class="nw-tab is-active" aria-selected="true" aria-controls="nw-panel-calendar" data-tab="calendar" tabindex="0">
         <span class="nw-tab-num">01</span>
         <span>Calendar</span>
@@ -79,7 +79,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
     </div>
 
     <!-- ================= PANEL 1 · CALENDAR ================= -->
-    <section class="nw-panel-section" role="tabpanel" id="nw-panel-calendar" aria-labelledby="nw-tab-calendar">
+    <section class="nw-panel-section scroll-reveal" role="tabpanel" id="nw-panel-calendar" aria-labelledby="nw-tab-calendar">
       <div class="nw-section-head">
         <div>
           <div class="panel-kicker">WEEKLY RELEASE SCHEDULE</div>

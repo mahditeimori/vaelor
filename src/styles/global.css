@@ -282,7 +282,7 @@ hr {
 .accordion .acc-body li:last-child { border-bottom: none; }
 
 /* ---------- Docs layout ---------- */
-.docs-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 40px; align-items: start; }
+.docs-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 40px; align-items: start; transition: grid-template-columns 200ms cubic-bezier(0.23, 1, 0.32, 1); }
 
 .sidebar {
   position: sticky;
@@ -302,13 +302,25 @@ hr {
 }
 
 .side-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text-dim);
   font-size: 0.9rem;
   padding: 6px 10px;
   border-radius: var(--radius-sm);
   border-left: 2px solid transparent;
 }
+.side-link i { width: 16px; text-align: center; color: var(--text-faint); flex: 0 0 auto; }
+.side-link[aria-current="page"] i { color: var(--accent); }
+.docs-collapse-toggle { margin: 0 0 10px 6px; }
+.docs-layout.is-collapsed { grid-template-columns: 64px minmax(0, 1fr); }
+.docs-layout.is-collapsed .sidebar { align-items: center; padding-inline: 0; }
+.docs-layout.is-collapsed .side-title { height: 0; margin: 0; padding: 0; }
+.docs-layout.is-collapsed .side-link { justify-content: center; padding: 10px 0; }
+.docs-layout.is-collapsed .side-link i { font-size: 1rem; width: auto; }
+.docs-layout.is-collapsed .docs-collapse-toggle { margin: 0 0 12px; }
+.docs-layout.is-collapsed .docs-collapse-toggle i { transform: rotate(180deg); }
 .side-link:hover { color: var(--text); background: var(--bg-raise); text-decoration: none; }
 .side-link[aria-current="page"] { color: var(--accent); background: var(--bg-raise); border-left-color: var(--accent); }
 

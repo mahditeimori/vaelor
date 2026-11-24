@@ -10,7 +10,7 @@ const { title } = Astro.props;
 
 <BaseLayout title={title}>
   <main class="shell">
-    <div class="docs-layout" style="padding-top:32px">
+    <div class="docs-layout" data-collapsible="docs-sidebar" id="docsLayout" style="padding-top:32px">
       <DocsSidebar />
       <article class="prose">
         <slot />

@@ -16,8 +16,13 @@ const links = [
 ---
 
 <aside class="sidebar" aria-label="Documentation sections">
-  <div class="side-title">Reference Index</div>
+  <div class="side-title collapse-label">Reference Index</div>
+  <button type="button" class="docs-collapse-toggle" data-collapse-toggle aria-expanded="true" aria-label="Collapse panel" title="Collapse">
+    <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+  </button>
   {links.map((l) => (
-    <a href={l.href} class="side-link" aria-current={currentPath === l.href ? 'page' : undefined}>{l.label}</a>
+    <a href={l.href} class="side-link" title={l.label} aria-current={currentPath === l.href ? 'page' : undefined}>
+      <i class="fa-solid fa-file-lines" aria-hidden="true"></i><span class="collapse-label">{l.label}</span>
+    </a>
   ))}
 </aside>

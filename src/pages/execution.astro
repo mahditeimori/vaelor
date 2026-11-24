@@ -6,15 +6,15 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   title="Execution Desk · MetaTrader 5"
   description="Connect your own MetaTrader 5 terminal, backtest AI-authored strategies, measure their success rate and route orders from one desk."
 >
-  <main class="shell ex" data-api="https://trading-llc-mcp.mahdi-t8256.workers.dev">
+  <main class="shell ex scroll-reveal" data-api="https://trading-llc-mcp.mahdi-t8256.workers.dev">
     <section class="ex-hero">
-      <div class="ex-kicker">Execution / MT5 · Section 5.0</div>
       <h1>Execution Desk</h1>
       <p class="lede">
         Bridge this website to <b>your own MetaTrader 5 terminal</b>. Backtest a strategy on your
         broker's real history, measure its success rate, then open, manage and close positions from
         here. The bridge runs on your machine and never custodies funds.
       </p>
+      <div class="ex-kicker">Execution / MT5 · Section 5.0</div>
       <div class="ex-badges">
         <span class="badge ex-badge" id="modeBadge">MODE —</span>
         <span class="badge ex-badge" id="tradeBadge">TRADING —</span>
@@ -23,14 +23,17 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <a class="badge ex-badge warm" href="/docs/09-mt5-execution">Setup manual</a>
       </div>
 
-      <div class="ex-quickbar">
-        <a href="#connect">Connect</a>
-        <a href="#order-ticket">Order ticket</a>
-        <a href="#positions">Positions</a>
-        <a href="#strategies">Strategies</a>
-        <a href="#backtest">Backtest</a>
-        <a href="#signals">Signals</a>
-        <a href="#audit">Audit</a>
+      <div class="ex-quickbar" data-collapsible="ex-quickbar">
+        <button type="button" class="ex-collapse-toggle" data-collapse-toggle aria-expanded="true" aria-label="Collapse panel" title="Collapse">
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
+        <a href="#connect" title="Connect"><i class="fa-solid fa-plug" aria-hidden="true"></i><span class="collapse-label">Connect</span></a>
+        <a href="#order-ticket" title="Order ticket"><i class="fa-solid fa-receipt" aria-hidden="true"></i><span class="collapse-label">Order ticket</span></a>
+        <a href="#positions" title="Positions"><i class="fa-solid fa-arrows-left-right" aria-hidden="true"></i><span class="collapse-label">Positions</span></a>
+        <a href="#strategies" title="Strategies"><i class="fa-solid fa-sitemap" aria-hidden="true"></i><span class="collapse-label">Strategies</span></a>
+        <a href="#backtest" title="Backtest"><i class="fa-solid fa-flask" aria-hidden="true"></i><span class="collapse-label">Backtest</span></a>
+        <a href="#signals" title="Signals"><i class="fa-solid fa-bell" aria-hidden="true"></i><span class="collapse-label">Signals</span></a>
+        <a href="#audit" title="Audit"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span class="collapse-label">Audit</span></a>
       </div>
     </section>
 
@@ -50,7 +53,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </section>
 
     <!-- ---------------------------------------------------------------- setup -->
-    <section class="ex-panel" id="connect" aria-labelledby="connect-title" data-gate="pair">
+    <section class="ex-panel scroll-reveal" id="connect" aria-labelledby="connect-title" data-gate="pair">
       <div class="ex-panel-head">
         <div>
           <div class="ex-kicker">Section 01 · Connect your MetaTrader</div>
@@ -63,7 +66,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
 
       <div class="ex-steps">
-        <article class="ex-step">
+        <article class="ex-step scroll-reveal">
           <span class="ex-step-num">1</span>
           <h3>Download the bridge</h3>
           <p>
@@ -74,7 +77,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             Download vaelor-mt5-bridge.zip
           </a>
         </article>
-        <article class="ex-step">
+        <article class="ex-step scroll-reveal">
           <span class="ex-step-num">2</span>
           <h3>Run it on this computer</h3>
           <p>
@@ -96,7 +99,7 @@ Token : &lt;random string&gt;
 # done — keep this console open while connected
 # close it (or press Ctrl+C) to disconnect completely</pre>
         </article>
-        <article class="ex-step">
+        <article class="ex-step scroll-reveal">
           <span class="ex-step-num">3</span>
           <h3>Connect (automatic)</h3>
           <p>
@@ -199,7 +202,7 @@ Token : &lt;random string&gt;
     </section>
 
     <!-- ---------------------------------------------------------------- account -->
-    <section class="ex-panel" id="accountPanel" hidden aria-labelledby="account-title">
+    <section class="ex-panel scroll-reveal" id="accountPanel" hidden aria-labelledby="account-title">
       <div class="ex-panel-head">
         <div>
           <div class="ex-kicker">Section 02 · Connected account</div>
@@ -224,7 +227,7 @@ Token : &lt;random string&gt;
 
     <!-- ---------------------------------------------------------------- order + risk -->
     <div class="ex-grid-2" id="order-ticket" data-gate="execution_usage">
-      <section class="ex-panel" aria-labelledby="ticket-title">
+      <section class="ex-panel scroll-reveal" aria-labelledby="ticket-title">
         <div class="ex-panel-head">
           <div>
             <div class="ex-kicker">Section 03 · Manual routing</div>
@@ -290,7 +293,7 @@ Token : &lt;random string&gt;
         </p>
       </section>
 
-      <section class="ex-panel" aria-labelledby="risk-title">
+      <section class="ex-panel scroll-reveal" aria-labelledby="risk-title">
         <div class="ex-panel-head">
           <div>
             <div class="ex-kicker">Section 04 · Safety</div>
@@ -418,7 +421,7 @@ Token : &lt;random string&gt;
     </div>
 
     <!-- ---------------------------------------------------------------- positions -->
-    <section class="ex-panel" id="positions" aria-labelledby="pos-title">
+    <section class="ex-panel scroll-reveal" id="positions" aria-labelledby="pos-title">
       <div class="ex-panel-head">
         <div>
           <div class="ex-kicker">Section 05 · Live book</div>
@@ -483,7 +486,7 @@ Token : &lt;random string&gt;
     </section>
 
     <!-- ---------------------------------------------------------------- strategies -->
-    <section class="ex-panel" id="strategies" aria-labelledby="strat-title">
+    <section class="ex-panel scroll-reveal" id="strategies" aria-labelledby="strat-title">
       <div class="ex-panel-head">
         <div>
           <div class="ex-kicker">Section 06 · Human and AI strategies</div>
@@ -581,7 +584,7 @@ def on_bar(ctx):
     </section>
 
     <!-- ---------------------------------------------------------------- backtest + performance -->
-    <section class="ex-panel" id="backtest" aria-labelledby="bt-title">
+    <section class="ex-panel scroll-reveal" id="backtest" aria-labelledby="bt-title">
       <div class="ex-panel-head">
         <div>
           <div class="ex-kicker">Section 07 · Evidence</div>
@@ -743,7 +746,7 @@ def on_bar(ctx):
       </div>
     </section>
 
-    <section class="ex-panel" aria-labelledby="perf-title">
+    <section class="ex-panel scroll-reveal" aria-labelledby="perf-title">
       <div class="ex-panel-head">
         <div>
           <div class="ex-kicker">Section 08 · Measured results</div>
@@ -775,7 +778,7 @@ def on_bar(ctx):
     </section>
 
     <!-- ---------------------------------------------------------------- signals -->
-    <section class="ex-panel" id="signals" aria-labelledby="sig-title" data-gate="signals">
+    <section class="ex-panel scroll-reveal" id="signals" aria-labelledby="sig-title" data-gate="signals">
       <div class="ex-panel-head">
         <div>
           <div class="ex-kicker">Section 09 · AI signal queue</div>
@@ -817,7 +820,7 @@ def on_bar(ctx):
     </section>
 
     <!-- ---------------------------------------------------------------- audit -->
-    <section class="ex-panel" id="audit" aria-labelledby="audit-title">
+    <section class="ex-panel scroll-reveal" id="audit" aria-labelledby="audit-title">
       <div class="ex-panel-head">
         <div>
           <div class="ex-kicker">Section 10 · Traceability</div>
@@ -931,6 +934,12 @@ def on_bar(ctx):
       border: 1px solid transparent;
     }
     .ex-quickbar a:hover { color: var(--ex-text); border-color: var(--ex-border); text-decoration: none; }
+    .ex-quickbar a { display: inline-flex; align-items: center; gap: 7px; }
+    .ex-quickbar a i { width: 16px; text-align: center; }
+    .ex-collapse-toggle { width: 32px; height: 32px; min-height: 32px; padding: 0; border-radius: 9px; }
+    .ex-quickbar.is-collapsed a { padding: 6px 9px; }
+    .ex-quickbar.is-collapsed a i { width: auto; font-size: 0.9rem; }
+    .ex-quickbar.is-collapsed .ex-collapse-toggle i { transform: rotate(180deg); }
 
     .ex-statusbar {
       display: flex; align-items: center; justify-content: space-between; gap: 16px;

@@ -8,15 +8,15 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
   title="AI & Machine Access"
   description="Connect any AI assistant to the Vaelor macro terminal over MCP or plain REST — live CFTC COT, open interest, futures volume and price series."
 >
-  <main class="shell ai-page" data-gate="ai_chat">
+  <main class="shell ai-page scroll-reveal" data-gate="ai_chat">
     <section class="hero" style="padding-bottom:18px">
-      <div class="kicker">Machine access · MCP + REST</div>
       <h1>Connect an AI to the terminal</h1>
       <p class="lede">
         The macro engine is exposed as a stateless <b>MCP over HTTP</b> server and a plain JSON API.
         No API key, CORS open. Point any cloud assistant at the MCP endpoint and it can read the
         operating manual, pull live CFTC positioning, and publish analysis back to the site.
       </p>
+      <div class="kicker">Machine access · MCP + REST</div>
       <div class="ai-badges">
         <span class="ai-badge">JSON-RPC 2.0</span>
         <span class="ai-badge">Stateless · no session</span>
@@ -25,7 +25,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       </div>
     </section>
 
-    <section class="ai-section" aria-labelledby="endpoints-title">
+    <section class="ai-section scroll-reveal" aria-labelledby="endpoints-title">
       <div class="ai-section-head">
         <div>
           <div class="panel-kicker">01 · ENDPOINTS</div>
@@ -33,7 +33,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
         </div>
       </div>
 
-      <div class="ai-grid">
+      <div class="ai-grid scroll-reveal">
         <article class="ai-card ai-card-primary">
           <div class="ai-label">MCP over HTTP · recommended for AI clients</div>
           <code id="mcpUrl">{WORKER}/mcp</code>
@@ -43,7 +43,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
           </div>
         </article>
 
-        <article class="ai-card">
+        <article class="ai-card scroll-reveal">
           <div class="ai-label">Terminal state · full JSON snapshot</div>
           <code id="stateUrl">{WORKER}/api/terminal/state</code>
           <div class="ai-card-foot">
@@ -52,7 +52,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
           </div>
         </article>
 
-        <article class="ai-card">
+        <article class="ai-card scroll-reveal">
           <div class="ai-label">Price series · OHLCV proxy</div>
           <code id="chartUrl">{WORKER}/api/chart?id=gold&amp;range=5d&amp;interval=15m</code>
           <div class="ai-card-foot">
@@ -61,7 +61,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
           </div>
         </article>
 
-        <article class="ai-card">
+        <article class="ai-card scroll-reveal">
           <div class="ai-label">Operating manual &amp; company code</div>
           <code id="docsUrl">https://vaelor.pages.dev/docs</code>
           <div class="ai-card-foot">
@@ -72,7 +72,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       </div>
     </section>
 
-    <section class="ai-section" aria-labelledby="tools-title">
+    <section class="ai-section scroll-reveal" aria-labelledby="tools-title">
       <div class="ai-section-head">
         <div>
           <div class="panel-kicker">02 · TOOLS</div>
@@ -108,7 +108,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       </div>
     </section>
 
-    <section class="ai-section" aria-labelledby="quickstart-title">
+    <section class="ai-section scroll-reveal" aria-labelledby="quickstart-title">
       <div class="ai-section-head">
         <div>
           <div class="panel-kicker">03 · QUICK START</div>
@@ -142,7 +142,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       </div>
     </section>
 
-    <section class="ai-section" aria-labelledby="execution-title">
+    <section class="ai-section scroll-reveal" aria-labelledby="execution-title">
       <div class="ai-section-head">
         <div>
           <div class="panel-kicker">04 · EXECUTION</div>
@@ -154,18 +154,18 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
         <a href="/execution">Execution desk</a> as <b>disabled</b> until the account owner enables it, and
         the local MT5 bridge decides whether it can trade. An AI cannot publish its way into a live order.
       </p>
-      <div class="ai-grid" style="margin-top:18px">
-        <article class="ai-card">
+      <div class="ai-grid scroll-reveal" style="margin-top:18px">
+        <article class="ai-card scroll-reveal">
           <div class="ai-label">1 · Author</div>
           <code>register_strategy</code>
           <span class="ai-hint">Manifest stored disabled, with validation errors returned to the agent.</span>
         </article>
-        <article class="ai-card">
+        <article class="ai-card scroll-reveal">
           <div class="ai-label">2 · Signal</div>
           <code>submit_signal</code>
           <span class="ai-hint">Queued as pending; the owner approves or rejects it in the desk.</span>
         </article>
-        <article class="ai-card">
+        <article class="ai-card scroll-reveal">
           <div class="ai-label">3 · Measure</div>
           <code>get_performance</code>
           <span class="ai-hint">Backtest and live evidence measured by the bridge, never self-reported.</span>
@@ -173,7 +173,7 @@ const WORKER = 'https://trading-llc-mcp.mahdi-t8256.workers.dev';
       </div>
     </section>
 
-    <section class="ai-section" aria-labelledby="live-title">
+    <section class="ai-section scroll-reveal" aria-labelledby="live-title">
       <div class="ai-section-head">
         <div>
           <div class="panel-kicker">04 · LIVE DATA</div>

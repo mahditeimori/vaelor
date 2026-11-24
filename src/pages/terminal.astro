@@ -6,16 +6,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   title="Institutional Market Structure & Macro Terminal"
   description="Live price action, CFTC COT positioning, futures volume and open interest — automated institutional macro hub."
 >
-  <main id="institutional-chart-section" class="term-root" data-api="https://trading-llc-mcp.mahdi-t8256.workers.dev">
+  <main id="institutional-chart-section" class="term-root scroll-reveal" data-api="https://trading-llc-mcp.mahdi-t8256.workers.dev">
     <!-- ============ Quick access bar (sticky) ============ -->
-    <div class="term-quickbar" id="termQuickbar">
+    <div class="term-quickbar" id="termQuickbar" data-collapsible="term-quickbar">
       <div class="tq-left">
-        <span class="tq-kicker">Quick access</span>
+        <span class="tq-kicker collapse-label">Quick access</span>
+        <button type="button" class="tq-collapse-toggle" data-collapse-toggle aria-expanded="true" aria-label="Collapse panel" title="Collapse">
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
         <nav class="tq-links" aria-label="Terminal quick navigation">
-          <a class="tq-link" href="#live-chart">Live chart</a>
-          <a class="tq-link" href="#macro-hub">Macro &amp; COT</a>
-          <a class="tq-link" href="#cross-asset">Cross-asset</a>
-          <a class="tq-link tq-link-ai" href="/ai">AI / MCP</a>
+          <a class="tq-link" href="#live-chart" title="Live chart"><i class="fa-solid fa-chart-line" aria-hidden="true"></i><span class="collapse-label">Live chart</span></a>
+          <a class="tq-link" href="#macro-hub" title="Macro &amp; COT"><i class="fa-solid fa-chart-column" aria-hidden="true"></i><span class="collapse-label">Macro &amp; COT</span></a>
+          <a class="tq-link" href="#cross-asset" title="Cross-asset"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="collapse-label">Cross-asset</span></a>
+          <a class="tq-link tq-link-ai" href="/ai" title="AI / MCP"><i class="fa-solid fa-brain" aria-hidden="true"></i><span class="collapse-label">AI / MCP</span></a>
         </nav>
       </div>
       <div class="tq-instrument" id="tqInstrument" hidden>
@@ -43,7 +46,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </header>
 
     <!-- ============ Section 2 · Live price panel ============ -->
-    <section class="term-panel" id="live-chart" aria-labelledby="live-title">
+    <section class="term-panel scroll-reveal" id="live-chart" aria-labelledby="live-title">
       <div class="panel-head-row">
         <div class="phr-left">
           <div class="panel-kicker">SECTION 01 · LIVE PRICE &amp; TECHNICAL EXECUTION</div>
@@ -129,7 +132,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </section>
 
     <!-- ============ Section 3 · Macro positioning hub ============ -->
-    <section class="term-panel" id="macro-hub" aria-labelledby="hub-title">
+    <section class="term-panel scroll-reveal" id="macro-hub" aria-labelledby="hub-title">
       <div class="panel-head-row">
         <div class="phr-left">
           <div class="panel-kicker">SECTION 02 · AUTOMATED INGESTION</div>
@@ -291,6 +294,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     }
     .tq-link:hover { color: var(--ttxt); border-color: var(--tacc); text-decoration: none; }
     .tq-link-ai { color: var(--tgold); border-color: rgba(201, 162, 75, 0.4); }
+    .tq-link i { width: 16px; text-align: center; }
+    .tq-collapse-toggle { width: 32px; height: 32px; min-height: 32px; padding: 0; border-radius: 9px; border: 1px solid var(--tborder); background: rgba(226, 69, 108, 0.07); color: var(--tdim); }
+    .tq-collapse-toggle:hover, .tq-collapse-toggle:focus-visible { color: var(--tacc); border-color: var(--tacc); outline: none; }
+    .term-quickbar.is-collapsed { padding: 8px 12px; }
+    .term-quickbar.is-collapsed .tq-link { padding: 7px 10px; }
+    .term-quickbar.is-collapsed .tq-link i { width: auto; font-size: 0.95rem; }
+    .term-quickbar.is-collapsed .tq-collapse-toggle i { transform: rotate(180deg); }
     .tq-instrument { display: flex; align-items: center; gap: 12px; }
     .tq-ins-label {
       font-family: var(--mono);

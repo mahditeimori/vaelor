@@ -1,0 +1,83 @@
+/* Scroll-driven reveal + parallax utilities for the whole site.
+   Pure CSS (no JS): uses CSS Scroll Timeline (animation-timeline: view()).
+   - .scroll-reveal: fade in from below as the element enters the viewport.
+   - .scroll-parallax: slow y-translation driven by the page scroll.
+   - .site-mark: the little animated vehicle mark used by BaseLayout.
+   Everything degrades to instant under prefers-reduced-motion, and the
+   animation is on compositor-friendly properties (transform + opacity).
+*/
+
+@keyframes tl-reveal-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes tl-parallax-y {
+  from { transform: translateY(8%); }
+  to   { transform: translateY(-14%); }
+}
+
+@keyframes tl-site-mark-rotate {
+  from { transform: translateX(-25px) rotate(-8deg) scale(0.95); }
+  to   { transform: translateX(12px) rotate(8deg) scale(1); }
+}
+
+/* ---------------- scroll-reveal ---------------- */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  will-change: transform, opacity;
+  animation: tl-reveal-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation-timeline: view();
+  animation-range: entry 0% 45%;
+}
+
+/* ---------------- scroll-parallax ---------------- */
+.scroll-parallax {
+  will-change: transform;
+  animation: tl-parallax-y linear;
+  animation-timeline: view(0% 100%);
+  animation-range: 0% 100%;
+}
+
+/* ---------------- site-mark ---------------- */
+.site-mark {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.site-mark-svg {
+  width: 96px;
+  height: 40px;
+  filter: drop-shadow(0 0 6px rgba(201, 162, 75, 0.25));
+}
+
+.site-mark-path {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: tl-site-mark-rotate;
+  animation-timeline: view();
+  animation-range: 0% 100%;
+  animation-fill-mode: both;
+}
+
+/* ---------------- reduced motion ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal { opacity: 1; transform: none; animation: none; }
+  .scroll-parallax { animation: none; }
+  .site-mark-path { animation: none; }
+  .site-mark { opacity: 0.4; }
+}
+
+/* ---------------- mobile safety ---------------- */
+@media (max-width: 640px) {
+  .scroll-reveal { animation-duration: 0.25s; }
+}
