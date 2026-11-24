@@ -748,6 +748,15 @@ function renderUserDetailBody(username: string, detail: ServerDetail, ctx: Detai
         <button type="button" class="o-btn ghost" data-do="edit">Edit plan</button>
         <button type="button" class="o-btn ghost" data-do="revoke">Set free</button>
         <button type="button" class="o-btn danger" data-do="delete">Delete user</button>
+      </div>
+      <div class="o-d-sec">
+        <h4>Reset password (password-based members)</h4>
+        <form class="o-pw-reset" data-admin-pw="${esc(username)}">
+          <input type="email" name="adminPwEmail" value="${esc(detail.serverMember?.email || readLocalUsers().find((u) => u.username === username)?.email || '')}" placeholder="Member email" />
+          <input type="password" name="adminPwPassword" placeholder="New password (8+ chars)" autocomplete="new-password" />
+          <button type="submit" class="o-btn primary">Reset password</button>
+          <span class="o-pw-hint" data-admin-pw-hint></span>
+        </form>
       </div>`,
   };
   body.innerHTML = sections[ctx.tab] ?? sections.overview;
@@ -767,6 +776,43 @@ function attachUserDetailControls(username: string, panel: HTMLElement): void {
   panel.querySelectorAll<HTMLButtonElement>('[data-delete-user]').forEach((btn) => {
     btn.addEventListener('click', () => void deleteUser(username));
   });
+  panel.querySelectorAll<HTMLFormElement>('[data-admin-pw]').forEach((form) => {
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      void resetUserPassword(form, form.dataset.adminPw ?? username);
+    });
+  });
+}
+
+async function resetUserPassword(form: HTMLFormElement, username: string): Promise<void> {
+  const email = (form.querySelector<HTMLInputElement>('input[type="email"]')?.value ?? '').trim();
+  const password = form.querySelector<HTMLInputElement>('input[type="password"]')?.value ?? '';
+  const hint = form.querySelector<HTMLElement>('[data-admin-pw-hint]');
+  const fail = (text: string): void => {
+    if (hint) hint.textContent = text;
+  };
+  if (!email) {
+    fail('Enter the member email.');
+    return;
+  }
+  if (password.length < 8) {
+    fail('Password needs at least 8 characters.');
+    return;
+  }
+  const ok = await ownerFetchJson<{ ok?: boolean; message?: string }>('/api/auth/admin-password', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (ok?.ok) {
+    fail(ok.message ?? `Password reset for ${email}.`);
+    toast(`Password reset for @${username} (${email}).`);
+    const passInput = form.querySelector<HTMLInputElement>('input[type="password"]');
+    if (passInput) passInput.value = '';
+  } else {
+    fail('Password reset was rejected. Check the email and try again.');
+    toast(`Password reset failed for @${username}.`);
+  }
 }
 
 /* ------------------------------------------------------------------ */

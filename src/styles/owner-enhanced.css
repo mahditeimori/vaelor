@@ -863,3 +863,41 @@
     height: 100px;
   }
 }
+
+/* Owner console — admin password reset form (member detail → Actions) */
+.o-d-sec h4 {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin: 0 0 8px;
+}
+.o-pw-reset {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.o-pw-reset input {
+  width: auto;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(226, 69, 108, 0.3);
+  border-radius: 8px;
+}
+.o-pw-reset input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(226, 69, 108, 0.12);
+}
+.o-pw-reset [data-admin-pw-hint] {
+  font-size: 0.66rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
