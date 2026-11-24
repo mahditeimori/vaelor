@@ -9,6 +9,23 @@ const features = [
   { id: 'news', title: 'اخبار و تحلیل', desc: 'انعطاف‌پذیر مقایسه روی شعله‌های قیمت، توضیح خودکار و نقاط بازیافت.', icon: 'fa-solid fa-newspaper', span: '4x2', action: '/news', badge: 'Operator' },
   { id: 'search', title: 'جستجو', desc: 'تعادل سریع بین بخش‌های سایت با پیکربندی قابل تکرار. بیشتر دکمه‌ها باز می‌شوند.', icon: 'fa-solid fa-magnifying-glass', span: '3x1', action: '/docs', badge: '' },
 ];
+
+// General-case study outcomes shown in the bar chart.
+const studies = [
+  { label: 'برد · Win', count: 21 },
+  { label: 'باخت · Loss', count: 11 },
+  { label: 'بی‌طرف · Breakeven', count: 3 },
+  { label: 'سفارش باطل · Invalidated', count: 6 },
+  { label: 'در انتظار · Pending', count: 9 },
+];
+const studiesMax = Math.max(...studies.map((s) => s.count), 1);
+
+const caseStudy = {
+  chip: 'مطالعه مرزی · CASE STUDY',
+  title: 'XAUUSD — حالت مرزی در بالای تریند (Borderline trendline)',
+  body: 'یک نوسان روبروی تریند طولانی‌مدت: ورود با تریگر پاشا (push trigger) در نقطه‌ای که شعله‌های قیمت دوباره می‌آیند، و استاپ هوشمند موازی با شکست تریند. حالت مرزی نیازمند بازبینی — این مطالعه آیا به اجرا راه یافته یا نه.',
+  tags: ['XAUUSD', 'تریند', 'مرزی', 'Borderline'],
+};
 ---
 
 <BaseLayout title="داشبورد مشتری · Member Dashboard" description="داشبورد یکپارچه یک داشبورد مشتری با دریچه‌های لایو، سیگنال‌های زنده و دسترسی به همه سطوح سایت.">
@@ -31,4 +48,64 @@ const features = [
       <div class="live-stat"><div class="label">پوزیشن‌های زنده</div><div class="value gold" id="md-positions">0</div><div class="muted">معتدل بازار (خودکار)</div></div>
       <div class="live-stat"><div class="label">سیگنال‌های زنده</div><div class="value" id="md-signals">—</div><div class="muted">هفته فعلی</div></div>
       <div class="live-stat"><div class="label">درخواست خرید</div><div class="value gold" id="md-orders">—</div><div class="muted">ریپان</div></div>
-      <div class="live-stat"><div class="label">پیکربندی معتمد شد</div><div class="value gold" id="md-config">0</div><div class="muted">کانفیگ خارجی سپرم
+      <div class="live-stat"><div class="label">پیکربندی معتمد شد</div><div class="value gold" id="md-config">0</div><div class="muted">کانفیگ خارجی سپرم</div></div>
+    </section>
+
+    <section class="md-features reveal" aria-label="Feature access">
+      {features.map((f) => (
+        <a class="md-feature" href={f.action}>
+          <i class={`${f.icon} md-feature-icon`} aria-hidden="true"></i>
+          <span class="md-feature-title">{f.title}</span>
+          {f.badge && <span class="md-feature-badge">{f.badge}</span>}
+          <span class="md-feature-desc">{f.desc}</span>
+        </a>
+      ))}
+    </section>
+
+    <section class="md-case reveal" aria-label="Borderline case study">
+      <span class="md-case-chip">{caseStudy.chip}</span>
+      <h3>{caseStudy.title}</h3>
+      <p class="md-case-body">{caseStudy.body}</p>
+      <div class="md-case-tags">
+        {caseStudy.tags.map((t) => <span class="md-tag">{t}</span>)}
+      </div>
+    </section>
+
+    <section class="md-studies reveal" aria-label="General-case study outcomes">
+      <div class="md-studies-head">
+        <h2>مطالعات حالت کلی <span class="muted">General-case studies</span></h2>
+        <span class="muted">دسته‌بندی بررسی‌های حالت کلی — خروجی‌های مطالعه</span>
+      </div>
+      <div class="md-bar-wrap">
+        <svg class="md-bar-chart" viewBox="0 0 520 180" role="img" aria-label="General-case study outcomes">
+          <defs>
+            <linearGradient id="mdBarGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#e0a84a" />
+              <stop offset="100%" stop-color="#a86626" />
+            </linearGradient>
+          </defs>
+          <g transform="translate(46,28)">
+            <line class="md-bar-axis" x1="0" y1="116" x2="468" y2="116" stroke="rgba(224,168,74,0.28)" stroke-width="1" />
+            {studies.map((s) => {
+              const h = Math.max((s.count / studiesMax) * 82, 10);
+              const x = studies.indexOf(s) * 104;
+              return (
+                <g key={s.label}>
+                  <rect class="md-bar" x={x} y={116 - h} width="56" height={h} fill="url(#mdBarGrad)" />
+                  <text class="md-bar-val" x={x + 28} y={112 - h} text-anchor="middle">{s.count}</text>
+                  <text class="md-bar-label" x={x + 28} y={116 + 15} text-anchor="middle">{s.label}</text>
+                </g>
+              );
+            })}
+          </g>
+        </svg>
+      </div>
+    </section>
+  </main>
+
+  <script is:inline>
+    // Self-contained page: show the reveal animations on load (the landing
+    // scroll-reveal observer is not loaded on this dedicated page).
+    document.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
+  </script>
+</BaseLayout>
