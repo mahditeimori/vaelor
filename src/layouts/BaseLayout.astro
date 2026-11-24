@@ -18,6 +18,16 @@ import '../styles/scroll-animations.css';
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
     <meta name="color-scheme" content="dark" />
+    <script is:inline>
+      // Force English layouts to LTR; everything else stays RTL.
+      try {
+        const lang = localStorage.getItem('vaelor.lang') || 'fa';
+        const isEn = lang === 'en';
+        document.documentElement.lang = isEn ? 'en' : 'fa';
+        document.documentElement.dir = isEn ? 'ltr' : 'rtl';
+        document.documentElement.dataset.lang = isEn ? 'en' : 'fa';
+      } catch (_) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
