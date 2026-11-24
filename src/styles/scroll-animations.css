@@ -23,21 +23,33 @@
 }
 
 /* ---------------- scroll-reveal ---------------- */
+/* Fallback for browsers without scroll-driven animations: the element
+   becomes visible as soon as it renders (plain CSS animation). Only when the
+   browser supports `animation-timeline: view()` do we switch to scroll-driven
+   animation, so the reveal never keeps the content hidden on page load. */
 .scroll-reveal {
   opacity: 0;
   transform: translateY(24px);
   will-change: transform, opacity;
   animation: tl-reveal-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-  animation-timeline: view();
-  animation-range: entry 0% 45%;
+}
+@supports (animation-timeline: view()) {
+  .scroll-reveal {
+    animation-timeline: view();
+    animation-range: entry 0% 45%;
+  }
 }
 
 /* ---------------- scroll-parallax ---------------- */
 .scroll-parallax {
   will-change: transform;
   animation: tl-parallax-y linear;
-  animation-timeline: view(0% 100%);
-  animation-range: 0% 100%;
+}
+@supports (animation-timeline: view()) {
+  .scroll-parallax {
+    animation-timeline: view(0% 100%);
+    animation-range: 0% 100%;
+  }
 }
 
 /* ---------------- site-mark ---------------- */
