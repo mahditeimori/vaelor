@@ -39,6 +39,15 @@ so they stay visibly disabled until the credentials below exist.
 | `GET` | `/api/subscription/requests` | Owner-only list of pending upgrade requests. |
 | `POST` | `/api/subscription/grant` | Owner-only entitlement write (`operator` / `desk` / `free`). |
 
+## Owner console endpoints
+
+Owner-only JSON endpoints used by the console on `/owner`:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/owner/members` | Server-backed member directory (username, email, provider, tier, days left, MRR, last activity, upgrade requests). |
+| `POST` | `/api/owner/members/delete` | Delete one member by `username`, `email` or `id`: removes the `u:`, `un:` and `s:` records and every active `sid:` session so other browsers lose the account. Response includes `sessionsRemoved`. |
+
 ## Subscription endpoints
 
 Tiers are server-owned. A member can ask; only an owner can grant.
@@ -179,7 +188,8 @@ to the same account.
 ## Password recovery without email
 
 If `RESEND_API_KEY` is not configured the page says so honestly. The owner can
-still reset a member:
+still reset a member — with the reset form in the owner console (member detail
+→ **Actions** → **Reset password**) or via the endpoint:
 
 ```powershell
 # signed in as an OWNER_EMAILS account
@@ -204,3 +214,20 @@ Members can change it afterwards from `/api/auth/password`.
   paying member out.
 - Client-side gating remains cosmetic. The real boundary is the bridge API,
   which validates its pairing token independently.
+
+## Client-side storage
+
+`src/scripts/auth-client.ts` mirrors the server session into localStorage so
+pages work without a round-trip, but the cookie stays the source of truth:
+only an explicit `401` clears the mirror, so an outage never signs a paying
+member out. Mirrors stay small; the real session lives in the HttpOnly
+`vaelor_session` cookie.
+
+| Key | Contents |
+| --- | --- |
+| `vaelor_active_session_v1` | Session mirror `{ user, remembered }` — a few hundred bytes. |
+| `vaelor_sub:<username>` | Subscription `{ tier, status, startedAt, expiresAt }`. |
+| `vaelor_users_db_v1` | Member list, upserted on every sign-in. |
+| `vaelor.desk.profile` | Member desk profile. |
+| `vaelor.bridge.pairing` | Bridge pairing `{ url, token }` for the Desktop app. |
+| `vaelor.isOwner` | Owner flag. |
