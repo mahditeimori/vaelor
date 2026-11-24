@@ -52,7 +52,11 @@ export const onRequestGet: Handler = async ({ request, env, params }) => {
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
 
-  if (url.searchParams.get('error')) return back('oauth_denied');
+  const providerError = url.searchParams.get('error');
+  if (providerError) {
+    console.warn(`oauth.${provider} provider error:`, providerError, url.searchParams.get('error_description') ?? '');
+    return back(providerError === 'access_denied' ? 'oauth_denied' : 'oauth_failed');
+  }
   if (!code || !state) return back('oauth_incomplete');
 
   const stored = await env.AUTH.get<StateRecord>(`oauth:${state}`, 'json');
@@ -81,17 +85,37 @@ export const onRequestGet: Handler = async ({ request, env, params }) => {
     const { id } = await createSession(env, user, provider, ttl);
     return redirect(`${origin}${safeNext(record.next ?? null)}`, sessionCookie(id, ttl, isSecureRequest(request)));
   } catch (error) {
-    const detail = error instanceof Error ? error.message.slice(0, 140) : 'unknown';
-    return back('oauth_failed', detail);
+    const detail = error instanceof Error ? error.message.slice(0, 240) : 'unknown';
+    console.error(`oauth.${provider}.callback failed:`, detail);
+    const reason = detail.toLowerCase();
+    if (
+      reason.includes('invalid_client') ||
+      reason.includes('unauthorized_client') ||
+      reason.includes('redirect_uri_mismatch')
+    ) {
+      return back('oauth_config');
+    }
+    if (reason.includes('invalid_grant')) {
+      return back('oauth_code');
+    }
+    return back('oauth_failed');
   }
 };
 
-function clientSecret(env: { GOOGLE_CLIENT_SECRET?: string; GITHUB_CLIENT_SECRET?: string }, provider: Provider) {
-  return (provider === 'google' ? env.GOOGLE_CLIENT_SECRET : env.GITHUB_CLIENT_SECRET) ?? '';
+function clientSecret(
+  env: { GOOGLE_CLIENT_SECRET?: string; GITHUB_CLIENT_SECRET?: string },
+  provider: Provider,
+) {
+  return (
+    (provider === 'google' ? env.GOOGLE_CLIENT_SECRET : env.GITHUB_CLIENT_SECRET)?.trim() ?? ''
+  );
 }
 
-function clientId(env: { GOOGLE_CLIENT_ID?: string; GITHUB_CLIENT_ID?: string }, provider: Provider) {
-  return (provider === 'google' ? env.GOOGLE_CLIENT_ID : env.GITHUB_CLIENT_ID) ?? '';
+function clientId(
+  env: { GOOGLE_CLIENT_ID?: string; GITHUB_CLIENT_ID?: string },
+  provider: Provider,
+) {
+  return (provider === 'google' ? env.GOOGLE_CLIENT_ID : env.GITHUB_CLIENT_ID)?.trim() ?? '';
 }
 
 async function exchangeCode(
@@ -120,9 +144,15 @@ async function exchangeCode(
     body,
   });
 
-  if (!response.ok) throw new Error(`token_exchange_${response.status}`);
-  const payload = (await response.json()) as { access_token?: string; error?: string };
-  if (!payload.access_token) throw new Error(payload.error ?? 'token_missing');
+  const payload = (await response.json().catch(() => ({}))) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+  if (!response.ok || !payload.access_token) {
+    const reason = [payload.error, payload.error_description].filter(Boolean).join(': ');
+    throw new Error(reason || `token_exchange_${response.status}`);
+  }
   return payload.access_token;
 }
 

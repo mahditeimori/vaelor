@@ -15,6 +15,11 @@
 - **Password hashing**: PBKDF2-SHA256, 100 000 iterations, 16-byte random salt
   per user, only the derived 256-bit hash stored (`derify`/`verifyPassword`).
 - **Payload safety**: `readJson()` rejects bodies over 262 144 bytes.
+- **Human verification**: Cloudflare Turnstile when `TURNSTILE_SITE_KEY` and
+  `TURNSTILE_SECRET_KEY` are configured. `verifyCaptcha()` checks the token at
+  `siteverify` before password work, requires the `auth` action, and treats the
+  token as single-use with a five-minute lifetime. The secret never reaches the
+  client; `/api/auth/config` exposes only the public site key.
 - **Rate limits** (KV counters, `tooManyAttempts`):
   - login: 8/account/15 min, 40/IP/15 min
   - register: 12/IP/hour
@@ -49,9 +54,10 @@
 
 ## Sections audited
 
-- `/login` — `public/login.html`: origin/referer checks, login/forgot/admin
-  rate limits, honest static rendering, session mirror + dashboard view;
-  `gate` no longer reloads the page when the session is active.
+- `/login` — `public/login.html`: origin/referer checks, Turnstile human
+  verification on login/register/forgot, login/forgot/admin rate limits,
+  honest static rendering, session mirror + dashboard view; `gate` no longer
+  reloads the page when the session is active.
 - `/member` — `src/pages/member.astro` + `src/scripts/member.ts`: server-first
   session mount, live positions/terminal/playbook, kill switch, risk gates,
   order ticket; preview mode honest when no bridge is paired.
@@ -68,8 +74,10 @@
 ## Open gaps / follow-ups
 
 1. **GitHub sign-in** is half-configured (dormant): `GITHUB_CLIENT_ID` is set,
-   `GITHUB_CLIENT_SECRET` is missing. Google sign-in is fully wired; GitHub
-   shows the honest "not configured" notice until the secret is added.
+   `GITHUB_CLIENT_SECRET` is missing. GitHub shows the honest "not configured"
+   notice until the secret is added. Google sign-in is configured and its
+   client id/secret pair was validated against Google's token endpoint; the
+   callback logs provider errors server-side and returns only a short code.
 2. **Authenticated production ACL test with a real owner cookie** has not been
    run yet (only anonymous 401s so far).
 3. **Owner-added strategy/feature E2E visibility** has not been tested end to

@@ -8,6 +8,9 @@ opaque token in an `HttpOnly` cookie.
 
 - **Email + password** — registration, sign-in with email *or* username,
   password change, logout, server-side rate limiting.
+- **Human verification** — Cloudflare Turnstile on login, registration and
+  password-reset requests. The token is checked server-side and is single-use;
+  if the keys are absent the site falls back to the rate limits only.
 - **Session cookie** — `vaelor_session`, `HttpOnly`, `SameSite=Lax`,
   `Secure` on HTTPS, 30 days normally, 180 days with "Remember me".
 - **Password hashing** — PBKDF2-SHA256, 100 000 iterations, 16-byte random
@@ -142,12 +145,41 @@ id/secret in `.dev.vars` too.
    | `GITHUB_CLIENT_ID` | for GitHub | OAuth app client id |
    | `GITHUB_CLIENT_SECRET` | for GitHub | OAuth app client secret |
    | `OWNER_EMAILS` | recommended | Comma-separated addresses allowed into `/owner` and `/api/auth/admin-password` |
+   | `TURNSTILE_SITE_KEY` | recommended | Cloudflare Turnstile site key (public, returned by `/api/auth/config`) |
+   | `TURNSTILE_SECRET_KEY` | recommended | Cloudflare Turnstile secret, used only by the server |
    | `PUBLIC_ORIGIN` | optional | `https://vaelor.pages.dev` (defaults to the request host) |
    | `RESEND_API_KEY` | optional | Enables emailed password-reset links |
    | `MAIL_FROM` | optional | Verified sender, e.g. `Vaelor Trading <no-reply@yourdomain>` |
 
 4. Redeploy after changing variables — Pages only picks them up on a new
    deployment.
+
+## Turnstile (human verification)
+
+1. Cloudflare dashboard → **Turnstile** → **Add widget**.
+2. Hostname: the production host, e.g. `vaelor.pages.dev` (preview
+   deployments have rotating hostnames and need their own widget or are
+   blocked while the keys are live).
+3. Widget mode: **Managed** or **Non-interactive**. The console renders it in
+   dark mode with `action: "auth"`.
+4. Copy the **site key** to `TURNSTILE_SITE_KEY` and the **secret key** to
+   `TURNSTILE_SECRET_KEY`, then redeploy.
+5. `GET /api/auth/config` now returns
+   `"captcha": { "enabled": true, "siteKey": "..." }` and the login console
+   shows the widget. The server verifies every token against
+   `https://challenges.cloudflare.com/turnstile/v0/siteverify` before it looks
+   at a password, then resets the widget because tokens are single-use.
+
+For local testing use Cloudflare's public test keys in `.dev.vars` (never
+commit them):
+
+```
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+```
+
+If both keys are absent the login page omits the widget and the endpoints keep
+working under the rate limits, which keeps local previews usable.
 
 ## Google sign-in
 
@@ -167,6 +199,12 @@ id/secret in `.dev.vars` too.
 5. Copy the client id/secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`.
 6. `GET /api/auth/config` should now return `"google": true` and the button
    becomes active automatically.
+
+If the callback lands on `login?error=oauth_config`, the client id/secret pair
+is wrong or belongs to another project — re-save both secrets (the server trims
+accidental whitespace) and redeploy. If Google itself says “Access blocked”,
+the consent screen is still in Testing: add that Google account as a test user
+or publish the app (the `openid email profile` scopes do not need verification).
 
 ## GitHub sign-in
 
@@ -206,9 +244,14 @@ Members can change it afterwards from `/api/auth/password`.
 
 - The browser never receives a password hash or session token; the cookie is
   `HttpOnly`.
+- Turnstile tokens are verified server-side before password work, are
+  single-use, expire after five minutes, and are bound to the `auth` action.
+  The secret key never reaches the browser.
 - Login attempts are counted server-side: 8 per account and 40 per IP per 15
   minutes, 12 registrations per IP per hour, 6 reset requests per IP per hour.
-- OAuth uses a single-use `state` value stored in KV for 10 minutes.
+- OAuth uses a single-use `state` value stored in KV for 10 minutes. Client
+  id/secret values are trimmed and provider errors are logged server-side;
+  only a short error code reaches the browser.
 - `src/scripts/auth-client.ts` treats the server as authoritative: only an
   explicit `401` clears the local mirror, so a network outage cannot sign a
   paying member out.

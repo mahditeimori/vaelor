@@ -1,8 +1,10 @@
 /**
  * POST /api/auth/login
  *
- * Email-or-username + password. Two independent counters (per IP, per account)
- * replace the old client-side captcha: the browser cannot reset them.
+ * Email-or-username + password. A Turnstile token (when the deployment has
+ * keys) blocks scripted attempts, and two independent counters (per IP, per
+ * account) back it up. Both live on the server, so the browser cannot reset
+ * them as it could with the old client-side captcha.
  */
 import type { Handler } from './_lib';
 import {
@@ -22,6 +24,7 @@ import {
   sameOriginError,
   sessionCookie,
   tooManyAttempts,
+  verifyCaptcha,
   verifyPassword,
 } from './_lib';
 
@@ -30,6 +33,7 @@ interface Body {
   email?: string;
   password?: string;
   remember?: boolean;
+  captchaToken?: string;
 }
 
 export const onRequestPost: Handler = async ({ request, env }) => {
@@ -42,6 +46,12 @@ export const onRequestPost: Handler = async ({ request, env }) => {
 
   const body = await readJson<Body>(request);
   if (!body) return fail(400, 'bad_request', 'Expected a JSON body.');
+
+  const captcha = await verifyCaptcha(request, env, body.captchaToken);
+  if (!captcha.ok) {
+    console.warn('auth.login captcha rejected:', captcha.reason ?? 'unknown');
+    return fail(400, 'captcha_failed', 'Complete the human verification and try again.');
+  }
 
   const identifier = (body.identifier ?? body.email ?? '').trim();
   const password = body.password ?? '';

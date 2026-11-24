@@ -202,7 +202,7 @@
               <button type="button" onclick="requestPasswordReset()" class="text-[11px] text-rose-400/90 hover:text-rose-300 transition-colors">Forgot password?</button>
             </div>
             <div class="relative">
-              <input type="password" id="passwordInput" name="password" autocomplete="current-password" required minlength="6" placeholder="••••••••••••" class="vaelor-input w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm text-white placeholder-neutral-600">
+              <input type="password" id="passwordInput" name="password" autocomplete="current-password" required minlength="8" placeholder="••••••••••••" class="vaelor-input w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm text-white placeholder-neutral-600">
               <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -212,14 +212,23 @@
             </div>
           </div>
 
-          <!-- ================= SERVER-SIDE PROTECTION ================= -->
-          <div class="rounded-xl bg-[#110a0e] border border-white/10 p-3 flex items-center gap-2.5">
-            <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-            </svg>
-            <div>
-              <p class="text-xs font-medium text-neutral-200">Protected server-side</p>
-              <p class="font-mono text-[10px] text-neutral-500">Rate-limited · PBKDF2-SHA256 · HttpOnly session</p>
+          <!-- ================= SERVER-SIDE PROTECTION + HUMAN CHECK ================= -->
+          <div class="rounded-xl bg-[#110a0e] border border-white/10 p-3">
+            <div class="flex items-center gap-2.5">
+              <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+              </svg>
+              <div>
+                <p class="text-xs font-medium text-neutral-200">Protected server-side</p>
+                <p class="font-mono text-[10px] text-neutral-500">Rate-limited · PBKDF2-SHA256 · HttpOnly session</p>
+              </div>
+            </div>
+
+            <div id="turnstileWrap" class="hidden mt-3 pt-3 border-t border-white/10">
+              <p class="font-mono text-[10px] uppercase tracking-widest text-neutral-400 mb-2">Human verification</p>
+              <div id="turnstileSlot" class="min-h-[65px]"></div>
+              <p class="mt-2 font-mono text-[10px] leading-relaxed text-neutral-500">Protected by Cloudflare Turnstile · usually completes automatically</p>
+              <p id="captchaNotice" class="hidden mt-2 text-[11px] leading-relaxed text-amber-300"></p>
             </div>
           </div>
 
@@ -453,6 +462,7 @@
     let passwordResetAvailable = false;
     let resetToken = '';
     let nextUrl = '/member';
+    const captcha = { enabled: false, siteKey: null, widgetId: null, token: '', failed: false, scriptPromise: null };
 
     document.addEventListener('DOMContentLoaded', init);
 
@@ -505,8 +515,14 @@
           return 'That sign-in link expired or was already used. Try again.';
         case 'oauth_email':
           return `The ${name} account did not expose a verified email address, so it cannot be used to sign in.`;
+        case 'oauth_config':
+          return `${name} sign-in is temporarily unavailable because its server credentials are misconfigured. Please use email + password and tell the site owner.`;
+        case 'oauth_code':
+          return 'That sign-in link expired or was already used. Try again.';
         case 'oauth_failed':
           return `The ${name} sign-in failed${detail ? `: ${detail}` : '. Please retry.'}`;
+        case 'captcha_failed':
+          return 'Human verification did not pass. Please try again.';
         default:
           return 'Sign-in did not complete. Please retry.';
       }
@@ -527,10 +543,96 @@
         const config = await response.json();
         if (config && config.providers) providers = { password: true, ...config.providers };
         passwordResetAvailable = Boolean(config && config.passwordReset);
+        if (config && config.captcha) await mountCaptcha(config.captcha);
       } catch (_) {
         /* static preview without Functions: keep the honest "unconfigured" state */
       }
       paintProviders();
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Turnstile human verification                                        */
+    /* ------------------------------------------------------------------ */
+
+    function loadTurnstileScript() {
+      if (window.turnstile) return Promise.resolve();
+      if (captcha.scriptPromise) return captcha.scriptPromise;
+      captcha.scriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('turnstile_script_failed'));
+        document.head.appendChild(script);
+      });
+      return captcha.scriptPromise;
+    }
+
+    async function mountCaptcha(config) {
+      captcha.enabled = Boolean(config && config.enabled && config.siteKey);
+      captcha.siteKey = config && config.siteKey ? config.siteKey : null;
+
+      const wrap = document.getElementById('turnstileWrap');
+      const slot = document.getElementById('turnstileSlot');
+      if (!captcha.enabled || !wrap || !slot) {
+        if (wrap) wrap.classList.add('hidden');
+        return;
+      }
+
+      wrap.classList.remove('hidden');
+      try {
+        await loadTurnstileScript();
+        slot.innerHTML = '';
+        captcha.widgetId = window.turnstile.render(slot, {
+          sitekey: captcha.siteKey,
+          theme: 'dark',
+          size: 'flexible',
+          action: 'auth',
+          callback: (token) => {
+            captcha.token = token || '';
+            captcha.failed = false;
+            hideCaptchaNotice();
+          },
+          'expired-callback': () => { captcha.token = ''; },
+          'error-callback': () => {
+            captcha.token = '';
+            captcha.failed = true;
+            showCaptchaNotice('Human verification could not load. Disable ad-blockers or try another network.');
+          }
+        });
+      } catch (_) {
+        captcha.failed = true;
+        showCaptchaNotice('Human verification could not load. Disable ad-blockers or try another network.');
+      }
+    }
+
+    function currentCaptchaToken() {
+      if (!captcha.enabled) return '';
+      if (captcha.token) return captcha.token;
+      try {
+        if (window.turnstile && captcha.widgetId != null) return window.turnstile.getResponse(captcha.widgetId) || '';
+      } catch (_) {}
+      return '';
+    }
+
+    function resetCaptcha() {
+      captcha.token = '';
+      if (captcha.enabled && window.turnstile && captcha.widgetId != null) {
+        try { window.turnstile.reset(captcha.widgetId); } catch (_) {}
+      }
+    }
+
+    function showCaptchaNotice(message) {
+      const notice = document.getElementById('captchaNotice');
+      if (!notice) return;
+      notice.textContent = message;
+      notice.classList.remove('hidden');
+    }
+
+    function hideCaptchaNotice() {
+      const notice = document.getElementById('captchaNotice');
+      if (notice) notice.classList.add('hidden');
     }
 
     function paintProviders() {
@@ -652,7 +754,19 @@
         return;
       }
 
+      if (captcha.enabled) {
+        if (captcha.failed) {
+          showError('Human verification could not load. Disable ad-blockers or try another network.');
+          return;
+        }
+        if (!currentCaptchaToken()) {
+          showError('Please complete the human verification first.');
+          return;
+        }
+      }
+
       const submitBtn = document.getElementById('submitBtn');
+      const captchaToken = currentCaptchaToken();
       setBusy(submitBtn, true);
 
       try {
@@ -672,13 +786,15 @@
             lastName,
             name: `${firstName} ${lastName}`.trim(),
             username: username || undefined,
-            remember
+            remember,
+            captchaToken
           });
         } else {
-          result = await postJson('/api/auth/login', { identifier, password, remember });
+          result = await postJson('/api/auth/login', { identifier, password, remember, captchaToken });
         }
 
         if (!result.ok) {
+          resetCaptcha();
           showError(result.message);
           if (result.status === 401 || result.status === 409) {
             document.getElementById('passwordInput').select();
@@ -732,6 +848,7 @@
         case 'username_invalid': return 'Username needs at least 3 letters, numbers, dots, dashes or underscores.';
         case 'rate_limited': return 'Too many attempts. Wait a few minutes and try again.';
         case 'credentials_missing': return 'Enter your email or username and password.';
+        case 'captcha_failed': return 'Human verification did not pass. Please try again.';
         default: return '';
       }
     }
@@ -851,7 +968,17 @@
         return;
       }
 
-      const result = await postJson('/api/auth/forgot', { email });
+      if (captcha.enabled && captcha.failed) {
+        showError('Human verification could not load. Disable ad-blockers or try another network.');
+        return;
+      }
+      if (captcha.enabled && !currentCaptchaToken()) {
+        showError('Please complete the human verification first.');
+        return;
+      }
+
+      const result = await postJson('/api/auth/forgot', { email, captchaToken: currentCaptchaToken() });
+      if (captcha.enabled) resetCaptcha();
       if (!result.ok) {
         showError(result.message);
         return;

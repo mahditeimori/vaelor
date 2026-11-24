@@ -24,6 +24,7 @@ import {
   sameOriginError,
   sessionCookie,
   tooManyAttempts,
+  verifyCaptcha,
 } from './_lib';
 
 interface Body {
@@ -34,6 +35,7 @@ interface Body {
   lastName?: string;
   username?: string;
   remember?: boolean;
+  captchaToken?: string;
 }
 
 export const onRequestPost: Handler = async ({ request, env }) => {
@@ -46,6 +48,12 @@ export const onRequestPost: Handler = async ({ request, env }) => {
 
   const body = await readJson<Body>(request);
   if (!body) return fail(400, 'bad_request', 'Expected a JSON body.');
+
+  const captcha = await verifyCaptcha(request, env, body.captchaToken);
+  if (!captcha.ok) {
+    console.warn('auth.register captcha rejected:', captcha.reason ?? 'unknown');
+    return fail(400, 'captcha_failed', 'Complete the human verification and try again.');
+  }
 
   const email = normaliseEmail(body.email ?? '');
   if (!isEmail(email)) return fail(400, 'email_invalid', 'Enter a valid email address.');

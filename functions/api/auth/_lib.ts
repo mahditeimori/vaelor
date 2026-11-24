@@ -27,6 +27,9 @@ export interface Env {
   GOOGLE_CLIENT_SECRET?: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
+  /** Cloudflare Turnstile. Both must be present for the human check to run. */
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET_KEY?: string;
   /** Optional override, e.g. https://vaelor.pages.dev */
   PUBLIC_ORIGIN?: string;
   /** Comma-separated emails allowed into /owner. */
@@ -140,6 +143,81 @@ export function sameOriginError(request: Request, env: Env): string | null {
     }
   }
   return null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Turnstile (Cloudflare) human verification                           */
+/* ------------------------------------------------------------------ */
+
+export function captchaEnabled(env: Env): boolean {
+  return Boolean(env.TURNSTILE_SITE_KEY?.trim() && env.TURNSTILE_SECRET_KEY?.trim());
+}
+
+export interface CaptchaResult {
+  ok: boolean;
+  /** False when the deployment has no Turnstile keys; callers then skip the check. */
+  configured: boolean;
+  reason?: string;
+}
+
+/**
+ * Verify a Turnstile token server-side. The token is single-use and expires
+ * after five minutes, so it is checked before any password work happens.
+ * A deployment without keys keeps working (the rate limits still apply), which
+ * allows local previews and staged rollouts without a captcha.
+ */
+export async function verifyCaptcha(
+  request: Request,
+  env: Env,
+  token: string | undefined,
+): Promise<CaptchaResult> {
+  if (!captchaEnabled(env)) return { ok: true, configured: false };
+
+  const response = (token ?? '').trim();
+  if (!response) return { ok: false, configured: true, reason: 'missing' };
+  if (response.length > 4096) return { ok: false, configured: true, reason: 'oversized' };
+
+  const body = new URLSearchParams({
+    secret: env.TURNSTILE_SECRET_KEY!.trim(),
+    response,
+  });
+  const ip = request.headers.get('cf-connecting-ip');
+  if (ip) body.set('remoteip', ip);
+
+  try {
+    const result = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!result.ok) return { ok: false, configured: true, reason: `siteverify_${result.status}` };
+
+    const data = (await result.json()) as {
+      success?: boolean;
+      action?: string;
+      hostname?: string;
+      'error-codes'?: string[];
+    };
+
+    if (data.success !== true) {
+      return {
+        ok: false,
+        configured: true,
+        reason: (data['error-codes'] ?? []).join(',') || 'rejected',
+      };
+    }
+    if (data.action && data.action !== 'auth') {
+      return { ok: false, configured: true, reason: 'action_mismatch' };
+    }
+    return { ok: true, configured: true };
+  } catch (error) {
+    return {
+      ok: false,
+      configured: true,
+      reason: error instanceof Error ? error.message.slice(0, 80) : 'unreachable',
+    };
+  }
 }
 
 /* ------------------------------------------------------------------ */

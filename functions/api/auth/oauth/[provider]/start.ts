@@ -27,12 +27,16 @@ const AUTHORIZE: Record<Provider, string> = {
 };
 
 export function providerConfigured(env: Env, provider: Provider): boolean {
-  if (provider === 'google') return Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
-  return Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);
+  if (provider === 'google') {
+    return Boolean(env.GOOGLE_CLIENT_ID?.trim() && env.GOOGLE_CLIENT_SECRET?.trim());
+  }
+  return Boolean(env.GITHUB_CLIENT_ID?.trim() && env.GITHUB_CLIENT_SECRET?.trim());
 }
 
 function clientId(env: Env, provider: Provider): string {
-  return (provider === 'google' ? env.GOOGLE_CLIENT_ID : env.GITHUB_CLIENT_ID) ?? '';
+  return (
+    (provider === 'google' ? env.GOOGLE_CLIENT_ID : env.GITHUB_CLIENT_ID)?.trim() ?? ''
+  );
 }
 
 export const onRequestGet: Handler = async ({ request, env, params }) => {

@@ -19,10 +19,12 @@ import {
   requestIp,
   sameOriginError,
   tooManyAttempts,
+  verifyCaptcha,
 } from './_lib';
 
 interface Body {
   email?: string;
+  captchaToken?: string;
 }
 
 const RESET_TTL = 60 * 30;
@@ -36,6 +38,12 @@ export const onRequestPost: Handler = async ({ request, env }) => {
   if (originError) return fail(403, originError);
 
   const body = await readJson<Body>(request);
+  const captcha = await verifyCaptcha(request, env, body?.captchaToken);
+  if (!captcha.ok) {
+    console.warn('auth.forgot captcha rejected:', captcha.reason ?? 'unknown');
+    return fail(400, 'captcha_failed', 'Complete the human verification and try again.');
+  }
+
   const email = normaliseEmail(body?.email ?? '');
   const generic = { ok: true, delivery: env.RESEND_API_KEY ? 'email' : 'unavailable' };
 
